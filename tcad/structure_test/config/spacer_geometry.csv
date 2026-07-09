@@ -1,0 +1,6 @@
+run_id,gate_width,oxide_thickness,spacer_width,LDD_thickness
+L200T20S30,2.0e-5,2.0e-6,3.0e-6,2.5e-6
+L200T20S35,2.0e-5,2.0e-6,3.5e-6,2.5e-6
+L200T20S40,2.0e-5,2.0e-6,4.0e-6,2.5e-6
+L200T20S45,2.0e-5,2.0e-6,4.5e-6,2.5e-6
+L200T20S50,2.0e-5,2.0e-6,5.0e-6,2.5e-6

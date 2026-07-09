@@ -216,3 +216,18 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# para_sweep local machine settings and generated results
+tcad/para_sweep/configs/local_config.json
+tcad/para_sweep/.venv/
+tcad/para_sweep/venv/
+tcad/para_sweep/env/
+!tcad/para_sweep/**/*.log
+
+# structure_test local machine settings and generated results
+tcad/structure_test/configs/local_config.json
+tcad/structure_test/.venv/
+tcad/structure_test/venv/
+tcad/structure_test/env/
+tcad/structure_test/dataset/
+tcad/structure_test/runs/

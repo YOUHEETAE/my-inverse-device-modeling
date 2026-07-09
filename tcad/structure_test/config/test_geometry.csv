@@ -1,0 +1,6 @@
+run_id,gate_width,oxide_thickness,LDD_thickness
+L100T50,1.0e-5,5.0e-6,2.5e-6
+L600T20,6.0e-5,2.0e-6,2.5e-6
+L600T50,6.0e-5,5.0e-6,2.5e-6
+L1600T20,1.6e-4,2.0e-6,2.5e-6
+L1600T50,1.6e-4,5.0e-6,2.5e-6
