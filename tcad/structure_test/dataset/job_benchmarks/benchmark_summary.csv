@@ -1,0 +1,4 @@
+jobs,return_code,measured_elapsed_sec,measured_elapsed_hms,reported_elapsed,convergence_summary,log_file,status_csv
+2,0,3179.981,00:53:00,3179.610s (00:53:00),ok=8 failed=2,C:\Users\T590\devsim_project\inverse-device-modeling\tcad\structure_test\dataset\job_benchmarks\sweep_j2.log,C:\Users\T590\devsim_project\inverse-device-modeling\tcad\structure_test\dataset\job_benchmarks\run_status_j2.csv
+3,0,2720.709,00:45:21,2720.300s (00:45:20),ok=9 failed=1,C:\Users\T590\devsim_project\inverse-device-modeling\tcad\structure_test\dataset\job_benchmarks\sweep_j3.log,C:\Users\T590\devsim_project\inverse-device-modeling\tcad\structure_test\dataset\job_benchmarks\run_status_j3.csv
+4,0,2359.865,00:39:20,2359.145s (00:39:19),ok=9 failed=1,C:\Users\T590\devsim_project\inverse-device-modeling\tcad\structure_test\dataset\job_benchmarks\sweep_j4.log,C:\Users\T590\devsim_project\inverse-device-modeling\tcad\structure_test\dataset\job_benchmarks\run_status_j4.csv

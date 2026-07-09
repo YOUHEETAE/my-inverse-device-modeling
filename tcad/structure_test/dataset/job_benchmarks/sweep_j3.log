@@ -1,0 +1,27 @@
+Running up to 3 DEVSIM jobs in parallel
+[RUN 1/10] L100T50/B1e16SD1e20LDD1e18 B=1.0e16 S=1.0e20 D=1.0e20 LDD=1.0e18
+[RUN 2/10] L100T50/B1e17SD1e20LDD1e18 B=1.0e17 S=1.0e20 D=1.0e20 LDD=1.0e18
+[RUN 3/10] L600T20/B1e16SD1e20LDD1e18 B=1.0e16 S=1.0e20 D=1.0e20 LDD=1.0e18
+[RUN 4/10] L600T20/B1e17SD1e20LDD1e18 B=1.0e17 S=1.0e20 D=1.0e20 LDD=1.0e18
+[RUN 5/10] L600T50/B1e16SD1e20LDD1e18 B=1.0e16 S=1.0e20 D=1.0e20 LDD=1.0e18
+[RUN 6/10] L600T50/B1e17SD1e20LDD1e18 B=1.0e17 S=1.0e20 D=1.0e20 LDD=1.0e18
+[RUN 7/10] L1600T20/B1e16SD1e20LDD1e18 B=1.0e16 S=1.0e20 D=1.0e20 LDD=1.0e18
+[RUN 8/10] L1600T20/B1e17SD1e20LDD1e18 B=1.0e17 S=1.0e20 D=1.0e20 LDD=1.0e18
+[RUN 9/10] L1600T50/B1e16SD1e20LDD1e18 B=1.0e16 S=1.0e20 D=1.0e20 LDD=1.0e18
+[RUN 10/10] L1600T50/B1e17SD1e20LDD1e18 B=1.0e17 S=1.0e20 D=1.0e20 LDD=1.0e18
+[DONE 1/10] L100T50/B1e16SD1e20LDD1e18 status=ok elapsed=287.187s idvd_points=202 idvg_points=270 final_vg=1.500000000000e+00 final_vd=3.000000000000e+00
+[DONE 2/10] L100T50/B1e17SD1e20LDD1e18 status=ok elapsed=300.196s idvd_points=202 idvg_points=270 final_vg=1.500000000000e+00 final_vd=3.000000000000e+00
+[DONE 3/10] L600T20/B1e16SD1e20LDD1e18 status=ok elapsed=569.953s idvd_points=202 idvg_points=270 final_vg=1.500000000000e+00 final_vd=3.000000000000e+00
+[DONE 5/10] L600T50/B1e16SD1e20LDD1e18 status=ok elapsed=583.705s idvd_points=202 idvg_points=270 final_vg=1.500000000000e+00 final_vd=3.000000000000e+00
+[DONE 4/10] L600T20/B1e17SD1e20LDD1e18 status=ok elapsed=773.689s idvd_points=202 idvg_points=270 final_vg=1.500000000000e+00 final_vd=3.000000000000e+00
+[DONE 6/10] L600T50/B1e17SD1e20LDD1e18 status=failed elapsed=683.522s idvd_points=92 idvg_points=0 final_vg=1.500000000000e+00 final_vd=2.730000000000e+00
+[DONE 7/10] L1600T20/B1e16SD1e20LDD1e18 status=ok elapsed=1074.027s idvd_points=202 idvg_points=270 final_vg=1.500000000000e+00 final_vd=3.000000000000e+00
+[DONE 8/10] L1600T20/B1e17SD1e20LDD1e18 status=ok elapsed=1063.639s idvd_points=202 idvg_points=270 final_vg=1.500000000000e+00 final_vd=3.000000000000e+00
+[DONE 9/10] L1600T50/B1e16SD1e20LDD1e18 status=ok elapsed=998.592s idvd_points=202 idvg_points=270 final_vg=1.500000000000e+00 final_vd=3.000000000000e+00
+[DONE 10/10] L1600T50/B1e17SD1e20LDD1e18 status=ok elapsed=760.493s idvd_points=202 idvg_points=270 final_vg=1.500000000000e+00 final_vd=3.000000000000e+00
+
+CSV files written in: C:\Users\T590\devsim_project\inverse-device-modeling\tcad\structure_test\dataset
+Final field dumps written in: C:\Users\T590\devsim_project\inverse-device-modeling\tcad\structure_test\dataset\final_fields
+Run status written: C:\Users\T590\devsim_project\inverse-device-modeling\tcad\structure_test\dataset\run_status.csv
+Total sweep elapsed: 2720.300s (00:45:20)
+Convergence summary: ok=9 failed=1

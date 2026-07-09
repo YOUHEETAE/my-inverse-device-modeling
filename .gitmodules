@@ -1,0 +1,3 @@
+[submodule "tcad/devsim"]
+	path = tcad/devsim
+	url = https://github.com/devsim/devsim.git

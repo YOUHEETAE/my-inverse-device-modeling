@@ -1,0 +1,14 @@
+Traceback (most recent call last):
+  File "C:\Users\T590\devsim_project\inverse-device-modeling\tcad\structure_test\config\python_packages\ramp.py", line 95, in rampbias
+    ds.solve(
+devsim_py3.error: Convergence failure!
+
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\T590\devsim_project\inverse-device-modeling\tcad\structure_test\runs\_tmp_work\L600T50\B1e17SD1e20LDD1e18\gmsh_mos2d.py", line 190, in <module>
+    rampbias(
+  File "C:\Users\T590\devsim_project\inverse-device-modeling\tcad\structure_test\config\python_packages\ramp.py", line 110, in rampbias
+    raise RuntimeError("Minimum step size too small")
+RuntimeError: Minimum step size too small
