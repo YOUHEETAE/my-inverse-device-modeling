@@ -1,7 +1,0 @@
-Traceback (most recent call last):
-  File "C:\Users\T590\devsim_project\inverse-device-modeling\tcad\para_sweep\runs\_tmp_work\L400T20\B5e16SD1e20\gmsh_mos2d.py", line 157, in <module>
-    _reset_to_zero_bias(device)
-  File "C:\Users\T590\devsim_project\inverse-device-modeling\tcad\para_sweep\runs\_tmp_work\L400T20\B5e16SD1e20\gmsh_mos2d.py", line 71, in _reset_to_zero_bias
-    solve(type="dc", absolute_error=1.0e30, relative_error=1e-5, maximum_iterations=80)
-devsim_py3.error: Convergence failure!
-

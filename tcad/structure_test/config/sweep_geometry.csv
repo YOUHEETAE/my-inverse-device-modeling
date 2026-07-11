@@ -1,6 +1,0 @@
-run_id,gate_width,oxide_thickness
-L100T20,1.0e-5,2.0e-6
-L100T25,1.0e-5,2.5e-6
-L100T50,1.0e-5,5.0e-6
-L500T40,5.0e-5,4.0e-6
-L500T50,5.0e-5,5.0e-6
