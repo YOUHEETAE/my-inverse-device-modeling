@@ -70,11 +70,14 @@ If needed, copy it to `configs/local_config.json` and edit the paths for the cur
 `tools/sweep_benchmark_jobs.py`
 : Benchmarks different `--jobs` values. This is optional now that the desktop default is 4.
 
-`tools/structure_visualization.py`
+`tools/visualization_fieldmap.py`
 : Visualizes generated mesh, doping, current density, potential, and electric field maps.
 
-`tools/iv_visualization.py`
+`tools/visualization_iv.py`
 : Visualizes generated IdVd/IdVg CSV outputs.
+
+`tools/parameter_extraction.py`
+: Extracts device parameters from all IdVd/IdVg CSV pairs into one combined CSV.
 
 `scripts/check_environment.py`
 : Verifies that Python, DEVSIM, Gmsh, and related runtime paths are available.

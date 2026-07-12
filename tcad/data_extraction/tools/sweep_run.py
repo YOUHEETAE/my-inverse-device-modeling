@@ -35,9 +35,9 @@ def _resolve_defaults(script_file: Path) -> tuple[Path, Path, Path, Path, Path, 
     root = script_file.resolve().parents[1]
     runs_dir = root / "runs"
     base_dir = root / "base_case"
-    geometry_config = root / "config" / "sweep_geometry.csv"
-    doping_config = root / "config" / "sweep_doping.csv"
-    status_csv = root / "dataset" / "run_status.csv"
+    geometry_config = root / "config" / "test_geometry.csv"
+    doping_config = root / "config" / "test_doping.csv"
+    status_csv = root / "dataset" / "test_run_status.csv"
     structure_glob = "L*"
     work_root = root / "runs" / "_tmp_work"
     return runs_dir, base_dir, geometry_config, doping_config, status_csv, structure_glob, work_root
