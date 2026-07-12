@@ -27,11 +27,20 @@ FIELD_DISPLAYS = (
     "Mesh",
     "Abs net doping",
     "Net doping",
-    "Total current density",
     "Potential",
     "Electric field",
+    "Electron density",
+    "Hole density",
+    "Electron current density",
+    "Hole current density",
+    "Total current density",
+    "SRH recombination",
+    "Energy band (1D)",
 )
-FIELD_MAP_CMAP = "viridis"
+FIELD_MAP_CMAP = "inferno"
+SI_BANDGAP_EV = 1.12
+SIO2_BANDGAP_EV = 9.0
+SI_SIO2_CONDUCTION_OFFSET_EV = 3.1
 
 
 @dataclass
@@ -56,6 +65,7 @@ class ZoneData:
     current_x_nm: np.ndarray | None
     current_y_nm: np.ndarray | None
     j_total: np.ndarray | None
+    scalar_fields: dict[str, np.ndarray]
 
 
 @dataclass
@@ -168,8 +178,10 @@ def _discover_result_pairs(
     if not final_fields.exists():
         return pairs, files
 
-    pattern = re.compile(r"^(?P<structure>.+?)(?P<doping>B.+)_final\.dat$")
-    for path in sorted(final_fields.glob("*_final.dat")):
+    pattern = re.compile(
+        r"^(?P<structure>.+?)(?P<doping>B.+?)(?:_IdVd_Vg3p0_Vd3p0|_final)\.dat$"
+    )
+    for path in sorted(final_fields.glob("*.dat")):
         match = pattern.match(path.name)
         if not match:
             continue
@@ -829,9 +841,13 @@ def _place_colorbar_axis(fig: Figure, main_axis, cbar_axis, gap_px: float = 15.0
 def _find_current_file(root: Path, structure_id: str, doping_run_id: str) -> Path | None:
     final_fields = root / "dataset" / "final_fields"
     if final_fields.exists():
-        exact = final_fields / f"{structure_id}{doping_run_id}_final.dat"
-        if exact.exists():
-            return exact
+        for name in (
+            f"{structure_id}{doping_run_id}_IdVd_Vg3p0_Vd3p0.dat",
+            f"{structure_id}{doping_run_id}_final.dat",
+        ):
+            exact = final_fields / name
+            if exact.exists():
+                return exact
 
     candidates = [
         root / "runs" / "_tmp_work" / structure_id / doping_run_id / "gmsh_mos2d_dd.dat",
@@ -858,6 +874,18 @@ def _parse_varlocation(zone_line: str) -> set[int]:
         else:
             out.add(int(text) - 1)
     return out
+
+
+def _tecplot_variable_names(path: Path) -> list[str]:
+    header_lines: list[str] = []
+    with path.open("r", encoding="utf-8", errors="replace") as handle:
+        for line in handle:
+            if line.lstrip().upper().startswith("ZONE"):
+                break
+            header_lines.append(line)
+    header = "".join(header_lines)
+    match = re.search(r"VARIABLES\s*=\s*(.*)", header, re.IGNORECASE | re.DOTALL)
+    return re.findall(r'"([^"]+)"', match.group(1)) if match else []
 
 
 def _parse_tecplot_fields(path: Path) -> FieldData | None:
@@ -972,6 +1000,20 @@ def _parse_tecplot_fields(path: Path) -> FieldData | None:
             centroids_x = None
             centroids_y = None
 
+        scalar_fields = {
+            name: blocks[var_index]
+            for var_index, name in enumerate(variables)
+            if var_index not in (x_idx, y_idx)
+        }
+        if electron_current_x_idx is not None and electron_current_y_idx is not None:
+            scalar_fields["ElectronCurrentMagnitude"] = np.sqrt(
+                blocks[electron_current_x_idx] ** 2 + blocks[electron_current_y_idx] ** 2
+            )
+        if hole_current_x_idx is not None and hole_current_y_idx is not None:
+            scalar_fields["HoleCurrentMagnitude"] = np.sqrt(
+                blocks[hole_current_x_idx] ** 2 + blocks[hole_current_y_idx] ** 2
+            )
+
         zones.append(
             ZoneData(
                 name=zone_name,
@@ -987,6 +1029,7 @@ def _parse_tecplot_fields(path: Path) -> FieldData | None:
                 current_x_nm=centroids_x,
                 current_y_nm=centroids_y,
                 j_total=j_total,
+                scalar_fields=scalar_fields,
             )
         )
 
@@ -1019,48 +1062,46 @@ def _plot_doping(
     doping_display: str,
 ) -> None:
     show_abs = doping_display == "Abs net doping"
-    field_name = "abs_net_doping" if show_abs else "net_doping"
-    if fields is not None and any(getattr(zone, field_name) is not None for zone in fields.zones):
-        image = None
-        for zone in fields.zones:
-            zone_values = getattr(zone, field_name)
-            if zone_values is None:
-                continue
-            triangulation = mtri.Triangulation(zone.x_nm, zone.y_nm, zone.triangles)
-            if show_abs:
-                values = np.maximum(zone_values, 1e14)
-                cmap = "viridis"
-                norm = LogNorm(vmin=1e14, vmax=1e20)
-            else:
-                values = zone_values
-                cmap = "seismic"
-                norm = SymLogNorm(linthresh=1e14, vmin=-1e20, vmax=1e20)
-            image = axis.tripcolor(
-                triangulation,
-                values,
-                shading="flat",
-                cmap=cmap,
-                norm=norm,
-            )
+    xmin, xmax, _ymin, ymax = _mesh_limits_nm(mesh)
+    x_nm = np.linspace(xmin, xmax, 700)
+    y_nm = np.linspace(0.0, ymax, 500)
+    net_doping = _net_doping_profile(geometry, doping, x_nm, y_nm)
+    if show_abs:
+        values = np.maximum(np.abs(net_doping), 1e14)
+        cmap = "plasma"
+        positive = values[np.isfinite(values) & (values > 0)]
+        vmin = max(float(np.percentile(positive, 1)), 1e14)
+        vmax = max(float(np.percentile(positive, 99)), vmin * 10.0)
+        norm = LogNorm(vmin=vmin, vmax=vmax)
     else:
-        x_nm = np.linspace(0, 1000, 700)
-        y_nm = np.linspace(0, 1000, 500)
-        net_doping = _net_doping_profile(geometry, doping, x_nm, y_nm)
+        values = net_doping
+        cmap = "RdBu_r"
+        finite_abs = np.abs(values[np.isfinite(values)])
+        vmax = max(float(np.percentile(finite_abs, 99)), 1e14)
+        norm = SymLogNorm(linthresh=max(vmax * 1e-5, 1e14), vmin=-vmax, vmax=vmax)
+    image = axis.imshow(
+        values,
+        extent=[xmin, xmax, ymax, 0.0],
+        aspect="auto",
+        cmap=cmap,
+        norm=norm,
+    )
+    try:
         if show_abs:
-            values = np.maximum(np.abs(net_doping), 1e14)
-            cmap = "viridis"
-            norm = LogNorm(vmin=1e14, vmax=1e20)
+            contour_levels = np.geomspace(norm.vmin, norm.vmax, 10)
         else:
-            values = net_doping
-            cmap = "seismic"
-            norm = SymLogNorm(linthresh=1e14, vmin=-1e20, vmax=1e20)
-        image = axis.imshow(
+            contour_levels = np.linspace(norm.vmin, norm.vmax, 11)
+        axis.contour(
+            x_nm,
+            y_nm,
             values,
-            extent=[0, 1000, 1000, 0],
-            aspect="auto",
-            cmap=cmap,
-            norm=norm,
+            levels=contour_levels,
+            colors="black",
+            linewidths=0.35,
+            alpha=0.25,
         )
+    except (ValueError, RuntimeError):
+        pass
 
     _draw_structure_overlay(axis, geometry, mesh=mesh, text_color="black", filled=False)
     axis.set_title("|Net doping|" if show_abs else "Net doping")
@@ -1079,7 +1120,7 @@ def _field_error_message(axis, cbar_axis, label: str, current_file: Path | None)
     message = (
         f"{label} data not found or could not be parsed.\n\n"
         "Expected file:\n"
-        "dataset/final_fields/<parameter_set>_final.dat"
+        "dataset/final_fields/<parameter_set>_IdVd_Vg3p0_Vd3p0.dat"
     )
     if current_file is not None:
         message += f"\n\nFound but could not parse:\n{current_file}"
@@ -1091,7 +1132,9 @@ def _finite_zone_values(fields: FieldData | None, field_name: str) -> list[np.nd
         return []
     values: list[np.ndarray] = []
     for zone in fields.zones:
-        zone_values = getattr(zone, field_name)
+        zone_values = getattr(zone, field_name, None)
+        if zone_values is None:
+            zone_values = zone.scalar_fields.get(field_name)
         if zone_values is None:
             continue
         finite = zone_values[np.isfinite(zone_values)]
@@ -1114,6 +1157,7 @@ def _plot_zone_scalar_field(
     cmap: str,
     log_scale: bool,
     bias_label: str,
+    center_zero: bool = False,
 ) -> None:
     finite_values = _finite_zone_values(fields, field_name)
     if not finite_values:
@@ -1126,12 +1170,17 @@ def _plot_zone_scalar_field(
         if not positive.size:
             norm = Normalize(vmin=0.0, vmax=1.0)
         else:
-            vmin = max(float(np.nanmin(positive)), 1e-12)
-            vmax = max(float(np.nanmax(positive)), vmin * 10.0)
+            vmin = max(float(np.percentile(positive, 1)), 1e-30)
+            vmax = max(float(np.percentile(positive, 99)), vmin * 10.0)
             norm = LogNorm(vmin=vmin, vmax=vmax)
+    elif center_zero:
+        finite_abs = np.abs(all_values[np.isfinite(all_values)])
+        vmax = max(float(np.percentile(finite_abs, 99)), 1e-30)
+        linthresh = max(vmax * 1e-5, 1e-30)
+        norm = SymLogNorm(linthresh=linthresh, vmin=-vmax, vmax=vmax)
     else:
-        vmin = float(np.nanmin(all_values))
-        vmax = float(np.nanmax(all_values))
+        vmin = float(np.percentile(all_values, 1))
+        vmax = float(np.percentile(all_values, 99))
         if math.isclose(vmin, vmax, rel_tol=0.0, abs_tol=1e-15):
             delta = max(abs(vmin) * 0.01, 1e-6)
             vmin -= delta
@@ -1140,7 +1189,9 @@ def _plot_zone_scalar_field(
 
     image = None
     for zone in fields.zones if fields is not None else []:
-        zone_values = getattr(zone, field_name)
+        zone_values = getattr(zone, field_name, None)
+        if zone_values is None:
+            zone_values = zone.scalar_fields.get(field_name)
         if zone_values is None:
             continue
         values = np.asarray(zone_values, dtype=float)
@@ -1154,6 +1205,22 @@ def _plot_zone_scalar_field(
             cmap=cmap,
             norm=norm,
         )
+        if len(values) == len(zone.x_nm):
+            try:
+                if isinstance(norm, LogNorm):
+                    levels = np.geomspace(norm.vmin, norm.vmax, 10)
+                else:
+                    levels = np.linspace(norm.vmin, norm.vmax, 11)
+                axis.tricontour(
+                    triangulation,
+                    values,
+                    levels=levels,
+                    colors="black",
+                    linewidths=0.35,
+                    alpha=0.28,
+                )
+            except (ValueError, RuntimeError):
+                pass
 
     _draw_structure_overlay(axis, geometry, mesh=mesh, text_color="black", filled=False)
     axis.set_title(_title_with_bias(title, bias_label))
@@ -1182,14 +1249,15 @@ def _plot_current(
         return
 
     values = np.maximum(bulk.j_total, CURRENT_DENSITY_VMIN)
-    vmax = max(float(np.nanmax(values)), CURRENT_DENSITY_VMIN * 10.0)
-    levels = np.logspace(math.log10(CURRENT_DENSITY_VMIN), math.log10(vmax), 60)
-    image = axis.tricontourf(
-        bulk.current_x_nm,
-        bulk.current_y_nm,
+    positive = values[np.isfinite(values) & (values > 0)]
+    vmin = max(float(np.percentile(positive, 1)), CURRENT_DENSITY_VMIN)
+    vmax = max(float(np.percentile(positive, 99)), vmin * 10.0)
+    triangulation = mtri.Triangulation(bulk.x_nm, bulk.y_nm, bulk.triangles)
+    image = axis.tripcolor(
+        triangulation,
         values,
-        levels=levels,
-        norm=LogNorm(vmin=CURRENT_DENSITY_VMIN, vmax=vmax),
+        shading="flat",
+        norm=LogNorm(vmin=vmin, vmax=vmax),
         cmap=FIELD_MAP_CMAP,
     )
     _draw_structure_overlay(axis, geometry, mesh=mesh, text_color="black", filled=False)
@@ -1198,6 +1266,166 @@ def _plot_current(
     axis.set_ylabel("y (nm)")
     _apply_mesh_limits(axis, mesh)
     _add_side_colorbar(fig, cbar_axis, image, "Current density (A/cm$^2$)")
+
+
+def _interpolate_potential(zone: ZoneData, x_nm: np.ndarray, y_nm: np.ndarray) -> np.ndarray:
+    if zone.potential is None or len(zone.potential) != len(zone.x_nm):
+        return np.full_like(x_nm, np.nan, dtype=float)
+    triangulation = mtri.Triangulation(zone.x_nm, zone.y_nm, zone.triangles)
+    interpolator = mtri.LinearTriInterpolator(triangulation, zone.potential)
+    values = interpolator(x_nm, y_nm)
+    if np.ma.isMaskedArray(values):
+        return np.asarray(values.filled(np.nan), dtype=float)
+    return np.asarray(values, dtype=float)
+
+
+def _savgol_finite(values: np.ndarray, window_points: int) -> np.ndarray:
+    finite = np.isfinite(values)
+    finite_indices = np.flatnonzero(finite)
+    if finite_indices.size < 5:
+        return values.copy()
+    window_points = max(5, int(window_points))
+    if window_points % 2 == 0:
+        window_points += 1
+    maximum_window = finite_indices.size if finite_indices.size % 2 == 1 else finite_indices.size - 1
+    window_points = min(window_points, maximum_window)
+    filled = np.interp(np.arange(len(values)), finite_indices, values[finite])
+    half_window = window_points // 2
+    offsets = np.arange(-half_window, half_window + 1, dtype=float)
+    design = np.column_stack((np.ones(window_points), offsets, offsets**2))
+    coefficients = np.linalg.pinv(design)[0]
+    padded = np.pad(filled, half_window, mode="edge")
+    smoothed = np.convolve(padded, coefficients[::-1], mode="valid")
+    smoothed[~finite] = np.nan
+    return smoothed
+
+
+def _plot_energy_bands(
+    axes,
+    fields: FieldData | None,
+    current_file: Path | None,
+    geometry: dict[str, str],
+    bias_label: str,
+) -> None:
+    horizontal_axis, vertical_axis = axes
+    bulk = fields.bulk if fields is not None else None
+    if bulk is None or bulk.potential is None:
+        for axis in axes:
+            axis.set_axis_off()
+            axis.text(
+                0.5,
+                0.5,
+                f"Potential data required for energy-band approximation.\n{current_file or ''}",
+                ha="center",
+                va="center",
+                transform=axis.transAxes,
+            )
+        return
+
+    markers = _geometry_markers_nm(geometry)
+    x_horizontal = np.linspace(markers["bulk_left_nm"], markers["bulk_right_nm"], 1200)
+    positive_bulk_y = bulk.y_nm[bulk.y_nm > markers["surface_nm"] + 1e-9]
+    y_channel = (
+        min(float(np.min(positive_bulk_y)), 1.0)
+        if positive_bulk_y.size
+        else markers["surface_nm"]
+    )
+    potential_raw = _interpolate_potential(
+        bulk,
+        x_horizontal,
+        np.full_like(x_horizontal, y_channel),
+    )
+    x_step_nm = float(np.mean(np.diff(x_horizontal)))
+    smoothing_width_nm = 35.0
+    smoothing_window_points = max(5, round(smoothing_width_nm / x_step_nm))
+    potential_filtered = _savgol_finite(potential_raw, smoothing_window_points)
+    finite_horizontal = np.isfinite(potential_raw)
+    if np.any(finite_horizontal):
+        source_index = int(np.flatnonzero(finite_horizontal)[0])
+        energy_reference = -float(potential_raw[source_index])
+        ec_filtered = -potential_filtered - energy_reference
+        ev_filtered = ec_filtered - SI_BANDGAP_EV
+        horizontal_axis.plot(
+            x_horizontal,
+            ec_filtered,
+            color="#0D47A1",
+            lw=2.2,
+            zorder=3,
+            label="$E_C$",
+        )
+        horizontal_axis.plot(
+            x_horizontal,
+            ev_filtered,
+            color="#B71C1C",
+            lw=2.2,
+            zorder=3,
+            label="$E_V$",
+        )
+    else:
+        energy_reference = 0.0
+
+    horizontal_axis.axvline(markers["gate_left_nm"], color="0.35", ls="--", lw=1.0)
+    horizontal_axis.axvline(markers["gate_right_nm"], color="0.35", ls="--", lw=1.0)
+    horizontal_axis.set_title(
+        _title_with_bias(
+            f"Source - Gate - Drain band cut\n"
+            f"y={y_channel:.2f} nm (Si side of Si-Oxide interface, "
+            f"{smoothing_width_nm:g} nm Savitzky-Golay, approx.)",
+            bias_label,
+        )
+    )
+    horizontal_axis.set_xlabel("x position: Source → Gate → Drain (nm)")
+    horizontal_axis.set_ylabel("Relative energy (eV)")
+    horizontal_axis.grid(True, alpha=0.28)
+    horizontal_axis.legend()
+
+    x_center = 0.5 * (markers["gate_left_nm"] + markers["gate_right_nm"])
+    zone_styles = {
+        "gate": (0.0, SI_BANDGAP_EV, "Gate (Si)"),
+        "oxide": (SI_SIO2_CONDUCTION_OFFSET_EV, SIO2_BANDGAP_EV, "Oxide (SiO2)"),
+        "bulk": (0.0, SI_BANDGAP_EV, "Bulk (Si)"),
+    }
+    plotted_labels: set[str] = set()
+    for zone in fields.zones if fields is not None else []:
+        zone_key = zone.name.lower()
+        if zone_key not in zone_styles or zone.potential is None:
+            continue
+        y_vertical = np.linspace(float(np.min(zone.y_nm)), float(np.max(zone.y_nm)), 500)
+        potential_vertical = _interpolate_potential(
+            zone,
+            np.full_like(y_vertical, x_center),
+            y_vertical,
+        )
+        offset, bandgap, region_label = zone_styles[zone_key]
+        ec_vertical = -potential_vertical + offset - energy_reference
+        ev_vertical = ec_vertical - bandgap
+        ec_label = f"{region_label} $E_C$"
+        ev_label = f"{region_label} $E_V$"
+        vertical_axis.plot(
+            y_vertical,
+            ec_vertical,
+            color="#1565C0" if zone_key != "oxide" else "#00897B",
+            lw=2.0,
+            label=ec_label if ec_label not in plotted_labels else None,
+        )
+        vertical_axis.plot(
+            y_vertical,
+            ev_vertical,
+            color="#C62828" if zone_key != "oxide" else "#6A1B9A",
+            lw=2.0,
+            label=ev_label if ev_label not in plotted_labels else None,
+        )
+        plotted_labels.update((ec_label, ev_label))
+
+    vertical_axis.axvline(markers["oxide_top_nm"], color="0.35", ls="--", lw=1.0)
+    vertical_axis.axvline(markers["surface_nm"], color="0.35", ls="--", lw=1.0)
+    vertical_axis.set_title(
+        _title_with_bias("Gate - Oxide - Bulk band cut at Gate middle (approx.)", bias_label)
+    )
+    vertical_axis.set_xlabel("y position: Gate → Oxide → Bulk (nm)")
+    vertical_axis.set_ylabel("Relative energy (eV)")
+    vertical_axis.grid(True, alpha=0.28)
+    vertical_axis.legend(fontsize=8)
 
 
 def _plot_field_map(
@@ -1212,7 +1440,50 @@ def _plot_field_map(
     field_display: str,
     bias_label: str,
 ) -> None:
-    if field_display == "Mesh":
+    scalar_displays = {
+        "Electron density": (
+            "Electrons", "Electron density", "Electrons (cm$^{-3}$)", "Blues", True, False
+        ),
+        "Hole density": ("Holes", "Hole density", "Holes (cm$^{-3}$)", "Reds", True, False),
+        "Electron current density": (
+            "ElectronCurrentMagnitude",
+            "Electron current density |Jn|",
+            "Electron current density (A/cm$^2$)",
+            "turbo",
+            True,
+            False,
+        ),
+        "Hole current density": (
+            "HoleCurrentMagnitude",
+            "Hole current density |Jp|",
+            "Hole current density (A/cm$^2$)",
+            "magma",
+            True,
+            False,
+        ),
+        "SRH recombination": (
+            "USRH", "SRH recombination", "USRH (cm$^{-3}$ s$^{-1}$)", "PiYG", False, True
+        ),
+    }
+    if field_display in scalar_displays:
+        variable_name, title, colorbar_label, cmap, log_scale, center_zero = scalar_displays[field_display]
+        _plot_zone_scalar_field(
+            fig,
+            axis,
+            cbar_axis,
+            fields,
+            current_file,
+            mesh,
+            geometry,
+            variable_name,
+            title,
+            colorbar_label,
+            cmap,
+            log_scale=log_scale,
+            bias_label=bias_label,
+            center_zero=center_zero,
+        )
+    elif field_display == "Mesh":
         cbar_axis.set_axis_off()
         _plot_mesh(axis, mesh, geometry)
     elif field_display in ("Abs net doping", "Net doping"):
@@ -1229,9 +1500,10 @@ def _plot_field_map(
             "potential",
             "Potential",
             "Potential (V)",
-            FIELD_MAP_CMAP,
+            "coolwarm",
             log_scale=False,
             bias_label=bias_label,
+            center_zero=True,
         )
     elif field_display == "Electric field":
         _plot_zone_scalar_field(
@@ -1245,7 +1517,7 @@ def _plot_field_map(
             "electric_mag",
             "|Electric field|",
             "Electric field (V/cm)",
-            FIELD_MAP_CMAP,
+            "inferno",
             log_scale=True,
             bias_label=bias_label,
         )
@@ -1284,6 +1556,17 @@ def _plot_structure_figure(
     fields = _parse_tecplot_fields(current_file) if current_file and current_file.exists() else None
     bias_label = _bias_label(root, structure_id, doping_run_id)
 
+    title = (
+        f"{structure_id}/{doping_run_id}  "
+        f"B={doping['bulk_doping']} S={doping['source_doping']} D={doping['drain_doping']}"
+    )
+    if field_display == "Energy band (1D)":
+        axes = fig.subplots(1, 2)
+        _plot_energy_bands(axes, fields, current_file, geometry, bias_label)
+        fig.suptitle(title)
+        fig.subplots_adjust(left=0.07, right=0.98, bottom=0.11, top=0.86, wspace=0.24)
+        return current_file
+
     grid = fig.add_gridspec(1, 2, width_ratios=[1.0, 0.035])
     field_axis = fig.add_subplot(grid[0, 0])
     field_cbar_axis = fig.add_subplot(grid[0, 1])
@@ -1301,10 +1584,6 @@ def _plot_structure_figure(
         bias_label,
     )
 
-    title = (
-        f"{structure_id}/{doping_run_id}  "
-        f"B={doping['bulk_doping']} S={doping['source_doping']} D={doping['drain_doping']}"
-    )
     fig.suptitle(title)
     fig.subplots_adjust(left=0.08, right=0.92, bottom=0.08, top=0.9, wspace=0.08)
     _place_colorbar_axis(fig, field_axis, field_cbar_axis, gap_px=15.0)
@@ -1361,7 +1640,7 @@ class StructureVisualizationApp:
             textvariable=self.selected_field_display,
             state="readonly",
             values=FIELD_DISPLAYS,
-            width=22,
+            width=36,
         )
         self.field_display_combo.pack(side=tk.LEFT, padx=(8, 12))
         self.field_display_combo.bind("<<ComboboxSelected>>", lambda _event: self.plot_selected())
@@ -1436,6 +1715,10 @@ class StructureVisualizationApp:
         self.geometry_rows = _config_rows_by_run_id(self.geometry_config)
         self.doping_rows = _config_rows_by_run_id(self.doping_config)
         self.result_pairs, self.result_files = _discover_result_pairs(self.root, self.runs_dir)
+        field_choices = list(FIELD_DISPLAYS)
+        self.field_display_combo["values"] = field_choices
+        if self.selected_field_display.get() not in field_choices:
+            self.selected_field_display.set(FIELD_DISPLAYS[0])
         if self.result_pairs:
             self.available_structure_ids = sorted(self.result_pairs)
             self.available_doping_run_ids = sorted(

@@ -13,7 +13,7 @@ if errorlevel 1 (
 
 echo.
 echo [2/3] Generating Gmsh meshes...
-conda run -n devsim_env python tools\sweep_generate_meshes.py --config config\sweep_geometry.csv
+conda run -n devsim_env python tools\sweep_generate_meshes.py --config config\test_geometry.csv
 if errorlevel 1 (
   echo.
   echo Mesh generation failed.
@@ -23,7 +23,7 @@ if errorlevel 1 (
 
 echo.
 echo [3/3] Running DEVSIM sweep...
-conda run -n devsim_env python tools\sweep_run.py --geometry-config config\sweep_geometry.csv --doping-config config\sweep_doping.csv --jobs 4
+conda run -n devsim_env python tools\sweep_run.py --geometry-config config\test_geometry.csv --doping-config config\test_doping.csv --jobs 4
 if errorlevel 1 (
   echo.
   echo Sweep failed.

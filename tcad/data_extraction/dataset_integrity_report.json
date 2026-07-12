@@ -1,0 +1,74 @@
+{
+  "dataset_dir": "C:\\Users\\user\\my-inverse-device-modeling\\tcad\\data_extraction\\dataset",
+  "curve_files": {
+    "IdVd": 2574,
+    "IdVg": 2574
+  },
+  "curve_rows": {
+    "IdVd": 519948,
+    "IdVg": 694980
+  },
+  "curve_stems": 2574,
+  "complete_pairs": 2574,
+  "unique_curve_device_ids": 2574,
+  "grids": {
+    "IdVd:IDVD_VG1P5": {
+      "files": 2574,
+      "canonical_points": 101,
+      "grid_variants": 1,
+      "non_canonical_files": 0,
+      "non_canonical_file_names": [],
+      "x_min": 0.0,
+      "x_max": 3.0
+    },
+    "IdVd:IDVD_VG3P0": {
+      "files": 2574,
+      "canonical_points": 101,
+      "grid_variants": 1,
+      "non_canonical_files": 0,
+      "non_canonical_file_names": [],
+      "x_min": 0.0,
+      "x_max": 3.0
+    },
+    "IdVg:IDVG_VD0P05": {
+      "files": 2574,
+      "canonical_points": 135,
+      "grid_variants": 1,
+      "non_canonical_files": 0,
+      "non_canonical_file_names": [],
+      "x_min": -1.0,
+      "x_max": 3.0
+    },
+    "IdVg:IDVG_VD1P5": {
+      "files": 2574,
+      "canonical_points": 135,
+      "grid_variants": 1,
+      "non_canonical_files": 0,
+      "non_canonical_file_names": [],
+      "x_min": -1.0,
+      "x_max": 3.0
+    }
+  },
+  "parameters": {
+    "rows": 2574,
+    "unique_device_ids": 2574,
+    "statuses": {
+      "ok": 2574
+    },
+    "numeric_columns": [
+      "vth_low_v",
+      "vth_high_v",
+      "ion_ma_per_um",
+      "ioff_ma_per_um",
+      "ss_mv_per_dec",
+      "dibl_gm_v_per_v",
+      "gm_max_ms_per_um",
+      "gds_ms_per_um",
+      "ron_kohm_um",
+      "lambda_per_v"
+    ]
+  },
+  "issue_counts_retained": {},
+  "issues_truncated": false,
+  "issues": []
+}
