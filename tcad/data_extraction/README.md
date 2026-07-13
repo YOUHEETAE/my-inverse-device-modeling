@@ -132,3 +132,19 @@ runs/
 ```
 
 Commit code and config CSV changes. Do not commit generated simulation datasets unless a separate data-storage decision is made later.
+
+## Machine-specific data locations
+
+Large generated data can live outside the repository. Set these Windows user
+environment variables once on each computer; they are not stored in Git and are
+not changed by `git pull`:
+
+```powershell
+setx IDM_DATASET_DIR "D:\datasets\my-inverse-device-modeling\dataset"
+setx IDM_RUNS_DIR "D:\datasets\my-inverse-device-modeling\runs"
+```
+
+Open a new terminal (and restart VS Code) after running `setx`. The visualization
+tools use these locations when set and otherwise fall back to the repository's
+`dataset/` and `runs/` directories. Explicit `--dataset-dir` or `--runs-dir`
+arguments still take precedence where supported.

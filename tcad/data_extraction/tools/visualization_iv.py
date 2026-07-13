@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import os
 import re
 import tkinter as tk
 from dataclasses import dataclass
@@ -34,6 +35,9 @@ class CurveParams:
 
 
 def _resolve_default_dataset(script_file: Path) -> Path:
+    configured = os.environ.get("IDM_DATASET_DIR")
+    if configured:
+        return Path(configured).expanduser()
     return script_file.resolve().parents[1] / "dataset"
 
 

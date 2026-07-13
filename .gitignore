@@ -43,3 +43,6 @@ tcad/data_extraction/venv/
 tcad/data_extraction/env/
 tcad/data_extraction/dataset/
 tcad/data_extraction/runs/
+
+# Generated AI datasets, checkpoints, plots, and experiment outputs
+ai/model_artifacts/

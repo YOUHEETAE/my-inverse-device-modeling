@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import csv
 import math
+import os
 import re
 import tkinter as tk
 from dataclasses import dataclass
@@ -78,6 +79,19 @@ def _root(script_file: Path) -> Path:
     return script_file.resolve().parents[1]
 
 
+def _directory_from_env(name: str, fallback: Path) -> Path:
+    configured = os.environ.get(name)
+    return Path(configured).expanduser() if configured else fallback
+
+
+def _dataset_dir(root: Path) -> Path:
+    return _directory_from_env("IDM_DATASET_DIR", root / "dataset")
+
+
+def _runs_dir(root: Path) -> Path:
+    return _directory_from_env("IDM_RUNS_DIR", root / "runs")
+
+
 def _parse_args() -> argparse.Namespace:
     root = _root(Path(__file__))
     parser = argparse.ArgumentParser(
@@ -87,7 +101,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--doping-run-id", type=str, default="B1e16SD1e19")
     parser.add_argument("--geometry-config", type=Path, default=root / "config" / "sweep_geometry.csv")
     parser.add_argument("--doping-config", type=Path, default=root / "config" / "sweep_doping.csv")
-    parser.add_argument("--runs-dir", type=Path, default=root / "runs")
+    parser.add_argument("--runs-dir", type=Path, default=_runs_dir(root))
     parser.add_argument(
         "--current-file",
         type=Path,
@@ -130,7 +144,7 @@ def _config_rows_by_run_id(path: Path) -> dict[str, dict[str, str]]:
 
 
 def _run_status_row(root: Path, structure_id: str, doping_run_id: str) -> dict[str, str] | None:
-    path = root / "dataset" / "run_status.csv"
+    path = _dataset_dir(root) / "run_status.csv"
     if not path.exists():
         return None
 
@@ -172,7 +186,7 @@ def _discover_result_pairs(
     root: Path,
     runs_dir: Path,
 ) -> tuple[dict[str, set[str]], dict[tuple[str, str], Path]]:
-    final_fields = root / "dataset" / "final_fields"
+    final_fields = _dataset_dir(root) / "final_fields"
     pairs: dict[str, set[str]] = {}
     files: dict[tuple[str, str], Path] = {}
     if not final_fields.exists():
@@ -838,8 +852,13 @@ def _place_colorbar_axis(fig: Figure, main_axis, cbar_axis, gap_px: float = 15.0
     cbar_axis.set_position([box.x1 + gap, box.y0, width, box.height])
 
 
-def _find_current_file(root: Path, structure_id: str, doping_run_id: str) -> Path | None:
-    final_fields = root / "dataset" / "final_fields"
+def _find_current_file(
+    root: Path,
+    runs_dir: Path,
+    structure_id: str,
+    doping_run_id: str,
+) -> Path | None:
+    final_fields = _dataset_dir(root) / "final_fields"
     if final_fields.exists():
         for name in (
             f"{structure_id}{doping_run_id}_IdVd_Vg3p0_Vd3p0.dat",
@@ -850,13 +869,13 @@ def _find_current_file(root: Path, structure_id: str, doping_run_id: str) -> Pat
                 return exact
 
     candidates = [
-        root / "runs" / "_tmp_work" / structure_id / doping_run_id / "gmsh_mos2d_dd.dat",
-        root / "runs" / structure_id / "gmsh_mos2d_dd.dat",
+        runs_dir / "_tmp_work" / structure_id / doping_run_id / "gmsh_mos2d_dd.dat",
+        runs_dir / structure_id / "gmsh_mos2d_dd.dat",
     ]
     for candidate in candidates:
         if candidate.exists():
             return candidate
-    matches = sorted((root / "runs").glob(f"**/{structure_id}/{doping_run_id}/gmsh_mos2d_dd.dat"))
+    matches = sorted(runs_dir.glob(f"**/{structure_id}/{doping_run_id}/gmsh_mos2d_dd.dat"))
     return matches[0] if matches else None
 
 
@@ -1552,7 +1571,7 @@ def _plot_structure_figure(
 
     current_file = current_file_arg
     if current_file is None:
-        current_file = _find_current_file(root, structure_id, doping_run_id)
+        current_file = _find_current_file(root, runs_dir, structure_id, doping_run_id)
     fields = _parse_tecplot_fields(current_file) if current_file and current_file.exists() else None
     bias_label = _bias_label(root, structure_id, doping_run_id)
 
