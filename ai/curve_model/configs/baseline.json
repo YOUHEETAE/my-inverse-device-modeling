@@ -1,0 +1,25 @@
+{
+  "seed": 42,
+  "split": {
+    "train": 0.7,
+    "validation": 0.15,
+    "test": 0.15
+  },
+  "input_features": [
+    "L",
+    "T",
+    "log10_B",
+    "log10_SD",
+    "log10_LDD",
+    "fixed_bias"
+  ],
+  "target_candidates": {
+    "idvd": ["standardized_raw", "signed_log"],
+    "idvg": ["log_abs", "signed_log"]
+  },
+  "model_candidates": [
+    "pca_regressor",
+    "multi_output_mlp",
+    "one_dimensional_decoder"
+  ]
+}
