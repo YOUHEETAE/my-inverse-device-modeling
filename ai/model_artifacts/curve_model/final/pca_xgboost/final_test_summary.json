@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "status": "final_test_complete",
+  "model_family": "pca_xgboost",
+  "selected_seed": 42,
+  "test_evaluations_performed": 1,
+  "model_retrained": false,
+  "model_hashes": {
+    "idvd\\model.pkl": "e23ff0c8fc9b2bb1a95091e6983b412961a92f4679ef58b6f0c0509ac08ec855",
+    "idvg\\model.pkl": "e55ea520b9cdc65ac1f45a4054fdd1c97685821d6e6b17bdbe27748fd0522275"
+  },
+  "validation_selection_score": {
+    "score": 0.035704042994584025,
+    "direction": "minimize",
+    "per_kind": {
+      "idvd": {
+        "p95_nrmse": 0.01844449713726432,
+        "p95_decade_mae": 0.010468929030013025,
+        "score": 0.021061729394767574
+      },
+      "idvg": {
+        "p95_nrmse": 0.01545308233635016,
+        "p95_decade_mae": 0.04880104836076546,
+        "score": 0.050346356594400475
+      }
+    }
+  },
+  "test_reporting_score": {
+    "score": 0.0480485327084053,
+    "direction": "minimize",
+    "per_kind": {
+      "idvd": {
+        "p95_nrmse": 0.02078382681362966,
+        "p95_decade_mae": 0.012217490777680058,
+        "score": 0.023838199508049673
+      },
+      "idvg": {
+        "p95_nrmse": 0.01631668602458942,
+        "p95_decade_mae": 0.07062719730630197,
+        "score": 0.07225886590876092
+      }
+    }
+  },
+  "test_electrical_parameters": {
+    "successful": 386,
+    "failed": 0,
+    "overall_normalized_score": {
+      "valid_count": 386,
+      "mean": 0.544394161916896,
+      "std": 0.7322433292443793,
+      "min": 0.01912736133674568,
+      "max": 8.696511298536368,
+      "p50": 0.3270056438982051,
+      "p90": 1.184244762290165,
+      "p95": 1.5469059982408169,
+      "p99": 3.167081312564838
+    }
+  }
+}

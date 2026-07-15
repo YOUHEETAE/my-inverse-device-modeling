@@ -1,0 +1,2 @@
+ai/model_artifacts/curve_model/final/pca_xgboost/idvd/model.pkl filter=lfs diff=lfs merge=lfs -text
+ai/model_artifacts/curve_model/final/pca_xgboost/idvg/model.pkl filter=lfs diff=lfs merge=lfs -text

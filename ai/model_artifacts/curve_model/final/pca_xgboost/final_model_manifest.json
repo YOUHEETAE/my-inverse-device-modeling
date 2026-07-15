@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "status": "final",
+  "model_family": "pca_xgboost",
+  "model_version": "curve_pca_xgboost_v1",
+  "selected_seed": 42,
+  "model_retrained_after_selection": false,
+  "final_test_evaluations": 1,
+  "model_hashes_sha256": {
+    "idvd/model.pkl": "e23ff0c8fc9b2bb1a95091e6983b412961a92f4679ef58b6f0c0509ac08ec855",
+    "idvg/model.pkl": "e55ea520b9cdc65ac1f45a4054fdd1c97685821d6e6b17bdbe27748fd0522275"
+  },
+  "required_inference_files": [
+    "idvd/model.pkl",
+    "idvd/target_transform.json",
+    "idvd/inference_metadata.json",
+    "idvg/model.pkl",
+    "idvg/target_transform.json",
+    "idvg/inference_metadata.json",
+    "preprocessing_config.json",
+    "domain_policy.json"
+  ],
+  "configuration": {
+    "preprocessing": "selected_legacy_transformer_v1",
+    "target_scaler": "per_coordinate",
+    "idvd_components": {"1.5": 8, "3.0": 8},
+    "idvg_components": 28,
+    "n_estimators": 8000,
+    "early_stopping_rounds": 200,
+    "domain": "full"
+  },
+  "validation": {
+    "combined_score": 0.035704042994584025,
+    "electrical_successful": 386
+  },
+  "test": {
+    "combined_reporting_score": 0.0480485327084053,
+    "electrical_successful": 386,
+    "coverage_fraction": 1.0
+  }
+}

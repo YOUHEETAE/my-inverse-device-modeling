@@ -44,5 +44,12 @@ tcad/data_extraction/env/
 tcad/data_extraction/dataset/
 tcad/data_extraction/runs/
 
-# Generated AI datasets, checkpoints, plots, and experiment outputs
-ai/model_artifacts/
+# Generated AI datasets, checkpoints, plots, and experiment outputs.
+# Keep only the finalized deployable curve-model package in Git.
+ai/model_artifacts/*
+!ai/model_artifacts/curve_model/
+ai/model_artifacts/curve_model/*
+!ai/model_artifacts/curve_model/final/
+ai/model_artifacts/curve_model/final/*
+!ai/model_artifacts/curve_model/final/pca_xgboost/
+!ai/model_artifacts/curve_model/final/pca_xgboost/**
