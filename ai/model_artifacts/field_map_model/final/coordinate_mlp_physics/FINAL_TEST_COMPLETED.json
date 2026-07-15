@@ -1,0 +1,8 @@
+{
+  "completed_at_utc": "2026-07-15T11:33:16.199365+00:00",
+  "model_dir": "ai/model_artifacts/field_map_model/candidates/element_bulk_physics",
+  "node_model_sha256": "11a68f9986c4a70d3c992031e377bc762c13d5654be8771cc965cbb7f5d04c1d",
+  "element_model_sha256": "f334071d48d3701557ead5db138107f1205e3d1bbb3a505ee6d66f4689f31767",
+  "test_cases": 386,
+  "report": "ai/model_artifacts/field_map_model/candidates/element_bulk_physics/final_test/final_test_report.md"
+}

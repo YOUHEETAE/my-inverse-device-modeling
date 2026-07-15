@@ -1,0 +1,30 @@
+{
+  "Potential": {
+    "mode": "identity",
+    "nonlinear_scale": 1.0,
+    "scaler_mode": "standard",
+    "center": 2.2604345914601005,
+    "spread": 1.437895945862095
+  },
+  "Electrons": {
+    "mode": "log1p",
+    "nonlinear_scale": 764.9605102539062,
+    "scaler_mode": "standard",
+    "center": 20.29149380384859,
+    "spread": 18.52769941853863
+  },
+  "Holes": {
+    "mode": "log1p",
+    "nonlinear_scale": 0.0028246199944987893,
+    "scaler_mode": "standard",
+    "center": 7.285472241303809,
+    "spread": 12.127465085238292
+  },
+  "USRH": {
+    "mode": "signed_log1p",
+    "nonlinear_scale": 1.6384000059432857e-11,
+    "scaler_mode": "standard",
+    "center": -14.327816543020617,
+    "spread": 21.27030124623311
+  }
+}

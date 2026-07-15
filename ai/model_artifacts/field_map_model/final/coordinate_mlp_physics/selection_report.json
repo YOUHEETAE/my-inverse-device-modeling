@@ -1,0 +1,54 @@
+{
+  "selection_split": "validation",
+  "test_split_loaded": false,
+  "selected": "element_bulk_physics",
+  "field_mean_evaluation_rmse": {
+    "ElectricField_x": {
+      "baseline": 0.6513890454650065,
+      "bulk_focused": 0.43703474233786493,
+      "bulk_physics": 0.4390647009162007,
+      "physics_vs_baseline_percent": 32.59562714893893
+    },
+    "ElectricField_y": {
+      "baseline": 0.3482352602006626,
+      "bulk_focused": 0.2647773935319278,
+      "bulk_physics": 0.2731246942728719,
+      "physics_vs_baseline_percent": 21.5689146137901
+    },
+    "ElectronCurrent_x": {
+      "baseline": 0.1543259590968854,
+      "bulk_focused": 0.13267781679497212,
+      "bulk_physics": 0.14172222982043772,
+      "physics_vs_baseline_percent": 8.16695347315813
+    },
+    "ElectronCurrent_y": {
+      "baseline": 1.0111717551594153,
+      "bulk_focused": 0.6828373626844061,
+      "bulk_physics": 0.684520147495986,
+      "physics_vs_baseline_percent": 32.30426542243868
+    },
+    "HoleCurrent_x": {
+      "baseline": 0.5948061775232373,
+      "bulk_focused": 0.5267789367637061,
+      "bulk_physics": 0.5291928912480287,
+      "physics_vs_baseline_percent": 11.031036454332261
+    },
+    "HoleCurrent_y": {
+      "baseline": 0.650953664008094,
+      "bulk_focused": 0.4161804095607472,
+      "bulk_physics": 0.4189286884105901,
+      "physics_vs_baseline_percent": 35.64385430582949
+    }
+  },
+  "electric_direction_cosine": {
+    "baseline": 0.7505030937679655,
+    "bulk_focused": 0.7166717919043756,
+    "bulk_physics": 0.8739947673946276
+  },
+  "gradient_to_field_rms_ratio": {
+    "baseline": 0.09656440204128637,
+    "bulk_focused": 3.8110326997850477,
+    "bulk_physics": 3.804889622705523
+  },
+  "reason": "All element fields improve over baseline while electric-field direction consistency is substantially better than the accuracy-only candidate."
+}

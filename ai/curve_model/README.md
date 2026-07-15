@@ -42,10 +42,10 @@ python ai/curve_model/data/prepare_dataset.py
 Generated files are written to `ai/model_artifacts/curve_model/dataset/` and are
 excluded from Git.
 
-Inspect the finalized model interactively with:
+Generate IdVd and IdVg curves from editable structure and doping parameters with:
 
 ```powershell
-python ai/curve_model/tools/visualization_evaluation.py
+python ai/curve_model/tools/visualization_curve_model.py
 ```
 
 If `IDM_DATASET_DIR` is set (for example, `D:\IDM\dataset`), it is used as the

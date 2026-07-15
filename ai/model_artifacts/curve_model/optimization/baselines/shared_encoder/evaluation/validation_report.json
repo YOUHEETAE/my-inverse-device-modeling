@@ -1,0 +1,33 @@
+{
+  "idvd": {
+    "linear_mae": 0.15430518598284518,
+    "linear_rmse": 0.447463373480682,
+    "r_squared": 0.996952157840381
+  },
+  "idvg": {
+    "linear_mae": 0.05396467002689782,
+    "linear_rmse": 0.1687701296415198,
+    "r_squared": 0.9982810874800746
+  },
+  "domain_coverage": {
+    "evaluated_devices": 386,
+    "total_split_devices": 386,
+    "excluded_devices": 0,
+    "coverage_fraction": 1.0
+  },
+  "electrical_parameters": {
+    "successful": 199,
+    "failed": 187,
+    "overall_score": {
+      "valid_count": 199,
+      "mean": 8.50085483172512,
+      "std": 4.819462121181659,
+      "min": 1.6889405681933123,
+      "max": 32.341324053476505,
+      "p50": 7.67033527580445,
+      "p90": 13.547320694468462,
+      "p95": 15.534901202243367,
+      "p99": 27.86185702209914
+    }
+  }
+}

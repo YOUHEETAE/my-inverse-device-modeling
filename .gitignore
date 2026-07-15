@@ -45,11 +45,45 @@ tcad/data_extraction/dataset/
 tcad/data_extraction/runs/
 
 # Generated AI datasets, checkpoints, plots, and experiment outputs.
-# Keep only the finalized deployable curve-model package in Git.
+# Keep documentation plus only the finalized deployable model packages in Git.
 ai/model_artifacts/*
+!ai/model_artifacts/README.md
 !ai/model_artifacts/curve_model/
 ai/model_artifacts/curve_model/*
 !ai/model_artifacts/curve_model/final/
 ai/model_artifacts/curve_model/final/*
 !ai/model_artifacts/curve_model/final/pca_xgboost/
 !ai/model_artifacts/curve_model/final/pca_xgboost/**
+
+# Retain only the final three-family baseline reports used by MODEL_SELECTION_HISTORY.md.
+!ai/model_artifacts/curve_model/optimization/
+ai/model_artifacts/curve_model/optimization/*
+!ai/model_artifacts/curve_model/optimization/baselines/
+ai/model_artifacts/curve_model/optimization/baselines/*
+!ai/model_artifacts/curve_model/optimization/baselines/baseline_comparison.md
+!ai/model_artifacts/curve_model/optimization/baselines/pca_xgboost/
+ai/model_artifacts/curve_model/optimization/baselines/pca_xgboost/*
+!ai/model_artifacts/curve_model/optimization/baselines/pca_xgboost/evaluation/
+ai/model_artifacts/curve_model/optimization/baselines/pca_xgboost/evaluation/*
+!ai/model_artifacts/curve_model/optimization/baselines/pca_xgboost/evaluation/validation_report.json
+!ai/model_artifacts/curve_model/optimization/baselines/residual_mlp/
+ai/model_artifacts/curve_model/optimization/baselines/residual_mlp/*
+!ai/model_artifacts/curve_model/optimization/baselines/residual_mlp/evaluation/
+ai/model_artifacts/curve_model/optimization/baselines/residual_mlp/evaluation/*
+!ai/model_artifacts/curve_model/optimization/baselines/residual_mlp/evaluation/validation_report.json
+!ai/model_artifacts/curve_model/optimization/baselines/shared_encoder/
+ai/model_artifacts/curve_model/optimization/baselines/shared_encoder/*
+!ai/model_artifacts/curve_model/optimization/baselines/shared_encoder/evaluation/
+ai/model_artifacts/curve_model/optimization/baselines/shared_encoder/evaluation/*
+!ai/model_artifacts/curve_model/optimization/baselines/shared_encoder/evaluation/validation_report.json
+
+# Keep only the finalized deployable field-map package in Git.
+!ai/model_artifacts/field_map_model/
+ai/model_artifacts/field_map_model/*
+!ai/model_artifacts/field_map_model/final/
+ai/model_artifacts/field_map_model/final/*
+!ai/model_artifacts/field_map_model/final/coordinate_mlp_physics/
+!ai/model_artifacts/field_map_model/final/coordinate_mlp_physics/**
+
+# Example renders are reproducible from the final weights and are not runtime inputs.
+ai/model_artifacts/field_map_model/final/coordinate_mlp_physics/examples/
