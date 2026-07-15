@@ -4,11 +4,16 @@ The finalized curve model is `model_artifacts/curve_model/final/pca_xgboost`.
 It covers the complete prepared design domain. Validation selected the model;
 the locked model was then evaluated once on test without retraining.
 
-Interactive curve and electrical-parameter inspection defaults to the final
-model:
+Interactive curve generation from the final model is available separately:
 
 ```powershell
-python ai/curve_model/tools/visualization_evaluation.py
+python ai/curve_model/tools/visualization_curve_model.py
+```
+
+Raw TCAD target versus model-prediction inspection:
+
+```powershell
+python ai/curve_model/tools/visualization_model_check.py
 ```
 
 The final evidence is stored with the model:

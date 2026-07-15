@@ -1,0 +1,107 @@
+{
+  "schema_version": 1,
+  "name": "fixed_bias_fieldmap_preprocessing_v1",
+  "bias": {
+    "Vg_V": 3.0,
+    "Vd_V": 3.0
+  },
+  "selection": {
+    "method": "two-seed validation screening with a coordinate ExtraTrees model",
+    "seeds": [42, 123],
+    "test_cases_loaded": 0,
+    "selected_recipe": {
+      "node": "signed_log_q10_standard",
+      "element": "asinh_q10_standard"
+    },
+    "mean_validation_score": {
+      "node": 0.025864,
+      "element": 0.440966
+    },
+    "runner_up": {
+      "node": "asinh_q10_standard",
+      "element": "signed_log_q10_standard"
+    },
+    "runner_up_mean_validation_score": {
+      "node": 0.026001,
+      "element": 0.441081
+    },
+    "evaluation_note": "resolution floors were used only in the fixed validation metric; targets were not clipped or deleted"
+  },
+  "inputs": {
+    "global_device_features": [
+      "L_nm",
+      "Tox_nm",
+      "log10_B",
+      "log10_SD",
+      "log10_LDD"
+    ],
+    "spatial_features": [
+      "normalized_x",
+      "channel_relative_x",
+      "normalized_y",
+      "y_um",
+      "region_one_hot"
+    ],
+    "local_net_doping": {
+      "role": "known input; never a learned target",
+      "mode": "signed_log1p",
+      "scale_cm^-3": 1000000000000000.0
+    }
+  },
+  "targets": {
+    "node": {
+      "Potential": {
+        "mode": "identity"
+      },
+      "Electrons": {
+        "mode": "log1p",
+        "scale_fit": "train-only q10 of positive nonzero values",
+        "inverse_constraint": "clip minimum to zero"
+      },
+      "Holes": {
+        "mode": "log1p",
+        "scale_fit": "train-only q10 of positive nonzero values",
+        "inverse_constraint": "clip minimum to zero"
+      },
+      "USRH": {
+        "mode": "signed_log1p",
+        "scale_fit": "train-only q10 of absolute nonzero values"
+      }
+    },
+    "element": {
+      "ElectricField_x": {
+        "mode": "asinh",
+        "scale_fit": "train-only q10 of absolute nonzero values"
+      },
+      "ElectricField_y": {
+        "mode": "asinh",
+        "scale_fit": "train-only q10 of absolute nonzero values"
+      },
+      "ElectronCurrent_x": {
+        "mode": "asinh",
+        "scale_fit": "train-only q10 of absolute nonzero values"
+      },
+      "ElectronCurrent_y": {
+        "mode": "asinh",
+        "scale_fit": "train-only q10 of absolute nonzero values"
+      },
+      "HoleCurrent_x": {
+        "mode": "asinh",
+        "scale_fit": "train-only q10 of absolute nonzero values"
+      },
+      "HoleCurrent_y": {
+        "mode": "asinh",
+        "scale_fit": "train-only q10 of absolute nonzero values"
+      }
+    }
+  },
+  "target_scaler": {
+    "mode": "standard",
+    "scope": "one scaler per field",
+    "fit_scope": "train only"
+  },
+  "sampling_policy": {
+    "training_and_scaler_fit": "equal sampling per device and mesh region",
+    "regions": ["bulk", "oxide", "gate"]
+  }
+}

@@ -1,5 +1,8 @@
 # PCA + XGBoost validation selection
 
+> This is the pre-test model-lock record. The one-time final test was completed
+> later; see `final_test_report.md` and `final_test_summary.json`.
+
 Transformer와 per-coordinate scaler를 고정한 상태에서 비교했습니다. Test 데이터는 사용하지 않았습니다.
 
 ## 종합 평가
@@ -36,4 +39,6 @@ Transformer와 per-coordinate scaler를 고정한 상태에서 비교했습니�
 
 최적화 모델은 세 seed 비교에서 모두 baseline보다 좋은 validation score를 기록했습니다. 전기 파라미터 추출은 모든 최적화 확인 실행에서 386/386 성공했습니다.
 
-선택된 seed-42 artifact는 `refine_01`입니다. Final test는 아직 실행하지 않았습니다.
+선택된 seed-42 artifact는 `refine_01`입니다. 이 selection snapshot 작성 시점에는
+final test를 실행하지 않았으며, 이후 고정 모델로 한 번 실행한 결과는
+`final_test_report.md`에 기록되어 있습니다.

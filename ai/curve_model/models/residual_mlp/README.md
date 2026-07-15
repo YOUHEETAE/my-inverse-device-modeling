@@ -15,8 +15,6 @@ inverse transforms, and training history; inference returns raw current in
 python ai/curve_model/training/train_residual_mlp.py --kind both
 python -m ai.curve_model.tools.analysis.evaluate_model `
   --model-dir ai/model_artifacts/curve_model/residual_mlp
-python ai/curve_model/tools/visualization_evaluation.py `
-  --model-preset residual
 ```
 
 The first full-domain baseline uses width 256, three residual blocks, dropout

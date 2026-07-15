@@ -1,5 +1,8 @@
 # Final curve model
 
+The end-to-end experiment and selection rationale is summarized in
+`ai/MODEL_SELECTION_HISTORY.md`.
+
 This directory is the finalized PCA + XGBoost curve-model package. The seed-42
 model was selected on validation and evaluated once on test without retraining.
 
@@ -15,10 +18,10 @@ Files under `evaluation/`, `metrics.json`, and the Markdown/JSON reports are not
 required for prediction, but are retained as final evidence.
 `final_model_manifest.json` records reproducibility and model identity.
 
-Interactive inspection:
+Interactive curve generation from structure and doping parameters:
 
 ```powershell
-python ai/curve_model/tools/visualization_evaluation.py
+python ai/curve_model/tools/visualization_curve_model.py
 ```
 
 The prepared dataset is retained separately under

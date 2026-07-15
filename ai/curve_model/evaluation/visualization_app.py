@@ -78,12 +78,13 @@ class PredictionBundle:
 
 
 class EvaluationRepository:
-    def __init__(self, dataset_path: Path, model_dir: Path) -> None:
+    def __init__(self, dataset_path: Path, model_dir: Path, target_mode: str = "clean") -> None:
         if not dataset_path.exists():
             raise FileNotFoundError(f"Prepared dataset not found: {dataset_path}")
         with np.load(dataset_path, allow_pickle=False) as archive:
             self.arrays = {name: archive[name] for name in archive.files}
         self.device_ids = [str(value) for value in self.arrays["device_ids"]]
+        self.target_mode = target_mode
         self.domain_policy = DomainPolicy(name="full")
         shared_model = model_dir / "model.pt"
         if shared_model.exists():
@@ -138,11 +139,9 @@ class EvaluationRepository:
         )
         device_indices = all_device_indices[mask]
         features = self.arrays[f"{kind}_x"][mask]
-        target_key = (
-            f"{kind}_y_clean"
-            if f"{kind}_y_clean" in self.arrays
-            else f"{kind}_y_raw"
-        )
+        target_key = f"{kind}_y_{self.target_mode}"
+        if target_key not in self.arrays:
+            target_key = f"{kind}_y_raw"
         targets = self.arrays[target_key][mask]
         model = self.models[kind]
         if isinstance(model, SharedCurvePredictor):
@@ -386,7 +385,7 @@ class CurveModelEvaluationApp:
         ttk.Label(
             metrics_frame,
             text=(
-                "Solid: TCAD target\nDashed: model prediction\n"
+                "Solid: raw TCAD target\nDashed: model prediction\n"
                 "Log plots show |Id|.\nCurve ranking is per bias.\n"
                 "Parameter ranking is per device."
             ),
@@ -516,7 +515,7 @@ class CurveModelEvaluationApp:
         device_id = self.repository.device_ids[device_index]
         self.figure.suptitle(
             f"{self.repository.model_family.replace('_', ' ').title()} "
-            f"{self.split_var.get()} | {device_id}",
+            f"{self.split_var.get()} | {self.repository.target_mode} TCAD target | {device_id}",
             fontsize=14,
         )
         self.figure.tight_layout()
@@ -572,12 +571,15 @@ def _parse_args() -> argparse.Namespace:
         / "ai/model_artifacts/curve_model/final/pca_xgboost",
     )
     parser.add_argument("--smoke-test", action="store_true")
+    parser.add_argument("--target", choices=("raw", "clean"), default="raw")
     return parser.parse_args()
 
 
 def main() -> None:
     args = _parse_args()
-    repository = EvaluationRepository(args.dataset.resolve(), args.model_dir.resolve())
+    repository = EvaluationRepository(
+        args.dataset.resolve(), args.model_dir.resolve(), target_mode=args.target
+    )
     if args.smoke_test:
         print(json.dumps(build_evaluation_report(repository, "validation"), indent=2))
         return

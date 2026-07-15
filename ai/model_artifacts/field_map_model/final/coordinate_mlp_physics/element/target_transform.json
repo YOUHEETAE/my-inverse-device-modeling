@@ -1,0 +1,44 @@
+{
+  "ElectricField_x": {
+    "mode": "asinh",
+    "nonlinear_scale": 4.450548171997071,
+    "scaler_mode": "standard",
+    "center": -5.755392141902298,
+    "spread": 5.381464441428905
+  },
+  "ElectricField_y": {
+    "mode": "asinh",
+    "nonlinear_scale": 23.756549835205078,
+    "scaler_mode": "standard",
+    "center": 5.947631970542539,
+    "spread": 3.879056196293904
+  },
+  "ElectronCurrent_x": {
+    "mode": "asinh",
+    "nonlinear_scale": 2.376748069188306e-11,
+    "scaler_mode": "standard",
+    "center": -19.935849965638496,
+    "spread": 17.348082212870693
+  },
+  "ElectronCurrent_y": {
+    "mode": "asinh",
+    "nonlinear_scale": 6.349843845177006e-11,
+    "scaler_mode": "standard",
+    "center": 2.2051054309760625,
+    "spread": 24.263776843685648
+  },
+  "HoleCurrent_x": {
+    "mode": "asinh",
+    "nonlinear_scale": 1.4500440039779612e-22,
+    "scaler_mode": "standard",
+    "center": -16.117950495654853,
+    "spread": 12.668925265433925
+  },
+  "HoleCurrent_y": {
+    "mode": "asinh",
+    "nonlinear_scale": 9.054434297537134e-22,
+    "scaler_mode": "standard",
+    "center": 13.893791182941001,
+    "spread": 13.162445761760102
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "name": "coordinate_mlp_physics",
+  "bias": {
+    "Vg_V": 3.0,
+    "Vd_V": 3.0
+  },
+  "input": "device geometry/doping parameters plus a region-labelled triangle mesh",
+  "node_outputs": [
+    "Potential",
+    "Electrons",
+    "Holes",
+    "USRH"
+  ],
+  "element_outputs": [
+    "ElectricField_x",
+    "ElectricField_y",
+    "ElectronCurrent_x",
+    "ElectronCurrent_y",
+    "HoleCurrent_x",
+    "HoleCurrent_y"
+  ],
+  "known_local_input": "analytic NetDoping",
+  "model_sha256": {
+    "node": "11a68f9986c4a70d3c992031e377bc762c13d5654be8771cc965cbb7f5d04c1d",
+    "element": "f334071d48d3701557ead5db138107f1205e3d1bbb3a505ee6d66f4689f31767"
+  },
+  "runtime_model_sha256": {
+    "node": "d41c99b4ac433fc43a3ef0f898ba4f79df2f2f8e5303fc0edc270a249b742405",
+    "element": "5012c3413df918d7f97903e1fd0a982f37515c25d8390a0d6c3a1b197d1f6dca"
+  },
+  "test_cases": 386,
+  "inference_api": "ai.field_map_model.inference.FieldMapPredictor"
+}
