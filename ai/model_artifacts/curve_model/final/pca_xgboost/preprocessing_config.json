@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "name": "selected_legacy_transformer_v1",
+  "description": "Validation-confirmed legacy transformer for full-domain model optimization",
+  "idvd": {
+    "mode": "bias_separated",
+    "bias_transforms": {
+      "1.5": {
+        "mode": "signed_log",
+        "scale_rule": "explicit",
+        "current_scale_mA_per_um": 0.001,
+        "noise_floor": 0.0,
+        "scaler_mode": "per_coordinate"
+      },
+      "3.0": {
+        "mode": "asinh",
+        "scale_rule": "explicit",
+        "current_scale_mA_per_um": 0.001,
+        "noise_floor": 0.0,
+        "scaler_mode": "per_coordinate"
+      }
+    }
+  },
+  "idvg": {
+    "mode": "signed_log",
+    "scale_rule": "explicit",
+    "current_scale_mA_per_um": 1e-10,
+    "noise_floor": 0.0,
+    "scaler_mode": "per_coordinate"
+  },
+  "selection": {
+    "source": "controlled full-domain validation comparison across all three model families",
+    "decision": "legacy transformer selected; physical-transform candidate rejected",
+    "test_metrics_used": false
+  }
+}

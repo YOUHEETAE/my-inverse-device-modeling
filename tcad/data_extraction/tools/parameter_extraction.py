@@ -2,10 +2,14 @@ from __future__ import annotations
 
 import argparse
 import csv
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from parameter_extraction_core import PARAMETER_NAMES, extract_parameters
 
 
 OUTPUT_COLUMNS = (
@@ -172,46 +176,10 @@ def _extract(files: CurveFiles) -> dict[str, str]:
     base = {"structure_id": structure_id, "doping_run_id": doping_run_id}
 
     try:
-        vg_low, id_low = _curve(idvg, "IDVG_VD0P05")
-        vg_high, id_high = _curve(idvg, "IDVG_VD1P5")
-        vd_on, id_on = _curve(idvd, "IDVD_VG3P0")
-        vd_saturation, id_saturation = _curve(idvd, "IDVD_VG1P5")
-
-        vth_low, gm_max = _gm_tangent(vg_low, id_low)
-        vth_high, _ = _gm_tangent(vg_high, id_high)
-        ion = abs(_at(vd_on, id_on, 3.0))
-        ioff = abs(_at(vg_high, id_high, 0.0))
-        ss = _subthreshold_swing(vg_low, id_low, vth_low)
-        dibl = (vth_low - vth_high) / (1.5 - 0.05)
-        gds, gds_intercept = _linear_slope(
-            vd_saturation,
-            id_saturation,
-            2.5,
-            3.0,
-            "Vg=1.5 V high-Vd",
-        )
-        linear_conductance, _ = _linear_slope(vd_on, id_on, 0.0, 0.3, "linear")
-        if linear_conductance <= 0:
-            raise ValueError("linear-region conductance is not positive")
-        ron = 1.0 / linear_conductance
-        saturation_midpoint = 2.75
-        saturation_current = gds * saturation_midpoint + gds_intercept
-        if saturation_current == 0:
-            raise ValueError("saturation current is zero")
-        clm_lambda = gds / saturation_current
-
+        values = extract_parameters(idvd, idvg)
         return {
             **base,
-            "vth_low_v": _format(vth_low),
-            "vth_high_v": _format(vth_high),
-            "ion_ma_per_um": _format(ion),
-            "ioff_ma_per_um": _format(ioff),
-            "ss_mv_per_dec": _format(ss),
-            "dibl_gm_v_per_v": _format(dibl),
-            "gm_max_ms_per_um": _format(gm_max),
-            "gds_ms_per_um": _format(gds),
-            "ron_kohm_um": _format(ron),
-            "lambda_per_v": _format(clm_lambda),
+            **{name: _format(values[name]) for name in PARAMETER_NAMES},
             "extraction_status": "ok",
             "error": "",
         }

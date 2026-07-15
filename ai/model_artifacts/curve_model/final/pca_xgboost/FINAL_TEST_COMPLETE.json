@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "status": "complete",
+  "completed_utc": "2026-07-15T03:36:53.133159+00:00",
+  "test_evaluations_performed": 1,
+  "model_retrained": false,
+  "model_hashes": {
+    "idvd\\model.pkl": "e23ff0c8fc9b2bb1a95091e6983b412961a92f4679ef58b6f0c0509ac08ec855",
+    "idvg\\model.pkl": "e55ea520b9cdc65ac1f45a4054fdd1c97685821d6e6b17bdbe27748fd0522275"
+  },
+  "test_report": "evaluation/test_report.json",
+  "summary": "final_test_summary.json",
+  "report": "final_test_report.md"
+}

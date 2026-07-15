@@ -76,6 +76,10 @@ If needed, copy it to `configs/local_config.json` and edit the paths for the cur
 `tools/visualization_iv.py`
 : Visualizes generated IdVd/IdVg CSV outputs.
 
+The two visualization scripts are intentionally thin launchers. Reusable GUI,
+parsing, and plotting implementations live under `visualization/` so `tools/`
+contains only commands intended to be run directly.
+
 `tools/parameter_extraction.py`
 : Extracts device parameters from all IdVd/IdVg CSV pairs into one combined CSV.
 
