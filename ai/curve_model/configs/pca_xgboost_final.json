@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "name": "final_pca_xgboost_v1",
+  "seed": 42,
+  "maximum_pca_components": 32,
+  "component_candidates": [4, 8, 12, 16, 20, 24, 28, 32],
+  "selected_components": {
+    "idvd": {"1.5": 8, "3.0": 8},
+    "idvg": 28
+  },
+  "xgboost_parameter_overrides": {
+    "idvd": {
+      "1.5": {"n_estimators": 8000, "early_stopping_rounds": 200},
+      "3.0": {"n_estimators": 8000, "early_stopping_rounds": 200}
+    },
+    "idvg": {
+      "default": {"n_estimators": 8000, "early_stopping_rounds": 200}
+    }
+  },
+  "preprocessing_config": "ai/curve_model/configs/preprocessing/selected_legacy.json",
+  "feature_engineering": {"idvd": "physical_v1", "idvg": "none"},
+  "tail_weighting": false,
+  "domain": "full"
+}

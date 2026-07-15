@@ -1,6 +1,7 @@
 {
   "seed": 42,
   "split": {
+    "method": "device_level_stratified_greedy_v1",
     "train": 0.7,
     "validation": 0.15,
     "test": 0.15
@@ -13,13 +14,59 @@
     "log10_LDD",
     "fixed_bias"
   ],
-  "target_candidates": {
-    "idvd": ["standardized_raw", "signed_log"],
-    "idvg": ["log_abs", "signed_log"]
+  "current_preprocessing": {
+    "physical_noise_floor_mA_per_um": 1e-10,
+    "evaluation_log_floor_mA_per_um": 1e-10,
+    "idvd": "force the Vd=0 boundary to zero",
+    "idvg": "clip values below the physical noise floor"
+  },
+  "selected_targets": {
+    "idvd": {
+      "mode": "bias_separated",
+      "Vg_1.5": {"mode": "signed_log", "current_scale_mA_per_um": 0.001},
+      "Vg_3.0": {"mode": "asinh", "current_scale_mA_per_um": 0.001}
+    },
+    "idvg": {"mode": "signed_log", "current_scale_mA_per_um": 1e-10}
+  },
+  "target_scaler": "per_coordinate",
+  "feature_engineering": {
+    "idvd_mode": "physical_v1",
+    "idvg_mode": "none",
+    "derived_features": [
+      "1/L",
+      "1/T",
+      "L/T",
+      "log10_SD-log10_B",
+      "log10_LDD-log10_B",
+      "log10_SD-log10_LDD"
+    ]
+  },
+  "tail_weighting": {
+    "enabled": false,
+    "scope": "IdVd Vg=1.5 V",
+    "rule": "optional smooth weight from current amplitude, oxide thickness, bulk, SD, and LDD",
+    "reason": "disabled by default because validation tail score was worse"
+  },
+  "modeling_domain": "full prepared design domain",
+  "pca_xgboost_optimization": {
+    "component_candidates": [4, 8, 12, 16],
+    "strategy": "validation_tail_aware_component_selection_then_random_search",
+    "initial_random_trials_per_curve_kind": 12,
+    "xgboost_space": {
+      "max_depth": [3, 5, 7],
+      "learning_rate": [0.02, 0.03, 0.05],
+      "subsample": [0.8, 1.0],
+      "colsample_bytree": [0.8, 1.0],
+      "min_child_weight": [1, 3, 5],
+      "reg_lambda": [0.3, 1.0, 3.0],
+      "reg_alpha": [0.0, 0.001, 0.01]
+    },
+    "n_estimators": 5000,
+    "early_stopping_rounds": 150
   },
   "model_candidates": [
-    "pca_regressor",
-    "multi_output_mlp",
-    "one_dimensional_decoder"
+    "pca_xgboost",
+    "residual_multi_output_mlp",
+    "shared_encoder_separate_heads"
   ]
 }
