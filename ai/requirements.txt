@@ -1,4 +1,4 @@
-# Runtime dependencies for ai/integrated_visualization_app.py
+# Runtime dependencies for frontend/app.py
 numpy>=1.26,<3
 scipy>=1.11,<2
 matplotlib>=3.8,<4

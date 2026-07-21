@@ -3,7 +3,7 @@ import json
 import numpy as np
 import pytest
 
-from ai.result_interpreter.evidence import (
+from backend.explanation.evidence import (
     build_contour_spacing_change_evidence,
     build_curve_point_change_evidence,
     build_curve_shape_change_evidence,

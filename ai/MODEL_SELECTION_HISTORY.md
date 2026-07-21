@@ -453,7 +453,7 @@ fixed bias 한 점만 지원한다는 것이다. 새 구조의 mesh point 개수
 - Field map: `ai/model_artifacts/field_map_model/final/coordinate_mlp_physics/`
 - Field-map GUI runtime: PyTorch checkpoint를 NumPy `model.npz`로 export해 사용하며,
   원 checkpoint와 transform-space RMSE `2.35e-7`로 일치함
-- 통합 GUI: `ai/integrated_visualization_app.py`
+- 통합 GUI: `frontend/app.py`
 - 실행 패키지 검사: `python ai/tools/check_runtime_package.py`
 - 최종 test 결과는 보고용이며 모델 선택이나 재튜닝에 사용하지 않는다.
 

@@ -1,6 +1,6 @@
 import json
 
-from ai.result_interpreter.iv_renderer import render_iv_explanation, validate_explanation_response
+from backend.explanation.iv_renderer import render_iv_explanation, validate_explanation_response
 
 
 POLICY = {"max_total_sentences": 7, "max_descriptions": 2, "max_comparisons": 3, "max_tradeoffs": 1, "max_cautions": 1,

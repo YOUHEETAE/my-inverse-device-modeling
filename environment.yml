@@ -1,0 +1,11 @@
+name: inverse-device-modeling
+
+channels:
+  - conda-forge
+
+dependencies:
+  - python=3.11
+  - pip
+  - tk
+  - pip:
+      - -r ai/requirements.txt

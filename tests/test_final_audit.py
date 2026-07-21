@@ -1,13 +1,13 @@
 import json
 import os
 
-from ai.result_interpreter.iv_renderer import render_tradeoff_sentence
-from ai.result_interpreter.payload_builders import build_payload
-from ai.result_interpreter.providers.config import ProviderMode, ProviderSettings
-from ai.result_interpreter.providers.external import ExternalLLMProvider
-from ai.result_interpreter.providers.mock import MockExplanationProvider
-from ai.result_interpreter.service import ExplanationService
-from ai.result_interpreter.selection import build_tradeoff_conclusions
+from backend.explanation.iv_renderer import render_tradeoff_sentence
+from backend.explanation.payload_builders import build_payload
+from backend.explanation.providers.config import ProviderMode, ProviderSettings
+from backend.explanation.providers.external import ExternalLLMProvider
+from backend.explanation.providers.mock import MockExplanationProvider
+from backend.explanation.service import ExplanationService
+from backend.explanation.selection import build_tradeoff_conclusions
 
 
 def _metric(value, name, unit, preference):

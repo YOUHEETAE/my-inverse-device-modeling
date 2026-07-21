@@ -1,42 +1,57 @@
-# Python cache and build artifacts
+# Python caches, test output, and build artifacts
 __pycache__/
 *.py[cod]
 *$py.class
+*.egg
 *.egg-info/
 build/
 dist/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+.hypothesis/
+.tox/
+.nox/
 .coverage*
 htmlcov/
 
-# Virtual environments and local environment files
-.env
-.envrc
+# Local Python/Conda environments
 .venv/
 venv/
 env/
 ENV/
+.conda/
 
-# Editor and OS noise
+# Secrets and machine-local settings
+.env
+.env.*
+!.env.example
+.envrc
+.streamlit/secrets.toml
+local_settings.py
+
+# Editors and operating-system files
 .vscode/
 .idea/
 .ipynb_checkpoints/
 .DS_Store
 Thumbs.db
+Desktop.ini
 tempCodeRunnerFile.py
+*.swp
+*.swo
 
-# Logs and temporary files
+# Logs and disposable files
 *.log
 *.tmp
 *.bak
+*.orig
+*.pid
 
-# Local application secrets/settings
-.streamlit/secrets.toml
-local_settings.py
+# Generated audit output; the compact Markdown baseline remains versioned
+tests/baselines/phase8_final_snapshot.json
 
-# data_extraction machine-local settings and generated simulation output
+# TCAD machine-local configuration and generated simulation data
 tcad/data_extraction/configs/local_config.json
 tcad/data_extraction/.venv/
 tcad/data_extraction/venv/
@@ -44,10 +59,12 @@ tcad/data_extraction/env/
 tcad/data_extraction/dataset/
 tcad/data_extraction/runs/
 
-# Generated AI datasets, checkpoints, plots, and experiment outputs.
-# Keep documentation plus only the finalized deployable model packages in Git.
+# Model-artifact policy: ignore generated datasets, trials, plots, and
+# checkpoints by default. Only the finalized runtime packages below are
+# allowlisted so a fresh clone can run frontend/app.py without local data.
 ai/model_artifacts/*
 !ai/model_artifacts/README.md
+
 !ai/model_artifacts/curve_model/
 ai/model_artifacts/curve_model/*
 !ai/model_artifacts/curve_model/final/
@@ -55,7 +72,7 @@ ai/model_artifacts/curve_model/final/*
 !ai/model_artifacts/curve_model/final/pca_xgboost/
 !ai/model_artifacts/curve_model/final/pca_xgboost/**
 
-# Retain only the final three-family baseline reports used by MODEL_SELECTION_HISTORY.md.
+# Small model-selection records referenced by MODEL_SELECTION_HISTORY.md.
 !ai/model_artifacts/curve_model/optimization/
 ai/model_artifacts/curve_model/optimization/*
 !ai/model_artifacts/curve_model/optimization/baselines/
@@ -77,7 +94,6 @@ ai/model_artifacts/curve_model/optimization/baselines/shared_encoder/*
 ai/model_artifacts/curve_model/optimization/baselines/shared_encoder/evaluation/*
 !ai/model_artifacts/curve_model/optimization/baselines/shared_encoder/evaluation/validation_report.json
 
-# Keep only the finalized deployable field-map package in Git.
 !ai/model_artifacts/field_map_model/
 ai/model_artifacts/field_map_model/*
 !ai/model_artifacts/field_map_model/final/
@@ -85,5 +101,5 @@ ai/model_artifacts/field_map_model/final/*
 !ai/model_artifacts/field_map_model/final/coordinate_mlp_physics/
 !ai/model_artifacts/field_map_model/final/coordinate_mlp_physics/**
 
-# Example renders are reproducible from the final weights and are not runtime inputs.
+# Reproducible preview images are not runtime inputs.
 ai/model_artifacts/field_map_model/final/coordinate_mlp_physics/examples/
