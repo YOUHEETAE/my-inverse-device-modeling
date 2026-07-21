@@ -30,8 +30,12 @@ def main() -> int:
     field_manifest_path = FIELD_DIR / "final_model_manifest.json"
     _require(
         [
-            ROOT / "ai/integrated_visualization_app.py",
+            ROOT / "frontend/app.py",
+            ROOT / "frontend/visualization/explanation_panel.py",
+            ROOT / "backend/explanation/service.py",
+            ROOT / "ai/shared/field_data.py",
             ROOT / "ai/requirements.txt",
+            ROOT / "environment.yml",
             ROOT / "ai/curve_model/inference/predictor.py",
             ROOT / "ai/field_map_model/inference/predictor.py",
             ROOT / "ai/field_map_model/inference/runtime.py",

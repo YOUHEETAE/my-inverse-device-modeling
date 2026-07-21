@@ -1,7 +1,7 @@
 import json
 
-from ai.result_interpreter.field_policies import FIELD_POLICY_REGISTRY
-from ai.result_interpreter.field_renderer import render_field_explanation
+from backend.explanation.field_policies import FIELD_POLICY_REGISTRY
+from backend.explanation.field_renderer import render_field_explanation
 from tests.test_field_renderer import COMPARISON_POLICY, SINGLE_POLICY, comparison, evidence, payload, subject, text
 
 

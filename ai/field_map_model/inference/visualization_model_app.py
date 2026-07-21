@@ -8,8 +8,8 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from ai.visualization.field_rendering import *  # noqa: F403
-from ai.visualization.field_app import main
+from frontend.visualization.field_rendering import *  # noqa: F403
+from frontend.visualization.field_app import main
 
 
 if __name__ == "__main__":

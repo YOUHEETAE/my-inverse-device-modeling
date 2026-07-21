@@ -1,14 +1,14 @@
 import json
 import os
 
-from ai.result_interpreter.prompts import SYSTEM_PROMPT, build_prompt
-from ai.result_interpreter.providers.config import (
+from backend.explanation.prompts import SYSTEM_PROMPT, build_prompt
+from backend.explanation.providers.config import (
     GROQ_BASE_URL, GROQ_DEFAULT_MODEL, ProviderMode, ProviderSettings,
 )
-from ai.result_interpreter.providers.external import ExternalLLMProvider
-from ai.result_interpreter.providers.factory import create_explanation_provider
-from ai.result_interpreter.render_payload import build_llm_render_payload
-from ai.result_interpreter.safety import enforce_response_policy, validate_grounded_response
+from backend.explanation.providers.external import ExternalLLMProvider
+from backend.explanation.providers.factory import create_explanation_provider
+from backend.explanation.render_payload import build_llm_render_payload
+from backend.explanation.safety import enforce_response_policy, validate_grounded_response
 
 
 VALID = {"descriptions": ["관찰 결과입니다."], "comparisons": [], "tradeoffs": [], "cautions": []}
@@ -78,12 +78,49 @@ def test_render_payload_keeps_selected_and_conclusion_support_only():
     assert {item["evidence_id"] for item in result["evidence"]} == {"selected", "support"}
 
 
+def test_analyzer_guided_field_render_payload_keeps_interpretation_and_its_support():
+    payload = {
+        "schema_version": "3.0", "analysis_id": "field", "analysis_type": "field_comparison",
+        "context": {}, "subjects": [], "comparisons": [], "conclusions": [], "warnings": [], "output_policy": {},
+        "evidence": [
+            {"evidence_id": "field_support", "importance_score": .6},
+            {"evidence_id": "unselected_internal", "importance_score": .9},
+        ],
+        "interpretation": {
+            "contract_version": "1.0", "analysis_family": "field", "status": "partial", "overall_assessment": None,
+            "geometry_context": {"comparison": {"raw_index_comparison_allowed": False}},
+            "analysis_quality": {"geometry_alignment": "high"},
+            "field_specific_conclusions": [{
+                "conclusion_id": "fsc_1", "evidence_ids": ["field_support"], "spatial_feature_ids": ["fsf_1"],
+                "concept": "potential_gradient", "assessment": "weakened",
+            }],
+            "spatial_features": [
+                {"feature_id": "fsf_1", "feature": "regional_change"},
+                {"feature_id": "fsf_internal", "feature": "normalized_channel_profile"},
+            ],
+            "cross_domain_links": [],
+        },
+    }
+    result = build_llm_render_payload(payload)
+    assert [item["evidence_id"] for item in result["evidence"]] == ["field_support"]
+    assert result["interpretation"]["field_specific_conclusions"][0]["conclusion_id"] == "fsc_1"
+    assert [item["feature_id"] for item in result["interpretation"]["supporting_spatial_features"]] == ["fsf_1"]
+    assert result["interpretation"]["geometry_comparison_policy"]["raw_index_comparison_allowed"] is False
+
+
 def test_grounding_rejects_new_tradeoff_and_forbidden_claim():
     payload = {"analysis_type": "iv_curve_comparison", "conclusions": []}
     for response in ({**VALID, "tradeoffs": ["새 Trade-off"]}, {**VALID, "descriptions": ["이 결과는 원인을 증명합니다."]}):
         try: validate_grounded_response(response, payload)
         except ValueError: pass
         else: raise AssertionError("ungrounded response accepted")
+
+
+def test_grounding_accepts_tradeoff_from_structured_curve_interpretation():
+    payload = {"analysis_type": "iv_curve_comparison", "conclusions": [],
+               "interpretation": {"observed_tradeoffs": [{"tradeoff_id": "ot_1", "result_pattern": "leakage_reduction_with_drive_loss"}]}}
+    response = {**VALID, "tradeoffs": ["Off-state control 개선과 drive 성능 저하가 함께 관찰됐습니다."]}
+    validate_grounded_response(response, payload)
 
 
 def test_grounding_rejects_hallucinated_number_and_missing_critical_caution():
@@ -103,8 +140,8 @@ def test_output_policy_is_enforced_after_external_response():
 
 
 def test_provider_settings_control_fallback_and_cache():
-    from ai.result_interpreter.cache import JsonExplanationCache
-    from ai.result_interpreter.service import ExplanationService
+    from backend.explanation.cache import JsonExplanationCache
+    from backend.explanation.service import ExplanationService
     from tests.test_safety import payload
     os.environ["TEST_LLM_KEY"] = "secret"
     no_cache = ProviderSettings(ProviderMode.EXTERNAL, "fake-model", "TEST_LLM_KEY", "https://example.invalid/v1", 3, 0, .2,
@@ -115,8 +152,8 @@ def test_provider_settings_control_fallback_and_cache():
 
 
 def test_external_fallback_is_not_cached_as_external_result():
-    from ai.result_interpreter.cache import JsonExplanationCache
-    from ai.result_interpreter.service import ExplanationService
+    from backend.explanation.cache import JsonExplanationCache
+    from backend.explanation.service import ExplanationService
     from tests.test_safety import InvalidProvider, payload
 
     cache = JsonExplanationCache()
@@ -129,7 +166,7 @@ def test_external_fallback_is_not_cached_as_external_result():
 
 
 def test_external_grounding_failure_is_repaired_once_without_mock_fallback():
-    from ai.result_interpreter.service import ExplanationService
+    from backend.explanation.service import ExplanationService
     from tests.test_safety import payload
 
     class RepairingExternal:
@@ -153,7 +190,7 @@ def test_external_grounding_failure_is_repaired_once_without_mock_fallback():
 
 
 def test_external_repair_salvages_grounded_sentences_and_drops_bad_tradeoff():
-    from ai.result_interpreter.service import ExplanationService
+    from backend.explanation.service import ExplanationService
     from tests.test_safety import payload
 
     class PartiallyRepairingExternal:

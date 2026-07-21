@@ -2,8 +2,8 @@ import json
 
 import numpy as np
 
-from ai.result_interpreter.payload_builders import build_payload
-from ai.result_interpreter.schemas import json_safe
+from backend.explanation.payload_builders import build_payload
+from backend.explanation.schemas import json_safe
 
 
 def item(label, *, L=100.0, T=5.0):

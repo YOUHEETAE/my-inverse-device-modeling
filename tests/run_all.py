@@ -13,13 +13,23 @@ if str(REPO_ROOT) not in sys.path:
 MODULES = (
     "tests.test_analysis_payload_v3", "tests.test_relationships", "tests.test_selection",
     "tests.test_iv_renderer", "tests.test_field_renderer", "tests.test_field_specific_renderer",
-    "tests.test_safety", "tests.test_provider_integration", "tests.test_staged_explanation", "tests.test_final_audit",
+    "tests.test_safety", "tests.test_provider_integration", "tests.test_final_audit",
+    "tests.test_interpretation_contract",
+    "tests.test_curve_interpretation",
+    "tests.test_field_geometry",
+    "tests.test_field_interpretation",
+    "tests.test_field_conclusions",
+    "tests.test_field_structured_renderer",
+    "tests.test_language_polish",
+    "tests.test_gui_explanation_flow",
 )
 
 
 def main() -> int:
     passed = 0
-    for module_name in MODULES:
+    requested = tuple(sys.argv[1:])
+    modules = tuple(name if name.startswith("tests.") else f"tests.{name.removesuffix('.py')}" for name in requested) or MODULES
+    for module_name in modules:
         module = importlib.import_module(module_name)
         for name in sorted(item for item in dir(module) if item.startswith("test_")):
             getattr(module, name)()

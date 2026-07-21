@@ -1,7 +1,7 @@
 import json
 
-from ai.result_interpreter.cache import JsonExplanationCache
-from ai.result_interpreter.field_renderer import render_field_explanation
+from backend.explanation.cache import JsonExplanationCache
+from backend.explanation.field_renderer import render_field_explanation
 
 
 SINGLE_POLICY = {"max_total_sentences": 5, "max_descriptions": 3, "max_comparisons": 0, "max_tradeoffs": 0, "max_cautions": 2,

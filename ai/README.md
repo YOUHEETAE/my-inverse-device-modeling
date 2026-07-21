@@ -4,7 +4,7 @@ The main end-user entry point is the integrated final-model GUI:
 
 ```powershell
 conda activate devsim_env
-python ai/integrated_visualization_app.py
+python frontend/app.py
 ```
 
 전체 실험 흐름, 변경한 전처리·모델 변수, validation 선택 근거, 한 번의 final
@@ -22,7 +22,6 @@ The workspace is divided into these model families:
 ai/
   curve_model/         Device parameters and bias -> IdVd / IdVg curves
   field_map_model/     Device parameters and operating point -> spatial fields
-  result_interpreter/  LLM-based interpretation of numerical model results
   shared/              Schemas and utilities shared across model families
   tools/               Stable command wrappers
   model_artifacts/     Local experiments plus Git-tracked final packages
@@ -48,3 +47,6 @@ intentionally ignored; see `ai/model_artifacts/README.md`.
 
 For a stable wrapper command, `python ai/tools/visualization_models.py` launches
 the same application.
+
+Post-prediction analysis is owned by `backend/explanation`; desktop rendering and
+interaction are owned by `frontend`.
