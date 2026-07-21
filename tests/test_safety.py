@@ -1,12 +1,12 @@
 import json
 from pathlib import Path
 
-from ai.result_interpreter.cache import JsonExplanationCache
-from ai.result_interpreter.safety import (build_safe_fallback_response,
+from backend.explanation.cache import JsonExplanationCache
+from backend.explanation.safety import (build_safe_fallback_response,
     find_invalid_numeric_paths, sanitize_payload_for_json, validate_provider_response)
-from ai.result_interpreter.schemas import AnalysisPayload
-from ai.result_interpreter.service import ExplanationService
-from ai.result_interpreter.warnings import make_warning, render_warning_cautions
+from backend.explanation.schemas import AnalysisPayload
+from backend.explanation.service import ExplanationService
+from backend.explanation.warnings import make_warning, render_warning_cautions
 
 
 def payload():

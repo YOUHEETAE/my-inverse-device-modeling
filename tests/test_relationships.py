@@ -1,6 +1,6 @@
 import json
 
-from ai.result_interpreter.relationships import build_analysis_conclusions
+from backend.explanation.relationships import build_analysis_conclusions
 
 
 def comparison(*parameters):

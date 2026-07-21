@@ -6,7 +6,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from ai.integrated_visualization_app import main
+from frontend.app import main
 
 
 if __name__ == "__main__":

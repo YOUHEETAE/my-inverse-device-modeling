@@ -5,14 +5,21 @@
 The integrated application is launched with:
 
 ```powershell
-conda activate devsim_env
-python ai/integrated_visualization_app.py
+git lfs install
+git lfs pull
+conda env create -f environment.yml
+conda activate inverse-device-modeling
+python ai/tools/check_runtime_package.py
+python frontend/app.py
 ```
 
 Its runtime path is intentionally limited to:
 
 ```text
-ai/integrated_visualization_app.py
+frontend/app.py
+frontend/visualization/
+backend/explanation/
+ai/shared/field_data.py
 ai/curve_model/{data,inference,models,training/target_transforms.py}
 ai/field_map_model/{inference,models}
 ai/model_artifacts/curve_model/final/pca_xgboost/
@@ -42,7 +49,7 @@ Then validate the package and run a model/mesh smoke test:
 
 ```powershell
 python ai/tools/check_runtime_package.py
-python ai/integrated_visualization_app.py --smoke-test
+python frontend/app.py --smoke-test
 ```
 
 ## Local-only artifacts

@@ -1,6 +1,6 @@
 import json
 
-from ai.result_interpreter.selection import (build_mixed_group_conclusions,
+from backend.explanation.selection import (build_mixed_group_conclusions,
     build_tradeoff_conclusions, build_variant_effect_conclusions,
     calculate_evidence_importance, score_and_select_evidence)
 
