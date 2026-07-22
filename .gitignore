@@ -48,6 +48,17 @@ tempCodeRunnerFile.py
 *.orig
 *.pid
 
+# Node / web frontend (web/)
+web/node_modules/
+web/dist/
+web/dist-ssr/
+web/.vite/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
 # Generated audit output; the compact Markdown baseline remains versioned
 tests/baselines/phase8_final_snapshot.json
 
