@@ -15,4 +15,7 @@ export default defineConfig({
     port: 5174,
     strictPort: true,
   },
+  optimizeDeps: {
+    include: ['react-plotly.js/factory', 'plotly.js-dist-min'],
+  },
 })
