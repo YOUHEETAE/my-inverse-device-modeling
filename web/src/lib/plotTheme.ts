@@ -1,13 +1,25 @@
 import type { Layout } from "plotly.js";
 
-// Plotly defaults to a white paper/plot background regardless of page theme,
-// so it renders as a bright box on a dark UI unless overridden explicitly.
 export const darkPlotLayout: Partial<Layout> = {
   paper_bgcolor: "transparent",
   plot_bgcolor: "transparent",
-  font: { color: "#a1a1aa", size: 11 },
-  xaxis: { gridcolor: "#27272a", zerolinecolor: "#3f3f46", linecolor: "#3f3f46" },
-  yaxis: { gridcolor: "#27272a", zerolinecolor: "#3f3f46", linecolor: "#3f3f46" },
+  font: { color: "#3f3f46", size: 11 },
+  legend: {
+    bgcolor: "transparent",
+    font: { size: 10 },
+  },
+  xaxis: {
+    gridcolor: "#e4e4e7",
+    zerolinecolor: "#d4d4d8",
+    linecolor: "#a1a1aa",
+    tickfont: { size: 10 },
+  },
+  yaxis: {
+    gridcolor: "#e4e4e7",
+    zerolinecolor: "#d4d4d8",
+    linecolor: "#a1a1aa",
+    tickfont: { size: 10 },
+  },
 };
 
 export const darkPlotConfig = { displaylogo: false, responsive: true };

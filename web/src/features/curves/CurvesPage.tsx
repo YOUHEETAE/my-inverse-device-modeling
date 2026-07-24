@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
+import { Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { ExplanationPanel, type ExplanationStatus } from "@/components/explanation/ExplanationPanel";
 import { CurveChart } from "./components/CurveChart";
 import { CurveList } from "./components/CurveList";
@@ -83,66 +83,73 @@ export default function CurvesPage() {
 
   return (
     <div className="flex h-full">
-      <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-6">
+      <div className="flex flex-1 flex-col gap-3 overflow-y-auto p-3">
         <div>
-          <h1 className="text-lg font-semibold">I-V Curve</h1>
-          <p className="text-sm text-muted-foreground">
-            Common device parameters
+          <h2 className="mb-0.5 text-base font-bold uppercase tracking-wide">Device Workbench</h2>
+          <p className="text-xs text-on-surface-variant">
+            Common device parameters used for physical semiconductor simulation extraction.
           </p>
           <div className="mt-2">
             <ParameterInputs values={inputValues} onChange={setInputValues} />
           </div>
         </div>
-        <Separator />
-        <div className="h-[420px] shrink-0">
+        <div className="h-[320px] shrink-0">
           <CurveChart
             curves={curves}
             combined={combined}
             onToggleCombined={() => setCombined(!combined)}
           />
         </div>
-        <Separator />
-        <Card>
-          <CardContent className="pt-4">
-            <ExplanationPanel
-              status={explanationStatus}
-              content={explanationContent}
-              provider={provider}
-              onProviderChange={setProvider}
-              onAnalyze={analyze}
-              promptText={
-                activeCurve
-                  ? `=== SYSTEM PROMPT ===\n...\n\n=== USER PROMPT ===\nCurve config: ${JSON.stringify(activeCurve.parameters)}`
-                  : ""
-              }
-            />
-          </CardContent>
-        </Card>
+        <div className="rounded-md border border-outline-variant bg-surface-container-low p-3">
+          <ExplanationPanel
+            status={explanationStatus}
+            content={explanationContent}
+            provider={provider}
+            onProviderChange={setProvider}
+            onAnalyze={analyze}
+            promptText={
+              activeCurve
+                ? `=== SYSTEM PROMPT ===\n...\n\n=== USER PROMPT ===\nCurve config: ${JSON.stringify(activeCurve.parameters)}`
+                : ""
+            }
+          />
+        </div>
       </div>
 
-      <div className="flex w-80 shrink-0 flex-col gap-4 overflow-y-auto border-l p-4">
-        <Card>
-          <CardContent className="pt-4">
-            <p className="mb-2 text-sm font-semibold">Curves</p>
+      <aside className="flex w-72 shrink-0 flex-col gap-4 overflow-y-auto border-l border-outline-variant bg-sidebar p-3">
+        <div>
+          <div className="mb-2 flex items-center justify-between">
+            <h4 className="text-xs font-bold uppercase tracking-wide">Curves</h4>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-6 gap-1 rounded-sm border-outline-variant bg-surface-container-highest px-2 text-[10px] uppercase"
+              onClick={addCurve}
+            >
+              <Plus className="h-3 w-3" />
+              Add
+            </Button>
+          </div>
+          <div className="rounded-md border border-outline-variant bg-surface-container">
             <CurveList
               curves={curves}
               activeId={activeId}
               onSelect={selectCurve}
               onToggleVisible={toggleVisible}
-              onAdd={addCurve}
               onUpdateSelected={updateSelected}
               onRemoveSelected={removeSelected}
             />
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        <Card>
-          <CardContent className="pt-4">
-            <p className="mb-2 text-sm font-semibold">Extracted electrical parameters</p>
-            <ElectricalParametersTable curves={curves} />
-          </CardContent>
-        </Card>
-      </div>
+        <div>
+          <h4 className="text-xs font-bold uppercase tracking-wide">Extracted Parameters</h4>
+          <p className="mb-2 text-[11px] text-on-surface-variant">
+            Calculated physical metrics from {curves.find((c) => c.id === activeId)?.label ?? "the active curve"}
+          </p>
+          <ElectricalParametersTable curves={curves} />
+        </div>
+      </aside>
     </div>
   );
 }

@@ -15,15 +15,15 @@ interface ParameterInputsProps {
 
 export function ParameterInputs({ values, onChange }: ParameterInputsProps) {
   return (
-    <div className="flex flex-wrap gap-3">
+    <div className="flex flex-wrap gap-2">
       {(Object.keys(DEFAULT_PARAMETERS) as (keyof DeviceParameters)[]).map((name) => (
         <div
           key={name}
-          className="flex min-w-32 flex-1 flex-col gap-1 rounded-lg border bg-card px-3 py-2"
+          className="flex min-w-24 flex-1 flex-col gap-0.5 rounded-sm border border-outline-variant bg-surface-container-low px-2 py-1 transition-colors focus-within:border-primary/50"
         >
           <label
             htmlFor={`param-${name}`}
-            className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
+            className="text-[9px] uppercase tracking-wide text-on-surface-variant"
           >
             {PARAMETER_LABELS[name]}
           </label>
@@ -32,7 +32,7 @@ export function ParameterInputs({ values, onChange }: ParameterInputsProps) {
             list={`param-${name}-options`}
             value={values[name]}
             onChange={(event) => onChange({ ...values, [name]: event.target.value })}
-            className="bg-transparent font-mono text-sm text-green-400 outline-none"
+            className="bg-transparent font-mono text-xs text-accent-green outline-none"
           />
           <datalist id={`param-${name}-options`}>
             {PARAMETER_OPTIONS[name].map((option) => (

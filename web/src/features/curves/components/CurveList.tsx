@@ -15,7 +15,6 @@ interface CurveListProps {
   activeId: number;
   onSelect: (id: number) => void;
   onToggleVisible: (id: number) => void;
-  onAdd: () => void;
   onUpdateSelected: () => void;
   onRemoveSelected: () => void;
 }
@@ -25,7 +24,6 @@ export function CurveList({
   activeId,
   onSelect,
   onToggleVisible,
-  onAdd,
   onUpdateSelected,
   onRemoveSelected,
 }: CurveListProps) {
@@ -34,17 +32,17 @@ export function CurveList({
       {/* max-h + overflow-y: caps the list height once many curves are added
           (rows scroll). overflow-x: the 7 columns are wider than the panel
           (columns scroll). Two different problems, both handled here. */}
-      <div className="max-h-48 overflow-y-auto overflow-x-auto rounded-md border">
+      <div className="max-h-48 overflow-y-auto overflow-x-auto">
         <Table>
           <TableHeader>
-            <TableRow>
+            <TableRow className="border-outline-variant hover:bg-transparent">
               <TableHead className="w-8"></TableHead>
-              <TableHead>Curve</TableHead>
-              <TableHead>L</TableHead>
-              <TableHead>T</TableHead>
-              <TableHead>B</TableHead>
-              <TableHead>SD</TableHead>
-              <TableHead>LDD</TableHead>
+              <TableHead className="font-mono text-[10px] uppercase text-on-surface-variant">Curve</TableHead>
+              <TableHead className="font-mono text-[10px] uppercase text-on-surface-variant">L</TableHead>
+              <TableHead className="font-mono text-[10px] uppercase text-on-surface-variant">T</TableHead>
+              <TableHead className="font-mono text-[10px] uppercase text-on-surface-variant">B</TableHead>
+              <TableHead className="font-mono text-[10px] uppercase text-on-surface-variant">SD</TableHead>
+              <TableHead className="font-mono text-[10px] uppercase text-on-surface-variant">LDD</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -54,8 +52,8 @@ export function CurveList({
                 onClick={() => onSelect(curve.id)}
                 className={
                   curve.id === activeId
-                    ? "cursor-pointer bg-accent"
-                    : "cursor-pointer"
+                    ? "cursor-pointer border-outline-variant bg-surface-container-highest"
+                    : "cursor-pointer border-outline-variant hover:bg-surface-container-highest"
                 }
               >
                 <TableCell onClick={(event) => event.stopPropagation()}>
@@ -65,24 +63,21 @@ export function CurveList({
                   />
                 </TableCell>
                 <TableCell className="font-medium">{curve.label}</TableCell>
-                <TableCell>{curve.parameters.L}</TableCell>
-                <TableCell>{curve.parameters.T}</TableCell>
-                <TableCell>{curve.parameters.B}</TableCell>
-                <TableCell>{curve.parameters.SD}</TableCell>
-                <TableCell>{curve.parameters.LDD}</TableCell>
+                <TableCell className="font-mono text-xs">{curve.parameters.L}</TableCell>
+                <TableCell className="font-mono text-xs">{curve.parameters.T}</TableCell>
+                <TableCell className="font-mono text-xs">{curve.parameters.B}</TableCell>
+                <TableCell className="font-mono text-xs">{curve.parameters.SD}</TableCell>
+                <TableCell className="font-mono text-xs">{curve.parameters.LDD}</TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
       </div>
-      <div className="flex gap-2">
-        <Button size="sm" variant="secondary" className="flex-1" onClick={onAdd}>
-          Add Curve
-        </Button>
-        <Button size="sm" variant="secondary" className="flex-1" onClick={onUpdateSelected}>
+      <div className="flex gap-2 border-t border-outline-variant p-2">
+        <Button size="sm" variant="ghost" className="flex-1 text-xs" onClick={onUpdateSelected}>
           Update Selected
         </Button>
-        <Button size="sm" variant="secondary" className="flex-1" onClick={onRemoveSelected}>
+        <Button size="sm" variant="ghost" className="flex-1 text-xs" onClick={onRemoveSelected}>
           Remove Selected
         </Button>
       </div>

@@ -29,13 +29,13 @@ export function ElectricalParametersTable({ curves }: { curves: CurveEntry[] }) 
         </TableHeader>
         <TableBody>
           {ELECTRICAL_PARAMETERS.map(({ key, label, unit }) => (
-            <TableRow key={key}>
-              <TableCell className="text-muted-foreground">
+            <TableRow key={key} className="border-outline-variant hover:bg-surface-container">
+              <TableCell className="text-sm text-on-surface-variant">
                 {label}
                 {unit ? ` (${unit})` : ""}
               </TableCell>
               {withResults.map((curve) => (
-                <TableCell key={curve.id} className="text-right font-mono text-xs">
+                <TableCell key={curve.id} className="text-right font-mono text-xs font-bold text-foreground">
                   {curve.result?.electrical_parameters[key]?.toPrecision(4) ?? "-"}
                 </TableCell>
               ))}

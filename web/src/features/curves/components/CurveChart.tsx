@@ -31,9 +31,9 @@ function overlayTraces(curves: CurveEntry[], kind: "idvd" | "idvg") {
         y: data.currents[biasIndex],
         type: "scatter",
         mode: "lines",
-        name: `${curve.label} @ ${bias.toFixed(2)}V`,
-        line: { color: COLORS[curveIndex % COLORS.length] },
+        name: `${curve.label} · Vg=${bias.toFixed(2)} V`,
         opacity: 1 - biasIndex * 0.15,
+        line: { color: COLORS[curveIndex % COLORS.length] },
       });
     });
   });
@@ -67,7 +67,11 @@ export function CurveChart({ curves, combined, onToggleCombined }: CurveChartPro
           <CardContent className="flex-1">
             <Plot
               data={overlayTraces(visible, "idvd")}
-              layout={{ ...darkPlotLayout, autosize: true, margin: { t: 10, b: 40, l: 50, r: 10 } }}
+              layout={{
+                ...darkPlotLayout,
+                autosize: true,
+                margin: { t: 10, b: 10, l: 10, r: 10 },
+              }}
               config={darkPlotConfig}
               useResizeHandler
               style={{ width: "100%", height: "100%" }}
@@ -86,7 +90,7 @@ export function CurveChart({ curves, combined, onToggleCombined }: CurveChartPro
                 ...darkPlotLayout,
                 yaxis: { ...darkPlotLayout.yaxis, type: "log" },
                 autosize: true,
-                margin: { t: 10, b: 40, l: 50, r: 10 },
+                margin: { t: 10, b: 10, l: 10, r: 10 },
               }}
               config={darkPlotConfig}
               useResizeHandler
@@ -127,9 +131,9 @@ export function CurveChart({ curves, combined, onToggleCombined }: CurveChartPro
                 }))}
               layout={{
                 ...darkPlotLayout,
-                title: { text: `${kind.toUpperCase()} @ ${bias.toFixed(2)}V`, font: { size: 11, color: "#a1a1aa" } },
+                title: { text: `${kind.toUpperCase()} @ ${bias.toFixed(2)}V`, font: { size: 11, color: "#71717a" } },
                 autosize: true,
-                margin: { t: 30, b: 30, l: 40, r: 10 },
+                margin: { t: 24, b: 10, l: 10, r: 10 },
                 showlegend: false,
               }}
               config={darkPlotConfig}

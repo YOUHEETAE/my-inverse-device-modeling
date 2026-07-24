@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Copy, Eye, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -14,6 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 
 export type ExplanationStatus =
   | "ready"
@@ -30,6 +32,11 @@ const STATUS_LABEL: Record<ExplanationStatus, string> = {
   complete: "Complete",
   failed: "Failed",
   stale: "Results changed — press Analyze",
+};
+
+const PROVIDER_LABEL: Record<"mock" | "external_llm", string> = {
+  mock: "Mock Analysis Engine",
+  external_llm: "Groq (openai/gpt-oss-120b)",
 };
 
 interface ExplanationPanelProps {
@@ -56,54 +63,80 @@ export function ExplanationPanel({
   const [promptOpen, setPromptOpen] = useState(false);
 
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-center justify-between">
-        <span className="text-sm font-semibold">Explanation</span>
-        <Select value={provider} onValueChange={(v) => onProviderChange(v as "mock" | "external_llm")}>
-          <SelectTrigger size="sm" className="w-32">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="mock">mock</SelectItem>
-            <SelectItem value="external_llm">external_llm</SelectItem>
-          </SelectContent>
-        </Select>
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <div className="flex h-6 w-6 items-center justify-center rounded-sm border border-primary/30 bg-primary/10">
+            <Sparkles className="h-3.5 w-3.5 text-primary" />
+          </div>
+          <div>
+            <h3 className="text-xs font-bold uppercase tracking-wide">AI Explanation</h3>
+            <p className="text-[11px] text-on-surface-variant">
+              Neural inference engine for physical device interpretation.
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Select value={provider} onValueChange={(v) => onProviderChange(v as "mock" | "external_llm")}>
+            <SelectTrigger size="sm" className="w-48 border-outline-variant bg-surface-container-highest text-xs">
+              <SelectValue>{PROVIDER_LABEL[provider]}</SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="mock">{PROVIDER_LABEL.mock}</SelectItem>
+              <SelectItem value="external_llm">{PROVIDER_LABEL.external_llm}</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button
+            size="sm"
+            onClick={onAnalyze}
+            disabled={disabled || status === "analyzing"}
+            className="gap-1.5 bg-primary text-xs font-bold text-primary-foreground hover:bg-primary/90"
+          >
+            <Sparkles className="h-3.5 w-3.5" />
+            Analyze
+          </Button>
+        </div>
+      </div>
+
+      <div className="relative min-h-32 rounded-md border border-outline-variant bg-surface-container-lowest p-3">
+        <div className="whitespace-pre-wrap text-xs leading-relaxed text-on-surface-variant">
+          {content || (disabled && disabledReason) || "Press Analyze to generate an explanation."}
+        </div>
+        <div className="mt-2 flex items-center gap-1.5 border-t border-outline-variant pt-2">
+          <span
+            className={cn(
+              "h-1.5 w-1.5 rounded-full",
+              status === "analyzing" ? "animate-pulse bg-accent-orange" : "bg-accent-green",
+            )}
+          />
+          <span className="font-mono text-[10px] uppercase tracking-wider text-on-surface-variant">
+            {disabled && disabledReason ? disabledReason : STATUS_LABEL[status]}
+          </span>
+        </div>
       </div>
 
       <div className="flex gap-2">
         <Button
+          variant="outline"
           size="sm"
-          className="flex-1"
-          onClick={onAnalyze}
-          disabled={disabled || status === "analyzing"}
-        >
-          Analyze
-        </Button>
-        <Button
-          size="sm"
-          variant="secondary"
-          className="flex-1"
+          className="gap-1.5 border-outline-variant text-xs text-on-surface-variant"
           onClick={() => navigator.clipboard.writeText(content)}
           disabled={!content}
         >
-          Copy
+          <Copy className="h-3.5 w-3.5" />
+          Copy Analysis
         </Button>
         <Button
+          variant="outline"
           size="sm"
-          variant="secondary"
-          className="flex-1"
+          className="gap-1.5 border-outline-variant text-xs text-on-surface-variant"
           onClick={() => setPromptOpen(true)}
           disabled={disabled}
         >
-          Preview LLM Prompt
+          <Eye className="h-3.5 w-3.5" />
+          Preview Prompt
         </Button>
       </div>
-
-      <p className="text-xs text-muted-foreground">
-        {disabled && disabledReason ? disabledReason : STATUS_LABEL[status]}
-      </p>
-
-      <Textarea readOnly value={content} className="h-48 resize-none overflow-y-auto text-sm" />
 
       <Dialog open={promptOpen} onOpenChange={setPromptOpen}>
         <DialogContent className="max-w-3xl">
