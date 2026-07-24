@@ -7,13 +7,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
@@ -42,25 +35,24 @@ const PROVIDER_LABEL: Record<"mock" | "external_llm", string> = {
 interface ExplanationPanelProps {
   status: ExplanationStatus;
   content: string;
-  provider: "mock" | "external_llm";
-  onProviderChange: (provider: "mock" | "external_llm") => void;
+  provider: "mock" | "external_llm" | null;
   onAnalyze: () => void;
   disabled?: boolean;
   disabledReason?: string;
-  promptText: string;
+  fetchPromptText: () => Promise<string>
 }
 
 export function ExplanationPanel({
   status,
   content,
   provider,
-  onProviderChange,
   onAnalyze,
   disabled,
   disabledReason,
-  promptText,
+  fetchPromptText,
 }: ExplanationPanelProps) {
   const [promptOpen, setPromptOpen] = useState(false);
+  const [promptText, setPromptText] = useState("");
 
   return (
     <div className="flex flex-col gap-3">
@@ -77,15 +69,11 @@ export function ExplanationPanel({
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Select value={provider} onValueChange={(v) => onProviderChange(v as "mock" | "external_llm")}>
-            <SelectTrigger size="sm" className="w-48 border-outline-variant bg-surface-container-highest text-xs">
-              <SelectValue>{PROVIDER_LABEL[provider]}</SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="mock">{PROVIDER_LABEL.mock}</SelectItem>
-              <SelectItem value="external_llm">{PROVIDER_LABEL.external_llm}</SelectItem>
-            </SelectContent>
-          </Select>
+          {provider && (
+            <span className="rounded-sm border border-outline-variant bg-surface-container-highest px-2 py-1 font-mono text-[10px] uppercase tracking-wide text-on-surface-variant">
+              {PROVIDER_LABEL[provider]}
+            </span>
+          )}
           <Button
             size="sm"
             onClick={onAnalyze}
@@ -130,7 +118,10 @@ export function ExplanationPanel({
           variant="outline"
           size="sm"
           className="gap-1.5 border-outline-variant text-xs text-on-surface-variant"
-          onClick={() => setPromptOpen(true)}
+          onClick={async () => {
+            setPromptOpen(true);
+            setPromptText(await fetchPromptText());
+          }}
           disabled={disabled}
         >
           <Eye className="h-3.5 w-3.5" />
@@ -139,7 +130,7 @@ export function ExplanationPanel({
       </div>
 
       <Dialog open={promptOpen} onOpenChange={setPromptOpen}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="sm:max-w-3xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>LLM Prompt Preview</DialogTitle>
           </DialogHeader>

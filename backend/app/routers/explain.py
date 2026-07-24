@@ -7,12 +7,17 @@ from app.services import curve_predictor, explanation_service
 from app.services import build_field_map
 
 
-class ExplainCurveRequest(BaseModel):
+class CurveConfig(BaseModel):
+    label: str
     L: str
     T: str
     B: str
     SD: str
     LDD: str
+
+
+class ExplainCurveRequest(BaseModel):
+    curves: list[CurveConfig]
 
 
 class ExplainFieldRequest(BaseModel):
@@ -43,17 +48,24 @@ class PromptResponse(BaseModel):
 router = APIRouter()
 
 
+def _predict_curve_results(curves: list[CurveConfig]):
+    results = []
+    configs = []
+    for curve in curves:
+        values = curve.model_dump(exclude={"label"})
+        features = device_features(values)
+        idvd = curve_predictor.predict("idvd", features)
+        idvg = curve_predictor.predict("idvg", features)
+        results.append((curve.label, idvd, idvg))
+        configs.append(values)
+    return results, configs
+
+
 @router.post("/explain/curves")
 def explain_curves(request: ExplainCurveRequest) -> ExplainResponse:
-    values = request.model_dump()
-    features = device_features(values)
-    idvd = curve_predictor.predict("idvd", features)
-    idvg = curve_predictor.predict("idvg", features)
+    results, configs = _predict_curve_results(request.curves)
 
-    result = explanation_service.explain_curves(
-        results=[("Curve 1", idvd, idvg)],
-        configs=[values],
-    )
+    result = explanation_service.explain_curves(results=results, configs=configs)
 
     return ExplainResponse(
         descriptions=list(result.descriptions),
@@ -68,15 +80,9 @@ def explain_curves(request: ExplainCurveRequest) -> ExplainResponse:
 
 @router.post("/explain/curves/prompt")
 def explain_curves_prompt(request: ExplainCurveRequest) -> PromptResponse:
-    values = request.model_dump()
-    features = device_features(values)
-    idvd = curve_predictor.predict("idvd", features)
-    idvg = curve_predictor.predict("idvg", features)
+    results, configs = _predict_curve_results(request.curves)
 
-    prompt = explanation_service.build_curves_prompt(
-        results=[("Curve 1", idvd, idvg)],
-        configs=[values],
-    )
+    prompt = explanation_service.build_curves_prompt(results=results, configs=configs)
     return PromptResponse(prompt=prompt)
 
 

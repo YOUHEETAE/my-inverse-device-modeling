@@ -19,9 +19,9 @@ export function ElectricalParametersTable({ curves }: { curves: CurveEntry[] }) 
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Parameter</TableHead>
+            <TableHead className="px-1.5 py-1">Parameter</TableHead>
             {withResults.map((curve) => (
-              <TableHead key={curve.id} className="text-right">
+              <TableHead key={curve.id} className="px-1.5 py-1 text-right">
                 {curve.label}
               </TableHead>
             ))}
@@ -30,12 +30,12 @@ export function ElectricalParametersTable({ curves }: { curves: CurveEntry[] }) 
         <TableBody>
           {ELECTRICAL_PARAMETERS.map(({ key, label, unit }) => (
             <TableRow key={key} className="border-outline-variant hover:bg-surface-container">
-              <TableCell className="text-sm text-on-surface-variant">
+              <TableCell className="px-1.5 py-1 text-sm text-on-surface-variant">
                 {label}
                 {unit ? ` (${unit})` : ""}
               </TableCell>
               {withResults.map((curve) => (
-                <TableCell key={curve.id} className="text-right font-mono text-xs font-bold text-foreground">
+                <TableCell key={curve.id} className="px-1.5 py-1 text-right font-mono text-xs font-bold text-foreground">
                   {curve.result?.electrical_parameters[key]?.toPrecision(4) ?? "-"}
                 </TableCell>
               ))}
