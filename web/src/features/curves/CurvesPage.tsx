@@ -7,17 +7,20 @@ import { CurveList } from "./components/CurveList";
 import { ElectricalParametersTable } from "./components/ElectricalParametersTable";
 import { ParameterInputs } from "./components/ParameterInputs";
 import { DEFAULT_PARAMETERS, type CurveConfig, type CurveEntry, type DeviceParameters } from "./types";
-import { explainCurve, predictCurve, previewCurvePrompt } from "./api";
+import { explainCurve, getErrorMessage, predictCurve, previewCurvePrompt } from "./api";
 
 let nextId = 2;
 
 export default function CurvesPage() {
   const [inputValues, setInputValues] = useState<DeviceParameters>(DEFAULT_PARAMETERS);
   const [curves, setCurves] = useState<CurveEntry[]>([]);
+  const [predictError, setPredictError] = useState<string | null>(null);
   useEffect(() => {
-    predictCurve(DEFAULT_PARAMETERS).then((result) => {
-      setCurves([{ id: 1, label: "Curve 1", visible: true, parameters: DEFAULT_PARAMETERS, result }])
-    })
+    predictCurve(DEFAULT_PARAMETERS)
+      .then((result) => {
+        setCurves([{ id: 1, label: "Curve 1", visible: true, parameters: DEFAULT_PARAMETERS, result }]);
+      })
+      .catch((err) => setPredictError(getErrorMessage(err)));
   }, [])
   const [activeId, setActiveId] = useState(1);
   const [combined, setCombined] = useState(true);
@@ -27,6 +30,9 @@ export default function CurvesPage() {
   const [provider, setProvider] = useState<"mock" | "external_llm" | null>(null);
 
   const visibleCurves = curves.filter((c) => c.visible);
+  const rangeWarnings = curves
+    .filter((c) => c.result?.range_warning)
+    .map((c) => `${c.label}: ${c.result!.range_warning}`);
 
   function toCurveConfigs(entries: CurveEntry[]): CurveConfig[] {
     return entries.map((c) => ({ label: c.label, ...c.parameters }));
@@ -40,27 +46,37 @@ export default function CurvesPage() {
 
   async function addCurve() {
     const id = nextId++;
-    const result = await predictCurve(inputValues);
-    const entry: CurveEntry = {
-      id,
-      label: `Curve ${id}`,
-      visible: true,
-      parameters: inputValues,
-      result,
-    };
-    setCurves([...curves, entry]);
-    setActiveId(id);
+    try {
+      const result = await predictCurve(inputValues);
+      const entry: CurveEntry = {
+        id,
+        label: `Curve ${id}`,
+        visible: true,
+        parameters: inputValues,
+        result,
+      };
+      setCurves([...curves, entry]);
+      setActiveId(id);
+      setPredictError(null);
+    } catch (err) {
+      setPredictError(getErrorMessage(err));
+    }
   }
 
   async function updateSelected() {
-    const result = await predictCurve(inputValues);
-    setCurves(
-      curves.map((c) =>
-        c.id === activeId
-          ? { ...c, parameters: inputValues, result }
-          : c,
-      ),
-    );
+    try {
+      const result = await predictCurve(inputValues);
+      setCurves(
+        curves.map((c) =>
+          c.id === activeId
+            ? { ...c, parameters: inputValues, result }
+            : c,
+        ),
+      );
+      setPredictError(null);
+    } catch (err) {
+      setPredictError(getErrorMessage(err));
+    }
   }
 
   function removeSelected() {
@@ -113,6 +129,12 @@ export default function CurvesPage() {
           <div className="mt-2">
             <ParameterInputs values={inputValues} onChange={setInputValues} />
           </div>
+          {predictError && (
+            <p className="mt-1 text-[11px] text-destructive">{predictError}</p>
+          )}
+          {rangeWarnings.length > 0 && (
+            <p className="mt-1 text-[11px] text-accent-orange">{rangeWarnings.join(" | ")}</p>
+          )}
         </div>
         <div className="h-[320px] shrink-0">
           <CurveChart curves={curves} combined={combined} logScale={logScale} />

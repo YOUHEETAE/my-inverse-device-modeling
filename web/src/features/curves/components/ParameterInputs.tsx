@@ -1,3 +1,4 @@
+import { ChevronDown } from "lucide-react";
 import { DEFAULT_PARAMETERS, PARAMETER_OPTIONS, type DeviceParameters } from "../types";
 
 const PARAMETER_LABELS: Record<keyof DeviceParameters, string> = {
@@ -19,7 +20,7 @@ export function ParameterInputs({ values, onChange }: ParameterInputsProps) {
       {(Object.keys(DEFAULT_PARAMETERS) as (keyof DeviceParameters)[]).map((name) => (
         <div
           key={name}
-          className="flex min-w-24 flex-1 flex-col gap-0.5 rounded-sm border border-outline-variant bg-surface-container-low px-2 py-1 transition-colors focus-within:border-primary/50"
+          className="relative flex min-w-24 flex-1 flex-col gap-0.5 rounded-sm border border-outline-variant bg-surface-container-low px-2 py-1 transition-colors focus-within:border-primary/50"
         >
           <label
             htmlFor={`param-${name}`}
@@ -32,8 +33,9 @@ export function ParameterInputs({ values, onChange }: ParameterInputsProps) {
             list={`param-${name}-options`}
             value={values[name]}
             onChange={(event) => onChange({ ...values, [name]: event.target.value })}
-            className="bg-transparent font-mono text-xs text-accent-green outline-none"
+            className="bg-transparent pr-4 font-mono text-xs text-accent-green outline-none"
           />
+          <ChevronDown className="pointer-events-none absolute right-2 bottom-1.5 h-3 w-3 text-on-surface-variant/60" />
           <datalist id={`param-${name}-options`}>
             {PARAMETER_OPTIONS[name].map((option) => (
               <option key={option} value={option} />
