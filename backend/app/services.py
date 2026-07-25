@@ -23,11 +23,20 @@ field_predictor = FieldMapPredictor(
 
 GEO_TEMPLATE = REPO_ROOT / "tcad/data_extraction/base_case/gmsh_mos2d.geo"
 
+# Mirrors the Tkinter app's mesh_cache: gmsh generation is expensive and only
+# depends on (L, T), so repeated calls for the same device (e.g. switching
+# field display/scale mode) reuse the mesh instead of regenerating it.
+_mesh_cache: dict[tuple[float, float], object] = {}
+
 
 def build_field_map(values: dict[str, str]) -> GeneratedFieldMap:
     length = float(values["L"])
     tox = float(values["T"])
-    mesh = generate_gmsh_mesh(length, tox, GEO_TEMPLATE)
+    cache_key = (length, tox)
+    mesh = _mesh_cache.get(cache_key)
+    if mesh is None:
+        mesh = generate_gmsh_mesh(length, tox, GEO_TEMPLATE)
+        _mesh_cache[cache_key] = mesh
     prediction = field_predictor.predict(
         mesh, length, tox, float(values["B"]), float(values["SD"]), float(values["LDD"])
     )

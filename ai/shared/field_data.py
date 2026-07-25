@@ -112,3 +112,59 @@ def region_interpolator(output: GeneratedFieldMap, region: int):
     triangles = output.mesh.triangles[output.mesh.element_region == region]
     triangulation = mtri.Triangulation(output.mesh.node_xy_nm[:, 0], output.mesh.node_xy_nm[:, 1], triangles)
     return mtri.LinearTriInterpolator(triangulation, output.prediction.node_fields["Potential"])
+
+
+def compute_display_payload(output: GeneratedFieldMap, display: str, scale_mode: str, range_mode: str) -> dict:
+    """JSON-safe equivalent of field_rendering._normalization(): same math (percentile
+    ranges, log/symlog thresholds), but returns plain numbers instead of matplotlib
+    Normalize objects so non-matplotlib consumers (e.g. the web API) can use it."""
+    scalar = scalar_display(output, display)
+    chosen_scale = scalar.default_scale if scale_mode == "Auto" else scale_mode
+    values = np.asarray(scalar.values, dtype=np.float64)
+
+    if chosen_scale == "Log magnitude":
+        plot_values = np.abs(values)
+        positive = plot_values[plot_values > 0]
+        if not len(positive):
+            vmin, vmax = 0.0, 1.0
+        else:
+            low, high = (
+                np.percentile(positive, (1.0, 99.0))
+                if range_mode == "Robust 1-99%"
+                else (np.min(positive), np.max(positive))
+            )
+            vmin = max(float(low), np.finfo(float).tiny)
+            vmax = max(float(high), vmin * 1.0001)
+        norm_type, linthresh, mode_label = "log", None, "|value|"
+    elif chosen_scale == "SymLog":
+        plot_values = values
+        _low, high_abs = finite_limits(plot_values, range_mode, absolute=True)
+        nonzero = np.abs(plot_values[np.isfinite(plot_values) & (plot_values != 0)])
+        linthresh = float(np.percentile(nonzero, 10.0)) if len(nonzero) else 1.0
+        linthresh = max(linthresh, np.finfo(float).tiny)
+        vmin, vmax = -high_abs, high_abs
+        norm_type, mode_label = "symlog", "signed"
+    else:
+        plot_values = values
+        low, high = finite_limits(plot_values, range_mode)
+        if low < 0 < high:
+            extent = max(abs(low), abs(high))
+            vmin, vmax = -extent, extent
+            norm_type = "two_slope"
+        else:
+            vmin, vmax = low, high
+            norm_type = "linear"
+        linthresh, mode_label = None, "linear"
+
+    return {
+        "domain": scalar.domain,
+        "values": [float(v) if np.isfinite(v) else None for v in plot_values],
+        "title": scalar.title,
+        "label": scalar.label,
+        "norm_type": norm_type,
+        "vmin": float(vmin),
+        "vmax": float(vmax),
+        "linthresh": linthresh,
+        "mode_label": mode_label,
+        "cmap": scalar.cmap,
+    }
