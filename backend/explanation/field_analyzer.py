@@ -236,6 +236,13 @@ def _visual_evidence(baseline: dict[str, object], candidate: dict[str, object], 
 def build_field_payload(outputs: list[tuple[str, GeneratedFieldMap]], display: str, scale_mode: str, range_mode: str) -> AnalysisPayload:
     if display in {"Mesh", "Abs net doping", "Net doping"}:
         raise ValueError(f"{display} is not supported by LLM explanation.")
+    if len(outputs) > 2:
+        # The comparison mock-text renderer (field_renderer.py) and conclusion
+        # builder below still assume a single baseline/candidate pair — they
+        # were never extended for 3+ devices the way the iv_curve pipeline
+        # was. Fail clearly here instead of an IndexError/validation error
+        # deeper in the pipeline until that generalization is designed.
+        raise ValueError("Field comparison explanation currently supports at most 2 devices.")
     scalar_data = []
     all_potential = np.concatenate([np.asarray(output.prediction.node_fields["Potential"], dtype=float) for _label, output in outputs])
     potential_low, potential_high = finite_limits(all_potential, range_mode)

@@ -83,7 +83,14 @@ def build_payload(*, kind: str, context: dict[str, Any], items: list[dict[str, A
     mode = "single" if len(items) == 1 else "comparison"
     analysis_type = f"{kind}_{mode}" if kind == "field" else f"iv_curve_{mode}"
     subjects = [build_subject(i, item["label"], item["device_parameters"], count=len(items)) for i, item in enumerate(items)]
-    pairs = list(combinations(range(len(items)), 2)) if kind == "iv_curve" else ([(0, 1)] if len(items) == 2 else [])
+    # kind == "field" used to special-case exactly 2 items ([(0, 1)]) and fall
+    # back to no pairs otherwise, but field_analyzer.py already builds a full
+    # legacy_comparisons list via combinations() for any N — the mismatch
+    # (comparisons present, pairs empty) caused an IndexError in
+    # build_standard_evidence for 3+ devices. combinations() matches the N=2
+    # case exactly ([(0, 1)]) so this is a pure generalization, not a behavior
+    # change for the cases that already worked.
+    pairs = list(combinations(range(len(items)), 2))
     comparisons = [build_comparison(i, j, order, items) for order, (i, j) in enumerate(pairs, 1)]
     evidence = build_standard_evidence(kind, context, items, legacy_comparisons, pairs)
     def warning_type(text: str) -> str:

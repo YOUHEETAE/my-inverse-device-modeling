@@ -114,15 +114,11 @@ def region_interpolator(output: GeneratedFieldMap, region: int):
     return mtri.LinearTriInterpolator(triangulation, output.prediction.node_fields["Potential"])
 
 
-def compute_display_payload(output: GeneratedFieldMap, display: str, scale_mode: str, range_mode: str) -> dict:
+def _normalize_values(values: np.ndarray, scale_mode: str, range_mode: str) -> dict:
     """JSON-safe equivalent of field_rendering._normalization(): same math (percentile
     ranges, log/symlog thresholds), but returns plain numbers instead of matplotlib
     Normalize objects so non-matplotlib consumers (e.g. the web API) can use it."""
-    scalar = scalar_display(output, display)
-    chosen_scale = scalar.default_scale if scale_mode == "Auto" else scale_mode
-    values = np.asarray(scalar.values, dtype=np.float64)
-
-    if chosen_scale == "Log magnitude":
+    if scale_mode == "Log magnitude":
         plot_values = np.abs(values)
         positive = plot_values[plot_values > 0]
         if not len(positive):
@@ -136,7 +132,7 @@ def compute_display_payload(output: GeneratedFieldMap, display: str, scale_mode:
             vmin = max(float(low), np.finfo(float).tiny)
             vmax = max(float(high), vmin * 1.0001)
         norm_type, linthresh, mode_label = "log", None, "|value|"
-    elif chosen_scale == "SymLog":
+    elif scale_mode == "SymLog":
         plot_values = values
         _low, high_abs = finite_limits(plot_values, range_mode, absolute=True)
         nonzero = np.abs(plot_values[np.isfinite(plot_values) & (plot_values != 0)])
@@ -157,14 +153,63 @@ def compute_display_payload(output: GeneratedFieldMap, display: str, scale_mode:
         linthresh, mode_label = None, "linear"
 
     return {
-        "domain": scalar.domain,
-        "values": [float(v) if np.isfinite(v) else None for v in plot_values],
-        "title": scalar.title,
-        "label": scalar.label,
+        "plot_values": plot_values,
         "norm_type": norm_type,
         "vmin": float(vmin),
         "vmax": float(vmax),
         "linthresh": linthresh,
         "mode_label": mode_label,
+    }
+
+
+def compute_display_payload(output: GeneratedFieldMap, display: str, scale_mode: str, range_mode: str) -> dict:
+    scalar = scalar_display(output, display)
+    chosen_scale = scalar.default_scale if scale_mode == "Auto" else scale_mode
+    values = np.asarray(scalar.values, dtype=np.float64)
+    norm = _normalize_values(values, chosen_scale, range_mode)
+
+    return {
+        "domain": scalar.domain,
+        "values": [float(v) if np.isfinite(v) else None for v in norm["plot_values"]],
+        "title": scalar.title,
+        "label": scalar.label,
+        "norm_type": norm["norm_type"],
+        "vmin": norm["vmin"],
+        "vmax": norm["vmax"],
+        "linthresh": norm["linthresh"],
+        "mode_label": norm["mode_label"],
         "cmap": scalar.cmap,
+    }
+
+
+def compute_display_payload_multi(outputs: list[tuple[str, GeneratedFieldMap]], display: str, scale_mode: str, range_mode: str) -> dict:
+    """Same as compute_display_payload but for several devices sharing one
+    normalization/colorbar, mirroring render_model_field_comparison() in
+    frontend/visualization/field_rendering.py."""
+    scalars = [(label, scalar_display(output, display)) for label, output in outputs]
+    chosen_scale = scalars[0][1].default_scale if scale_mode == "Auto" else scale_mode
+    combined = np.concatenate([np.asarray(scalar.values, dtype=np.float64).reshape(-1) for _label, scalar in scalars])
+    norm = _normalize_values(combined, chosen_scale, range_mode)
+
+    items = []
+    for label, scalar in scalars:
+        values = np.asarray(scalar.values, dtype=np.float64)
+        plot_values = np.abs(values) if chosen_scale == "Log magnitude" else values
+        items.append({
+            "label": label,
+            "values": [float(v) if np.isfinite(v) else None for v in plot_values],
+        })
+
+    first_scalar = scalars[0][1]
+    return {
+        "domain": first_scalar.domain,
+        "title": first_scalar.title,
+        "label": first_scalar.label,
+        "norm_type": norm["norm_type"],
+        "vmin": norm["vmin"],
+        "vmax": norm["vmax"],
+        "linthresh": norm["linthresh"],
+        "mode_label": norm["mode_label"],
+        "cmap": first_scalar.cmap,
+        "items": items,
     }

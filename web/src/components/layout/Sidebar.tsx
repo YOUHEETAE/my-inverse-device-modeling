@@ -24,7 +24,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Theory", path: "/theory", icon: Sigma, enabled: false },
   { label: "Case Study", path: "/case-study", icon: FlaskConical, enabled: false },
   { label: "I-V Curve", path: "/curves", icon: BarChart3, enabled: true },
-  { label: "Field Map", path: "/fields", icon: Layers, enabled: false },
+  { label: "Field Map", path: "/fields", icon: Layers, enabled: true },
   { label: "About", path: "/about", icon: Info, enabled: false },
 ];
 

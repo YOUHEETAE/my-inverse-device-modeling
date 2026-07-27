@@ -94,7 +94,11 @@ export function ExplanationPanel({
           <span
             className={cn(
               "h-1.5 w-1.5 rounded-full",
-              status === "analyzing" ? "animate-pulse bg-accent-orange" : "bg-accent-green",
+              status === "analyzing"
+                ? "animate-pulse bg-accent-orange"
+                : status === "failed"
+                  ? "bg-destructive"
+                  : "bg-accent-green",
             )}
           />
           <span className="font-mono text-[10px] uppercase tracking-wider text-on-surface-variant">

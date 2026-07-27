@@ -20,12 +20,17 @@ class ExplainCurveRequest(BaseModel):
     curves: list[CurveConfig]
 
 
-class ExplainFieldRequest(BaseModel):
+class FieldConfig(BaseModel):
+    label: str
     L: str
     T: str
     B: str
     SD: str
     LDD: str
+
+
+class ExplainFieldRequest(BaseModel):
+    fields: list[FieldConfig]
     display: str
     scale_mode: str
     range_mode: str
@@ -86,15 +91,22 @@ def explain_curves_prompt(request: ExplainCurveRequest) -> PromptResponse:
     return PromptResponse(prompt=prompt)
 
 
+def _build_field_outputs(fields: list[FieldConfig]):
+    outputs = []
+    for field in fields:
+        values = field.model_dump(exclude={"label"})
+        field_map = build_field_map(values)
+        outputs.append((field.label, field_map))
+    return outputs
+
+
 @router.post("/explain/fields")
 async def explain_fields_endpoint(request: ExplainFieldRequest) -> ExplainResponse:
-    dumped = request.model_dump()
-    values = {k: dumped[k] for k in ("L", "T", "B", "SD", "LDD")}
-    field_map = build_field_map(values)
+    outputs = _build_field_outputs(request.fields)
 
     try:
         result = explanation_service.explain_fields(
-            outputs=[("Field 1", field_map)],
+            outputs=outputs,
             display=request.display,
             scale_mode=request.scale_mode,
             range_mode=request.range_mode,
@@ -115,13 +127,11 @@ async def explain_fields_endpoint(request: ExplainFieldRequest) -> ExplainRespon
 
 @router.post("/explain/fields/prompt")
 async def explain_fields_prompt(request: ExplainFieldRequest) -> PromptResponse:
-    dumped = request.model_dump()
-    values = {k: dumped[k] for k in ("L", "T", "B", "SD", "LDD")}
-    field_map = build_field_map(values)
+    outputs = _build_field_outputs(request.fields)
 
     try:
         prompt = explanation_service.build_fields_prompt(
-            outputs=[("Field 1", field_map)],
+            outputs=outputs,
             display=request.display,
             scale_mode=request.scale_mode,
             range_mode=request.range_mode,
