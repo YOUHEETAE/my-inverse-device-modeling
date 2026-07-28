@@ -1,0 +1,55 @@
+{
+  "mesh_file": "long_channel_mos2d.msh",
+  "result_file": "long_channel_mosfet.json.gz",
+  "gate_length_um": 0.5,
+  "drain_voltage": 0.05,
+  "snapshot_gate_voltages": [
+    0.0,
+    0.5,
+    1.0,
+    1.5,
+    2.0
+  ],
+  "idvd_gate_voltages": [
+    0.0,
+    0.5,
+    1.0,
+    1.5,
+    2.0
+  ],
+  "idvd_drain_voltages": [
+    0.0,
+    0.1,
+    0.2,
+    0.30000000000000004,
+    0.4,
+    0.5,
+    0.6000000000000001,
+    0.7000000000000001,
+    0.8,
+    0.9,
+    1.0,
+    1.1,
+    1.2000000000000002,
+    1.3,
+    1.4000000000000001,
+    1.5,
+    1.6,
+    1.7000000000000002,
+    1.8,
+    1.9000000000000001,
+    2.0
+  ],
+  "idvd_snapshot_drain_voltages": [
+    0.0,
+    0.5,
+    1.0,
+    1.5,
+    2.0
+  ],
+  "regions": [
+    "gate",
+    "oxide",
+    "bulk"
+  ]
+}
