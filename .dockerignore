@@ -1,0 +1,24 @@
+# Neither Dockerfile does a blanket `COPY . .`, but excluding these keeps the
+# build context upload small and fast.
+.git
+.claude
+.vscode
+docs/
+tests/
+frontend/
+tcad/devsim/
+tcad/data_extraction/dataset/
+tcad/data_extraction/runs/
+ai/model_artifacts/*/dataset/
+ai/model_artifacts/*/candidates/
+ai/model_artifacts/*/baselines/
+ai/model_artifacts/*/preprocessing_screening/
+**/__pycache__/
+**/*.pyc
+.venv/
+venv/
+
+web/node_modules/
+web/dist/
+web/.env
+.env
