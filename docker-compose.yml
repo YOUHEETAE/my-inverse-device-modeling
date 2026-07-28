@@ -5,19 +5,23 @@ services:
       dockerfile: backend/Dockerfile
     env_file:
       - .env
-    environment:
-      # Matches the web service's host-mapped port below so the default
-      # CORS allowlist in backend/app/main.py works out of the box.
-      CORS_ALLOW_ORIGINS: http://localhost:5174,http://127.0.0.1:5174
+    # Bound to loopback only, not 0.0.0.0 — the backend is reached through
+    # web's nginx proxy (see web/nginx.conf's /api/ location), not directly.
+    # This keeps it reachable for local debugging (curl localhost:8000 on the
+    # host) while guaranteeing it's never exposed externally, independent of
+    # whatever the EC2 security group happens to allow.
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
 
   web:
     build:
       context: .
       dockerfile: web/Dockerfile
       args:
-        VITE_API_BASE_URL: http://localhost:8000
+        # Relative path: the browser calls the page's own origin, and nginx's
+        # /api/ location proxies it to the backend over the internal Docker
+        # network — so the browser never talks to the backend directly.
+        VITE_API_BASE_URL: /api
     ports:
       - "5174:80"
     depends_on:
