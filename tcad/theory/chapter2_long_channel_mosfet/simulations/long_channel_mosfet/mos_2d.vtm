@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<VTKFile type="vtkMultiBlockDataSet" version="0.1" byte_order="LittleEndian" compressor="vtkZLibDataCompressor">
+  <vtkMultiBlockDataSet>
+    <DataSet group="0" dataset="0" file="mos_2d_0.vtu"/>
+    <DataSet group="1" dataset="0" file="mos_2d_1.vtu"/>
+    <DataSet group="2" dataset="0" file="mos_2d_2.vtu"/>
+    <DataSet group="3" dataset="0" file="mos_2d_3.vtu"/>
+  </vtkMultiBlockDataSet>
+</VTKFile>

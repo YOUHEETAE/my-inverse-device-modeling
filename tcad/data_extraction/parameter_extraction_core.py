@@ -3,6 +3,10 @@ from __future__ import annotations
 import numpy as np
 
 
+DIBL_REFERENCE_CURRENT_MA_PER_UM = 1e-4
+LOW_DRAIN_BIAS_V = 0.05
+HIGH_DRAIN_BIAS_V = 1.5
+
 PARAMETER_NAMES = (
     "vth_low_v",
     "vth_high_v",
@@ -27,12 +31,23 @@ def extract_parameters(
     vd_on, id_on = _curve(idvd, "IDVD_VG3P0")
     vd_saturation, id_saturation = _curve(idvd, "IDVD_VG1P5")
 
-    vth_low, gm_max = _gm_tangent(vg_low, id_low)
+    # The linear-region gm-tangent intercept requires the usual Vd/2
+    # correction.  The high-Vd curve is kept on the existing gm-max method.
+    vth_low_raw, gm_max = _gm_tangent(vg_low, id_low)
+    vth_low = vth_low_raw + LOW_DRAIN_BIAS_V / 2.0
     vth_high, _ = _gm_tangent(vg_high, id_high)
+    vth_cc_low = _constant_current_threshold(
+        vg_low, id_low, DIBL_REFERENCE_CURRENT_MA_PER_UM
+    )
+    vth_cc_high = _constant_current_threshold(
+        vg_high, id_high, DIBL_REFERENCE_CURRENT_MA_PER_UM
+    )
     ion = abs(_at(vd_on, id_on, 3.0))
     ioff = abs(_at(vg_high, id_high, 0.0))
     ss = _subthreshold_swing(vg_low, id_low, vth_low)
-    dibl = (vth_low - vth_high) / (1.5 - 0.05)
+    dibl = abs(vth_cc_low - vth_cc_high) / (
+        HIGH_DRAIN_BIAS_V - LOW_DRAIN_BIAS_V
+    )
     gds, gds_intercept = _linear_slope(
         vd_saturation, id_saturation, 2.5, 3.0, "Vg=1.5 V high-Vd"
     )
@@ -81,6 +96,52 @@ def _gm_tangent(x: np.ndarray, current: np.ndarray) -> tuple[float, float]:
     if not np.isfinite(gm_max) or gm_max <= 0:
         raise ValueError("gm maximum is not positive")
     return float(x[index] - current[index] / gm_max), gm_max
+
+
+def _constant_current_threshold(
+    x: np.ndarray,
+    current: np.ndarray,
+    reference_current_ma_per_um: float,
+) -> float:
+    """Return Vg at the requested |Id| using semilog interpolation."""
+    if not np.isfinite(reference_current_ma_per_um) or reference_current_ma_per_um <= 0:
+        raise ValueError("DIBL reference current must be a positive finite value")
+
+    x = np.asarray(x, dtype=float)
+    magnitude = np.abs(np.asarray(current, dtype=float))
+    valid = np.isfinite(x) & np.isfinite(magnitude) & (magnitude > 0)
+    x = x[valid]
+    magnitude = magnitude[valid]
+    if len(x) < 2:
+        raise ValueError("not enough finite positive-current points for constant-current Vth")
+
+    order = np.argsort(x)
+    x = x[order]
+    magnitude = magnitude[order]
+    target_log_current = float(np.log10(reference_current_ma_per_um))
+    log_current = np.log10(magnitude)
+
+    exact = np.flatnonzero(np.isclose(log_current, target_log_current, rtol=0.0, atol=1e-12))
+    if len(exact):
+        return float(x[int(exact[0])])
+
+    crossings = np.flatnonzero(
+        (log_current[:-1] - target_log_current)
+        * (log_current[1:] - target_log_current)
+        < 0
+    )
+    if not len(crossings):
+        raise ValueError(
+            "DIBL reference current "
+            f"{reference_current_ma_per_um:g} mA/um is outside the Id-Vg curve range"
+        )
+
+    index = int(crossings[0])
+    fraction = (
+        (target_log_current - log_current[index])
+        / (log_current[index + 1] - log_current[index])
+    )
+    return float(x[index] + fraction * (x[index + 1] - x[index]))
 
 
 def _subthreshold_swing(
