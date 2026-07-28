@@ -60,9 +60,12 @@ export default function CurvesPage() {
     };
   }, [devices]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const curves: CurveEntry[] = devices.map((d) => ({
+  // Label is derived from the current index, not the (permanently-incrementing)
+  // id — matches the desktop app's purely positional "Curve N" numbering, so
+  // deleting a curve renumbers the rest instead of leaving a gap.
+  const curves: CurveEntry[] = devices.map((d, index) => ({
     id: d.id,
-    label: d.label,
+    label: `Curve ${index + 1}`,
     visible: d.visible,
     parameters: d.parameters,
     result: resultsCache[d.id]?.result ?? null,

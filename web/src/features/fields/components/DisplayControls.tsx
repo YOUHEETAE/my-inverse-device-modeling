@@ -41,7 +41,7 @@ export function DisplayControls({
       <Select
         value={scaleMode}
         onValueChange={(value) => onScaleModeChange(value as ScaleMode)}
-        disabled={display === "Mesh"}
+        disabled={display === "Mesh" || display === "Energy band (1D)"}
       >
         <SelectTrigger size="sm" className="w-32 border-outline-variant bg-surface-container-highest text-xs">
           <SelectValue>{scaleMode}</SelectValue>
@@ -57,7 +57,7 @@ export function DisplayControls({
       <Select
         value={rangeMode}
         onValueChange={(value) => onRangeModeChange(value as RangeMode)}
-        disabled={display === "Mesh"}
+        disabled={display === "Mesh" || display === "Energy band (1D)"}
       >
         <SelectTrigger size="sm" className="w-32 border-outline-variant bg-surface-container-highest text-xs">
           <SelectValue>{rangeMode}</SelectValue>

@@ -15,6 +15,7 @@ export const FIELD_DISPLAYS = [
   "Hole current density",
   "Total current density",
   "SRH recombination",
+  "Energy band (1D)",
 ] as const;
 
 export type FieldDisplay = (typeof FIELD_DISPLAYS)[number];

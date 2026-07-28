@@ -10,9 +10,11 @@ import { ParameterInputs } from "../curves/components/ParameterInputs";
 import { DeviceList } from "./components/DeviceList";
 import { DisplayControls } from "./components/DisplayControls";
 import { ColorbarLegend } from "./components/ColorbarLegend";
+import { EnergyBandLegend } from "./components/EnergyBandLegend";
 import { formatFieldLabel } from "./components/colormap";
 import { FieldChart } from "./components/FieldChart";
 import { FieldCompareChart } from "./components/FieldCompareChart";
+import { EnergyBandChart } from "./components/EnergyBandChart";
 import {
   explainFields,
   fetchFieldDisplay,
@@ -76,9 +78,12 @@ export default function FieldMapPage() {
     };
   }, [devices]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const deviceEntries: DeviceEntry[] = devices.map((d) => ({
+  // Label is derived from the current index, not the (permanently-incrementing)
+  // id — matches the desktop app's purely positional "Curve N" numbering, so
+  // deleting a device renumbers the rest instead of leaving a gap.
+  const deviceEntries: DeviceEntry[] = devices.map((d, index) => ({
     id: d.id,
-    label: d.label,
+    label: `Curve ${index + 1}`,
     visible: d.visible,
     parameters: d.parameters,
     mesh: meshCache[d.id]?.mesh ?? null,
@@ -117,7 +122,7 @@ export default function FieldMapPage() {
   const singleViewDevice = visibleDevices.length === 1 ? visibleDevices[0] : undefined;
 
   useEffect(() => {
-    if (compareMode || !singleViewDevice || display === "Mesh") {
+    if (compareMode || !singleViewDevice || display === "Mesh" || display === "Energy band (1D)") {
       setDisplayData(null);
       return;
     }
@@ -136,7 +141,7 @@ export default function FieldMapPage() {
   }, [compareMode, singleViewDevice?.id, singleViewDevice?.mesh, display, scaleMode, rangeMode]);
 
   useEffect(() => {
-    if (!compareMode || display === "Mesh" || visibleDevices.length === 0) {
+    if (!compareMode || display === "Mesh" || display === "Energy band (1D)" || visibleDevices.length === 0) {
       setCompareData(null);
       return;
     }
@@ -225,7 +230,19 @@ export default function FieldMapPage() {
           )}
         </div>
         <div className="h-[420px] shrink-0">
-          {compareMode ? (
+          {display === "Energy band (1D)" ? (
+            <EnergyBandChart
+              devices={visibleDevices
+                .filter((d) => d.mesh)
+                .map((d) => ({
+                  label: d.label,
+                  mesh: d.mesh!.mesh,
+                  potential: d.mesh!.node_fields["Potential"],
+                  lengthNm: Number(d.parameters.L),
+                  toxNm: Number(d.parameters.T),
+                }))}
+            />
+          ) : compareMode ? (
             <FieldCompareChart
               devices={visibleDevices
                 .filter((d) => d.mesh)
@@ -289,18 +306,29 @@ export default function FieldMapPage() {
           )}
         </div>
 
-        {legendSource && (
-          <div className="shrink-0">
-            <h4 className="mb-2 text-xs font-bold uppercase tracking-wide">Legend</h4>
-            <div className="rounded-md border border-outline-variant bg-surface-container p-2">
-              <ColorbarLegend
-                label={formatFieldLabel(`${legendSource.label} [${legendSource.mode_label}]`)}
-                cmap={legendSource.cmap}
-                vmin={legendSource.vmin}
-                vmax={legendSource.vmax}
-              />
+        {display === "Energy band (1D)" ? (
+          visibleDevices.some((d) => d.mesh) && (
+            <div className="shrink-0">
+              <h4 className="mb-2 text-xs font-bold uppercase tracking-wide">Legend</h4>
+              <div className="rounded-md border border-outline-variant bg-surface-container">
+                <EnergyBandLegend />
+              </div>
             </div>
-          </div>
+          )
+        ) : (
+          legendSource && (
+            <div className="shrink-0">
+              <h4 className="mb-2 text-xs font-bold uppercase tracking-wide">Legend</h4>
+              <div className="rounded-md border border-outline-variant bg-surface-container p-2">
+                <ColorbarLegend
+                  label={formatFieldLabel(`${legendSource.label} [${legendSource.mode_label}]`)}
+                  cmap={legendSource.cmap}
+                  vmin={legendSource.vmin}
+                  vmax={legendSource.vmax}
+                />
+              </div>
+            </div>
+          )
         )}
       </aside>
     </div>

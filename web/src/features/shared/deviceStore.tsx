@@ -6,9 +6,15 @@ import { DEFAULT_PARAMETERS, type DeviceParameters } from "../curves/types";
 // used by both tabs). Each page keeps its own prediction cache (CurveResponse /
 // FieldResponse) keyed by id — those are expensive, page-specific outputs and
 // don't belong on the shared entry itself.
+//
+// No `label` field here on purpose: `id` is a permanently-incrementing,
+// never-reused counter (needed for stable React keys and cache keys), but the
+// desktop app's "Curve N" numbering is purely positional (index-based, see
+// frontend/app.py). Baking the id into the label would leave gaps after a
+// delete (e.g. 1, 3, 4) instead of renumbering — so callers should derive the
+// display label from each entry's current index in `devices`.
 export interface SharedDeviceEntry {
   id: number;
-  label: string;
   visible: boolean;
   parameters: DeviceParameters;
 }
@@ -34,7 +40,7 @@ let nextId = 2;
 
 export function DeviceStoreProvider({ children }: { children: ReactNode }) {
   const [devices, setDevices] = useState<SharedDeviceEntry[]>([
-    { id: 1, label: "Curve 1", visible: true, parameters: DEFAULT_PARAMETERS },
+    { id: 1, visible: true, parameters: DEFAULT_PARAMETERS },
   ]);
   const [activeId, setActiveId] = useState(1);
   const [inputValues, setInputValues] = useState<DeviceParameters>(DEFAULT_PARAMETERS);
@@ -48,7 +54,7 @@ export function DeviceStoreProvider({ children }: { children: ReactNode }) {
   function addDevice() {
     if (devices.length >= MAX_SHARED_DEVICES) return;
     const id = nextId++;
-    setDevices([...devices, { id, label: `Curve ${id}`, visible: true, parameters: inputValues }]);
+    setDevices([...devices, { id, visible: true, parameters: inputValues }]);
     setActiveId(id);
   }
 

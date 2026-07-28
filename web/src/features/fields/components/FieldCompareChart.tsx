@@ -3,6 +3,7 @@ import { Plot } from "@/lib/plot";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { FieldCompareResponse, FieldDisplay, MeshData } from "../types";
 import { applyNorm, formatFieldLabel, mapColormap } from "./colormap";
+import { computeContourSegments, contourLevels } from "./contours";
 import { buildOverlayShapes2D, buildOverlayTraces3D, geometryMarkers } from "./structureOverlay";
 import { SCENE_LAYOUT, buildMeshEdges, buildMeshTrace, elementToNode } from "./fieldChartUtils";
 
@@ -111,12 +112,24 @@ export function FieldCompareChart({ devices, display, compareData }: FieldCompar
           compareData.linthresh,
         );
         const meshTrace = buildMeshTrace(item.mesh, intensity, cmin, cmax, colorscale, reversescale, null);
+        const { x: contourX, y: contourY } = computeContourSegments(item.mesh, intensity, contourLevels(cmin, cmax));
+        const contourTrace: Data = {
+          type: "scatter3d",
+          mode: "lines",
+          x: contourX,
+          y: contourY,
+          z: contourX.map((v) => (v == null ? null : 0.02)),
+          line: { color: "black", width: 1 },
+          opacity: 0.28,
+          hoverinfo: "skip",
+          showlegend: false,
+        } as unknown as Data;
         return (
           // See the Mesh branch above for why devices.length is part of the key.
           <Card key={`${item.label}-${compareData.items.length}`} className="flex flex-col">
             <CardContent className="flex-1">
               <Plot
-                data={[meshTrace, ...buildOverlayTraces3D(marker)]}
+                data={[meshTrace, contourTrace, ...buildOverlayTraces3D(marker)]}
                 layout={{
                   paper_bgcolor: "transparent",
                   margin: { t: 36, b: 10, l: 10, r: 10 },
