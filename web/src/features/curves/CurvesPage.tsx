@@ -2,29 +2,78 @@ import { useEffect, useState } from "react";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ExplanationPanel, type ExplanationStatus } from "@/components/explanation/ExplanationPanel";
+import { useDeviceStore, MAX_SHARED_DEVICES } from "../shared/deviceStore";
+import { useViewStore } from "../shared/viewStore";
+import { usePredictionCache } from "../shared/predictionCache";
+import { parametersEqual } from "../shared/parameters";
 import { CurveChart } from "./components/CurveChart";
 import { CurveList } from "./components/CurveList";
 import { ElectricalParametersTable } from "./components/ElectricalParametersTable";
 import { ParameterInputs } from "./components/ParameterInputs";
-import { DEFAULT_PARAMETERS, type CurveConfig, type CurveEntry, type DeviceParameters } from "./types";
+import type { CurveConfig, CurveEntry } from "./types";
 import { explainCurve, getErrorMessage, predictCurve, previewCurvePrompt } from "./api";
 
-let nextId = 2;
-
 export default function CurvesPage() {
-  const [inputValues, setInputValues] = useState<DeviceParameters>(DEFAULT_PARAMETERS);
-  const [curves, setCurves] = useState<CurveEntry[]>([]);
+  const {
+    devices,
+    activeId,
+    inputValues,
+    atCapacity,
+    setInputValues,
+    selectDevice,
+    addDevice,
+    updateSelected,
+    removeSelected,
+    toggleVisible,
+  } = useDeviceStore();
+
+  const { curveResults: resultsCache, setCurveResults: setResultsCache } = usePredictionCache();
   const [predictError, setPredictError] = useState<string | null>(null);
+
+  // Predict curves for any shared device that's new or whose parameters
+  // changed since the last prediction — lets a device created on the Field
+  // Map page (or updated there) show up here with a real curve.
   useEffect(() => {
-    predictCurve(DEFAULT_PARAMETERS)
-      .then((result) => {
-        setCurves([{ id: 1, label: "Curve 1", visible: true, parameters: DEFAULT_PARAMETERS, result }]);
+    const stale = devices.filter((d) => {
+      const cached = resultsCache[d.id];
+      return !cached || !parametersEqual(cached.parameters, d.parameters);
+    });
+    if (stale.length === 0) return;
+    let cancelled = false;
+    Promise.all(
+      stale.map((d) => predictCurve(d.parameters).then((result) => ({ id: d.id, parameters: d.parameters, result }))),
+    )
+      .then((updates) => {
+        if (cancelled) return;
+        setResultsCache((prev) => {
+          const next = { ...prev };
+          for (const u of updates) next[u.id] = { parameters: u.parameters, result: u.result };
+          return next;
+        });
+        setPredictError(null);
       })
-      .catch((err) => setPredictError(getErrorMessage(err)));
-  }, [])
-  const [activeId, setActiveId] = useState(1);
-  const [combined, setCombined] = useState(true);
-  const [logScale, setLogScale] = useState(false);
+      .catch((err) => {
+        if (!cancelled) setPredictError(getErrorMessage(err));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [devices]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const curves: CurveEntry[] = devices.map((d) => ({
+    id: d.id,
+    label: d.label,
+    visible: d.visible,
+    parameters: d.parameters,
+    result: resultsCache[d.id]?.result ?? null,
+  }));
+
+  const {
+    curveCombined: combined,
+    setCurveCombined: setCombined,
+    curveLogScale: logScale,
+    setCurveLogScale: setLogScale,
+  } = useViewStore();
   const [explanationStatus, setExplanationStatus] = useState<ExplanationStatus>("ready");
   const [explanationContent, setExplanationContent] = useState("");
   const [provider, setProvider] = useState<"mock" | "external_llm" | null>(null);
@@ -36,59 +85,6 @@ export default function CurvesPage() {
 
   function toCurveConfigs(entries: CurveEntry[]): CurveConfig[] {
     return entries.map((c) => ({ label: c.label, ...c.parameters }));
-  }
-
-  function selectCurve(id: number) {
-    setActiveId(id);
-    const curve = curves.find((c) => c.id === id);
-    if (curve) setInputValues(curve.parameters);
-  }
-
-  async function addCurve() {
-    const id = nextId++;
-    try {
-      const result = await predictCurve(inputValues);
-      const entry: CurveEntry = {
-        id,
-        label: `Curve ${id}`,
-        visible: true,
-        parameters: inputValues,
-        result,
-      };
-      setCurves([...curves, entry]);
-      setActiveId(id);
-      setPredictError(null);
-    } catch (err) {
-      setPredictError(getErrorMessage(err));
-    }
-  }
-
-  async function updateSelected() {
-    try {
-      const result = await predictCurve(inputValues);
-      setCurves(
-        curves.map((c) =>
-          c.id === activeId
-            ? { ...c, parameters: inputValues, result }
-            : c,
-        ),
-      );
-      setPredictError(null);
-    } catch (err) {
-      setPredictError(getErrorMessage(err));
-    }
-  }
-
-  function removeSelected() {
-    const remaining = curves.filter((c) => !c.visible);
-    setCurves(remaining);
-    if (remaining.length > 0 && !remaining.some((c) => c.id === activeId)) {
-      selectCurve(remaining[remaining.length - 1].id);
-    }
-  }
-
-  function toggleVisible(id: number) {
-    setCurves(curves.map((c) => (c.id === id ? { ...c, visible: !c.visible } : c)));
   }
 
   async function analyze() {
@@ -164,7 +160,8 @@ export default function CurvesPage() {
               size="sm"
               variant="outline"
               className="h-6 gap-1 rounded-sm border-outline-variant bg-surface-container-highest px-2 text-[10px] uppercase"
-              onClick={addCurve}
+              onClick={addDevice}
+              disabled={atCapacity}
             >
               <Plus className="h-3 w-3" />
               Add
@@ -174,12 +171,15 @@ export default function CurvesPage() {
             <CurveList
               curves={curves}
               activeId={activeId}
-              onSelect={selectCurve}
+              onSelect={selectDevice}
               onToggleVisible={toggleVisible}
               onUpdateSelected={updateSelected}
               onRemoveSelected={removeSelected}
             />
           </div>
+          {atCapacity && (
+            <p className="mt-1 text-[11px] text-accent-orange">Maximum {MAX_SHARED_DEVICES} curves — remove one to add another.</p>
+          )}
         </div>
 
         <div className="shrink-0">

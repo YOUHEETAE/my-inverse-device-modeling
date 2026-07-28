@@ -19,6 +19,9 @@ interface CurveListProps {
   onRemoveSelected: () => void;
 }
 
+const HEAD_CLASS = "sticky top-0 z-10 bg-surface-container px-1 py-1 font-mono text-[9px] uppercase text-on-surface-variant";
+const CELL_CLASS = "px-1 py-1 font-mono text-[9px]";
+
 export function CurveList({
   curves,
   activeId,
@@ -40,13 +43,13 @@ export function CurveList({
       <Table containerClassName="h-[175px] overflow-y-auto">
         <TableHeader>
           <TableRow className="border-outline-variant hover:bg-transparent">
-            <TableHead className="sticky top-0 z-10 w-8 bg-surface-container"></TableHead>
-            <TableHead className="sticky top-0 z-10 bg-surface-container font-mono text-[10px] uppercase text-on-surface-variant">Curve</TableHead>
-            <TableHead className="sticky top-0 z-10 bg-surface-container font-mono text-[10px] uppercase text-on-surface-variant">L</TableHead>
-            <TableHead className="sticky top-0 z-10 bg-surface-container font-mono text-[10px] uppercase text-on-surface-variant">T</TableHead>
-            <TableHead className="sticky top-0 z-10 bg-surface-container font-mono text-[10px] uppercase text-on-surface-variant">B</TableHead>
-            <TableHead className="sticky top-0 z-10 bg-surface-container font-mono text-[10px] uppercase text-on-surface-variant">SD</TableHead>
-            <TableHead className="sticky top-0 z-10 bg-surface-container font-mono text-[10px] uppercase text-on-surface-variant">LDD</TableHead>
+            <TableHead className={`${HEAD_CLASS} w-5`}></TableHead>
+            <TableHead className={HEAD_CLASS}>Curve</TableHead>
+            <TableHead className={HEAD_CLASS}>L</TableHead>
+            <TableHead className={HEAD_CLASS}>T</TableHead>
+            <TableHead className={HEAD_CLASS}>B</TableHead>
+            <TableHead className={HEAD_CLASS}>SD</TableHead>
+            <TableHead className={HEAD_CLASS}>LDD</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -60,8 +63,9 @@ export function CurveList({
                   : "cursor-pointer border-outline-variant hover:bg-surface-container-highest"
               }
             >
-              <TableCell onClick={(event) => event.stopPropagation()}>
+              <TableCell className={CELL_CLASS} onClick={(event) => event.stopPropagation()}>
                 <Checkbox
+                  className="size-3"
                   checked={curve.visible}
                   onCheckedChange={() => {
                     onToggleVisible(curve.id);
@@ -69,12 +73,12 @@ export function CurveList({
                   }}
                 />
               </TableCell>
-              <TableCell className="font-medium">{curve.label}</TableCell>
-              <TableCell className="font-mono text-xs">{curve.parameters.L}</TableCell>
-              <TableCell className="font-mono text-xs">{curve.parameters.T}</TableCell>
-              <TableCell className="font-mono text-xs">{curve.parameters.B}</TableCell>
-              <TableCell className="font-mono text-xs">{curve.parameters.SD}</TableCell>
-              <TableCell className="font-mono text-xs">{curve.parameters.LDD}</TableCell>
+              <TableCell className={`${CELL_CLASS} font-sans font-medium`}>{curve.label}</TableCell>
+              <TableCell className={CELL_CLASS}>{curve.parameters.L}</TableCell>
+              <TableCell className={CELL_CLASS}>{curve.parameters.T}</TableCell>
+              <TableCell className={CELL_CLASS}>{curve.parameters.B}</TableCell>
+              <TableCell className={CELL_CLASS}>{curve.parameters.SD}</TableCell>
+              <TableCell className={CELL_CLASS}>{curve.parameters.LDD}</TableCell>
             </TableRow>
           ))}
         </TableBody>

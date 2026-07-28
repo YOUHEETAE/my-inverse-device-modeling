@@ -28,24 +28,32 @@ GEO_TEMPLATE = REPO_ROOT / "tcad/data_extraction/base_case/gmsh_mos2d.geo"
 # field display/scale mode) reuse the mesh instead of regenerating it.
 _mesh_cache: dict[tuple[float, float], object] = {}
 
+# The model inference (field_predictor.predict) is the expensive part of
+# build_field_map, but /fields/predict, /fields/display, and
+# /fields/display/compare all call it independently — without this, revisiting
+# the same device (all 5 params unchanged) re-runs the full prediction every
+# time instead of reusing the mesh-cache-only savings above.
+_field_map_cache: dict[tuple[float, float, float, float, float], GeneratedFieldMap] = {}
+
 
 def build_field_map(values: dict[str, str]) -> GeneratedFieldMap:
     length = float(values["L"])
     tox = float(values["T"])
-    cache_key = (length, tox)
-    mesh = _mesh_cache.get(cache_key)
+    body = float(values["B"])
+    sd = float(values["SD"])
+    ldd = float(values["LDD"])
+
+    cache_key = (length, tox, body, sd, ldd)
+    cached = _field_map_cache.get(cache_key)
+    if cached is not None:
+        return cached
+
+    mesh = _mesh_cache.get((length, tox))
     if mesh is None:
         mesh = generate_gmsh_mesh(length, tox, GEO_TEMPLATE)
-        _mesh_cache[cache_key] = mesh
-    prediction = field_predictor.predict(
-        mesh, length, tox, float(values["B"]), float(values["SD"]), float(values["LDD"])
-    )
-    return GeneratedFieldMap(
-        mesh,
-        prediction,
-        length,
-        tox,
-        float(values["B"]),
-        float(values["SD"]),
-        float(values["LDD"]),
-    )
+        _mesh_cache[(length, tox)] = mesh
+
+    prediction = field_predictor.predict(mesh, length, tox, body, sd, ldd)
+    result = GeneratedFieldMap(mesh, prediction, length, tox, body, sd, ldd)
+    _field_map_cache[cache_key] = result
+    return result

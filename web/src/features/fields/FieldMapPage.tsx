@@ -2,6 +2,10 @@ import { useEffect, useState } from "react";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ExplanationPanel, type ExplanationStatus } from "@/components/explanation/ExplanationPanel";
+import { useDeviceStore, MAX_SHARED_DEVICES } from "../shared/deviceStore";
+import { useViewStore } from "../shared/viewStore";
+import { usePredictionCache } from "../shared/predictionCache";
+import { parametersEqual } from "../shared/parameters";
 import { ParameterInputs } from "../curves/components/ParameterInputs";
 import { DeviceList } from "./components/DeviceList";
 import { DisplayControls } from "./components/DisplayControls";
@@ -18,38 +22,76 @@ import {
   previewFieldsPrompt,
 } from "./api";
 import {
-  DEFAULT_PARAMETERS,
   FIELD_EXPLANATION_EXCLUDED,
   type DeviceEntry,
-  type DeviceParameters,
   type FieldCompareResponse,
   type FieldConfig,
-  type FieldDisplay,
   type FieldDisplayResponse,
-  type RangeMode,
-  type ScaleMode,
 } from "./types";
 
-let nextId = 2;
-const MAX_DEVICES = 4;
-
 export default function FieldMapPage() {
-  const [inputValues, setInputValues] = useState<DeviceParameters>(DEFAULT_PARAMETERS);
-  const [devices, setDevices] = useState<DeviceEntry[]>([]);
+  const {
+    devices,
+    activeId,
+    inputValues,
+    atCapacity,
+    setInputValues,
+    selectDevice,
+    addDevice,
+    updateSelected,
+    removeSelected,
+    toggleVisible,
+  } = useDeviceStore();
+
+  const { fieldMeshes: meshCache, setFieldMeshes: setMeshCache } = usePredictionCache();
   const [predictError, setPredictError] = useState<string | null>(null);
 
+  // Compute field meshes for any shared device that's new or whose parameters
+  // changed since the last prediction — lets a curve created on the Curves
+  // page show up here with a real mesh already prepared.
   useEffect(() => {
-    predictField(DEFAULT_PARAMETERS)
-      .then((mesh) => {
-        setDevices([{ id: 1, label: "Device 1", visible: true, parameters: DEFAULT_PARAMETERS, mesh }]);
+    const stale = devices.filter((d) => {
+      const cached = meshCache[d.id];
+      return !cached || !parametersEqual(cached.parameters, d.parameters);
+    });
+    if (stale.length === 0) return;
+    let cancelled = false;
+    Promise.all(
+      stale.map((d) => predictField(d.parameters).then((mesh) => ({ id: d.id, parameters: d.parameters, mesh }))),
+    )
+      .then((updates) => {
+        if (cancelled) return;
+        setMeshCache((prev) => {
+          const next = { ...prev };
+          for (const u of updates) next[u.id] = { parameters: u.parameters, mesh: u.mesh };
+          return next;
+        });
+        setPredictError(null);
       })
-      .catch((err) => setPredictError(getErrorMessage(err)));
-  }, []);
+      .catch((err) => {
+        if (!cancelled) setPredictError(getErrorMessage(err));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [devices]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const [activeId, setActiveId] = useState(1);
-  const [display, setDisplay] = useState<FieldDisplay>("Mesh");
-  const [scaleMode, setScaleMode] = useState<ScaleMode>("Auto");
-  const [rangeMode, setRangeMode] = useState<RangeMode>("Robust 1-99%");
+  const deviceEntries: DeviceEntry[] = devices.map((d) => ({
+    id: d.id,
+    label: d.label,
+    visible: d.visible,
+    parameters: d.parameters,
+    mesh: meshCache[d.id]?.mesh ?? null,
+  }));
+
+  const {
+    fieldDisplay: display,
+    setFieldDisplay: setDisplay,
+    fieldScaleMode: scaleMode,
+    setFieldScaleMode: setScaleMode,
+    fieldRangeMode: rangeMode,
+    setFieldRangeMode: setRangeMode,
+  } = useViewStore();
   const [displayData, setDisplayData] = useState<FieldDisplayResponse | null>(null);
   const [compareData, setCompareData] = useState<FieldCompareResponse | null>(null);
 
@@ -57,17 +99,13 @@ export default function FieldMapPage() {
   const [explanationContent, setExplanationContent] = useState("");
   const [provider, setProvider] = useState<"mock" | "external_llm" | null>(null);
 
-  const visibleDevices = devices.filter((d) => d.visible);
+  const visibleDevices = deviceEntries.filter((d) => d.visible);
   // View mode is derived from how many devices are checked, not a separate
   // toggle — 2+ checked always means "compare", 1 or 0 always means "single".
   const compareMode = visibleDevices.length >= 2;
-  const rangeWarnings = devices
+  const rangeWarnings = deviceEntries
     .filter((d) => d.mesh?.range_warning)
     .map((d) => `${d.label}: ${d.mesh!.range_warning}`);
-
-  function parametersEqual(a: DeviceParameters, b: DeviceParameters): boolean {
-    return a.L === b.L && a.T === b.T && a.B === b.B && a.SD === b.SD && a.LDD === b.LDD;
-  }
 
   function toFieldConfigs(entries: DeviceEntry[]): FieldConfig[] {
     return entries.map((d) => ({ label: d.label, ...d.parameters }));
@@ -113,52 +151,14 @@ export default function FieldMapPage() {
     return () => {
       cancelled = true;
     };
-    // devices (not visibleDevices) so any add/update/remove/toggle-visible
-    // mutation (all of which replace the array reference) triggers a refetch.
+    // devices + meshCache (not deviceEntries/visibleDevices) — those are
+    // rebuilt with a fresh array/object on every render, so depending on them
+    // directly would refetch on every re-render regardless of whether
+    // anything actually changed. devices only gets a new reference on a real
+    // add/update/remove/toggle-visible mutation, and meshCache only on a real
+    // prediction landing, so this refetches exactly when it should.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [compareMode, devices, display, scaleMode, rangeMode]);
-
-  function selectDevice(id: number) {
-    setActiveId(id);
-    const device = devices.find((d) => d.id === id);
-    if (device) setInputValues(device.parameters);
-  }
-
-  async function addDevice() {
-    if (devices.length >= MAX_DEVICES) return;
-    const id = nextId++;
-    try {
-      const mesh = await predictField(inputValues);
-      const entry: DeviceEntry = { id, label: `Device ${id}`, visible: true, parameters: inputValues, mesh };
-      setDevices([...devices, entry]);
-      setActiveId(id);
-      setPredictError(null);
-    } catch (err) {
-      setPredictError(getErrorMessage(err));
-    }
-  }
-
-  async function updateSelected() {
-    try {
-      const mesh = await predictField(inputValues);
-      setDevices(devices.map((d) => (d.id === activeId ? { ...d, parameters: inputValues, mesh } : d)));
-      setPredictError(null);
-    } catch (err) {
-      setPredictError(getErrorMessage(err));
-    }
-  }
-
-  function removeSelected() {
-    const remaining = devices.filter((d) => !d.visible);
-    setDevices(remaining);
-    if (remaining.length > 0 && !remaining.some((d) => d.id === activeId)) {
-      selectDevice(remaining[remaining.length - 1].id);
-    }
-  }
-
-  function toggleVisible(id: number) {
-    setDevices(devices.map((d) => (d.id === id ? { ...d, visible: !d.visible } : d)));
-  }
+  }, [compareMode, devices, meshCache, display, scaleMode, rangeMode]);
 
   const legendSource = compareMode ? compareData : displayData;
 
@@ -268,7 +268,7 @@ export default function FieldMapPage() {
               variant="outline"
               className="h-6 gap-1 rounded-sm border-outline-variant bg-surface-container-highest px-2 text-[10px] uppercase"
               onClick={addDevice}
-              disabled={devices.length >= MAX_DEVICES}
+              disabled={atCapacity}
             >
               <Plus className="h-3 w-3" />
               Add
@@ -276,7 +276,7 @@ export default function FieldMapPage() {
           </div>
           <div className="rounded-md border border-outline-variant bg-surface-container">
             <DeviceList
-              devices={devices}
+              devices={deviceEntries}
               activeId={activeId}
               onSelect={selectDevice}
               onToggleVisible={toggleVisible}
@@ -284,8 +284,8 @@ export default function FieldMapPage() {
               onRemoveSelected={removeSelected}
             />
           </div>
-          {devices.length >= MAX_DEVICES && (
-            <p className="mt-1 text-[11px] text-accent-orange">Maximum {MAX_DEVICES} devices — remove one to add another.</p>
+          {atCapacity && (
+            <p className="mt-1 text-[11px] text-accent-orange">Maximum {MAX_SHARED_DEVICES} devices — remove one to add another.</p>
           )}
         </div>
 
