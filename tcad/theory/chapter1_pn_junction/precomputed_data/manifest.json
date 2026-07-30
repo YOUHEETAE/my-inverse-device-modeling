@@ -1,0 +1,376 @@
+{
+  "dopings": [
+    1e+16,
+    1e+18,
+    2e+18
+  ],
+  "biases": [
+    -1.0,
+    -0.5,
+    0.0,
+    0.5,
+    1.0
+  ],
+  "cases": [
+    {
+      "acceptors": 1e+16,
+      "donors": 1e+16,
+      "bias": -1.0,
+      "file": "na_1e16__nd_1e16__bias_m1.json.gz",
+      "status": "ok",
+      "current": -9.848390391168646e-13
+    },
+    {
+      "acceptors": 1e+16,
+      "donors": 1e+16,
+      "bias": -0.5,
+      "file": "na_1e16__nd_1e16__bias_m0.5.json.gz",
+      "status": "ok",
+      "current": -6.927170982629119e-13
+    },
+    {
+      "acceptors": 1e+16,
+      "donors": 1e+16,
+      "bias": 0.0,
+      "file": "na_1e16__nd_1e16__bias_p0.json.gz",
+      "status": "ok",
+      "current": 1.0319800816718876e-19
+    },
+    {
+      "acceptors": 1e+16,
+      "donors": 1e+16,
+      "bias": 0.5,
+      "file": "na_1e16__nd_1e16__bias_p0.5.json.gz",
+      "status": "ok",
+      "current": 2.8134520901704294e-05
+    },
+    {
+      "acceptors": 1e+16,
+      "donors": 1e+16,
+      "bias": 1.0,
+      "file": "na_1e16__nd_1e16__bias_p1.json.gz",
+      "status": "ok",
+      "current": 0.1730001983205117
+    },
+    {
+      "acceptors": 1e+16,
+      "donors": 1e+18,
+      "bias": -1.0,
+      "file": "na_1e16__nd_1e18__bias_m1.json.gz",
+      "status": "ok",
+      "current": -9.696616705638018e-13
+    },
+    {
+      "acceptors": 1e+16,
+      "donors": 1e+18,
+      "bias": -0.5,
+      "file": "na_1e16__nd_1e18__bias_m0.5.json.gz",
+      "status": "ok",
+      "current": -7.083883264955909e-13
+    },
+    {
+      "acceptors": 1e+16,
+      "donors": 1e+18,
+      "bias": 0.0,
+      "file": "na_1e16__nd_1e18__bias_p0.json.gz",
+      "status": "ok",
+      "current": 2.5938864264785776e-20
+    },
+    {
+      "acceptors": 1e+16,
+      "donors": 1e+18,
+      "bias": 0.5,
+      "file": "na_1e16__nd_1e18__bias_p0.5.json.gz",
+      "status": "ok",
+      "current": 3.7857985474200514e-05
+    },
+    {
+      "acceptors": 1e+16,
+      "donors": 1e+18,
+      "bias": 1.0,
+      "file": "na_1e16__nd_1e18__bias_p1.json.gz",
+      "status": "ok",
+      "current": 1.5112911653953685
+    },
+    {
+      "acceptors": 1e+16,
+      "donors": 2e+18,
+      "bias": -1.0,
+      "file": "na_1e16__nd_2e18__bias_m1.json.gz",
+      "status": "ok",
+      "current": -1.0075738230503687e-12
+    },
+    {
+      "acceptors": 1e+16,
+      "donors": 2e+18,
+      "bias": -0.5,
+      "file": "na_1e16__nd_2e18__bias_m0.5.json.gz",
+      "status": "ok",
+      "current": -7.340120331363992e-13
+    },
+    {
+      "acceptors": 1e+16,
+      "donors": 2e+18,
+      "bias": 0.0,
+      "file": "na_1e16__nd_2e18__bias_p0.json.gz",
+      "status": "ok",
+      "current": 2.5625260944780723e-20
+    },
+    {
+      "acceptors": 1e+16,
+      "donors": 2e+18,
+      "bias": 0.5,
+      "file": "na_1e16__nd_2e18__bias_p0.5.json.gz",
+      "status": "ok",
+      "current": 3.9456757071363766e-05
+    },
+    {
+      "acceptors": 1e+16,
+      "donors": 2e+18,
+      "bias": 1.0,
+      "file": "na_1e16__nd_2e18__bias_p1.json.gz",
+      "status": "ok",
+      "current": 1.9670947983271374
+    },
+    {
+      "acceptors": 1e+18,
+      "donors": 1e+16,
+      "bias": -1.0,
+      "file": "na_1e18__nd_1e16__bias_m1.json.gz",
+      "status": "ok",
+      "current": -9.620824613247432e-13
+    },
+    {
+      "acceptors": 1e+18,
+      "donors": 1e+16,
+      "bias": -0.5,
+      "file": "na_1e18__nd_1e16__bias_m0.5.json.gz",
+      "status": "ok",
+      "current": -7.193180541279331e-13
+    },
+    {
+      "acceptors": 1e+18,
+      "donors": 1e+16,
+      "bias": 0.0,
+      "file": "na_1e18__nd_1e16__bias_p0.json.gz",
+      "status": "ok",
+      "current": -2.361300320896877e-16
+    },
+    {
+      "acceptors": 1e+18,
+      "donors": 1e+16,
+      "bias": 0.5,
+      "file": "na_1e18__nd_1e16__bias_p0.5.json.gz",
+      "status": "ok",
+      "current": 4.3302017530284976e-05
+    },
+    {
+      "acceptors": 1e+18,
+      "donors": 1e+16,
+      "bias": 1.0,
+      "file": "na_1e18__nd_1e16__bias_p1.json.gz",
+      "status": "ok",
+      "current": 1.8995355087448393
+    },
+    {
+      "acceptors": 1e+18,
+      "donors": 1e+18,
+      "bias": -1.0,
+      "file": "na_1e18__nd_1e18__bias_m1.json.gz",
+      "status": "ok",
+      "current": 1.8566610737478287e-15
+    },
+    {
+      "acceptors": 1e+18,
+      "donors": 1e+18,
+      "bias": -0.5,
+      "file": "na_1e18__nd_1e18__bias_m0.5.json.gz",
+      "status": "ok",
+      "current": 5.9662223139058465e-15
+    },
+    {
+      "acceptors": 1e+18,
+      "donors": 1e+18,
+      "bias": 0.0,
+      "file": "na_1e18__nd_1e18__bias_p0.json.gz",
+      "status": "ok",
+      "current": 6.981258241949995e-16
+    },
+    {
+      "acceptors": 1e+18,
+      "donors": 1e+18,
+      "bias": 0.5,
+      "file": "na_1e18__nd_1e18__bias_p0.5.json.gz",
+      "status": "ok",
+      "current": 1.0527991575284668e-07
+    },
+    {
+      "acceptors": 1e+18,
+      "donors": 1e+18,
+      "bias": 1.0,
+      "file": "na_1e18__nd_1e18__bias_p1.json.gz",
+      "status": "ok",
+      "current": 3.1471143212354153
+    },
+    {
+      "acceptors": 1e+18,
+      "donors": 2e+18,
+      "bias": -1.0,
+      "file": "na_1e18__nd_2e18__bias_m1.json.gz",
+      "status": "ok",
+      "current": 1.6106482988941824e-15
+    },
+    {
+      "acceptors": 1e+18,
+      "donors": 2e+18,
+      "bias": -0.5,
+      "file": "na_1e18__nd_2e18__bias_m0.5.json.gz",
+      "status": "ok",
+      "current": 6.433785452660931e-15
+    },
+    {
+      "acceptors": 1e+18,
+      "donors": 2e+18,
+      "bias": 0.0,
+      "file": "na_1e18__nd_2e18__bias_p0.json.gz",
+      "status": "ok",
+      "current": -2.9490690408000094e-16
+    },
+    {
+      "acceptors": 1e+18,
+      "donors": 2e+18,
+      "bias": 0.5,
+      "file": "na_1e18__nd_2e18__bias_p0.5.json.gz",
+      "status": "ok",
+      "current": 7.353554893751484e-08
+    },
+    {
+      "acceptors": 1e+18,
+      "donors": 2e+18,
+      "bias": 1.0,
+      "file": "na_1e18__nd_2e18__bias_p1.json.gz",
+      "status": "ok",
+      "current": 3.397044367303315
+    },
+    {
+      "acceptors": 2e+18,
+      "donors": 1e+16,
+      "bias": -1.0,
+      "file": "na_2e18__nd_1e16__bias_m1.json.gz",
+      "status": "ok",
+      "current": -1.0749374206723738e-12
+    },
+    {
+      "acceptors": 2e+18,
+      "donors": 1e+16,
+      "bias": -0.5,
+      "file": "na_2e18__nd_1e16__bias_m0.5.json.gz",
+      "status": "ok",
+      "current": -7.769171801313089e-13
+    },
+    {
+      "acceptors": 2e+18,
+      "donors": 1e+16,
+      "bias": 0.0,
+      "file": "na_2e18__nd_1e16__bias_p0.json.gz",
+      "status": "ok",
+      "current": 3.0707465337479605e-15
+    },
+    {
+      "acceptors": 2e+18,
+      "donors": 1e+16,
+      "bias": 0.5,
+      "file": "na_2e18__nd_1e16__bias_p0.5.json.gz",
+      "status": "ok",
+      "current": 4.607698117355073e-05
+    },
+    {
+      "acceptors": 2e+18,
+      "donors": 1e+16,
+      "bias": 1.0,
+      "file": "na_2e18__nd_1e16__bias_p1.json.gz",
+      "status": "ok",
+      "current": 2.6568516353520284
+    },
+    {
+      "acceptors": 2e+18,
+      "donors": 1e+18,
+      "bias": -1.0,
+      "file": "na_2e18__nd_1e18__bias_m1.json.gz",
+      "status": "ok",
+      "current": -2.7196955981952133e-14
+    },
+    {
+      "acceptors": 2e+18,
+      "donors": 1e+18,
+      "bias": -0.5,
+      "file": "na_2e18__nd_1e18__bias_m0.5.json.gz",
+      "status": "ok",
+      "current": -3.384831170874838e-15
+    },
+    {
+      "acceptors": 2e+18,
+      "donors": 1e+18,
+      "bias": 0.0,
+      "file": "na_2e18__nd_1e18__bias_p0.json.gz",
+      "status": "ok",
+      "current": -1.5604929451715641e-15
+    },
+    {
+      "acceptors": 2e+18,
+      "donors": 1e+18,
+      "bias": 0.5,
+      "file": "na_2e18__nd_1e18__bias_p0.5.json.gz",
+      "status": "ok",
+      "current": 8.549675646467382e-08
+    },
+    {
+      "acceptors": 2e+18,
+      "donors": 1e+18,
+      "bias": 1.0,
+      "file": "na_2e18__nd_1e18__bias_p1.json.gz",
+      "status": "ok",
+      "current": 3.3266583824193043
+    },
+    {
+      "acceptors": 2e+18,
+      "donors": 2e+18,
+      "bias": -1.0,
+      "file": "na_2e18__nd_2e18__bias_m1.json.gz",
+      "status": "ok",
+      "current": -2.7185815449128665e-14
+    },
+    {
+      "acceptors": 2e+18,
+      "donors": 2e+18,
+      "bias": -0.5,
+      "file": "na_2e18__nd_2e18__bias_m0.5.json.gz",
+      "status": "ok",
+      "current": -5.025720465719925e-16
+    },
+    {
+      "acceptors": 2e+18,
+      "donors": 2e+18,
+      "bias": 0.0,
+      "file": "na_2e18__nd_2e18__bias_p0.json.gz",
+      "status": "ok",
+      "current": 1.3820201639695312e-15
+    },
+    {
+      "acceptors": 2e+18,
+      "donors": 2e+18,
+      "bias": 0.5,
+      "file": "na_2e18__nd_2e18__bias_p0.5.json.gz",
+      "status": "ok",
+      "current": 4.7827811676063766e-08
+    },
+    {
+      "acceptors": 2e+18,
+      "donors": 2e+18,
+      "bias": 1.0,
+      "file": "na_2e18__nd_2e18__bias_p1.json.gz",
+      "status": "ok",
+      "current": 3.2940642016195834
+    }
+  ]
+}

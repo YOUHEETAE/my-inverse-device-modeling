@@ -1,0 +1,426 @@
+{
+  "acceptor_dopings": [
+    1e+16,
+    1e+17,
+    1e+18
+  ],
+  "oxide_thicknesses_nm": [
+    5.0,
+    10.0,
+    20.0
+  ],
+  "gate_voltages": [
+    -2.0,
+    -1.0,
+    0.0,
+    1.0,
+    2.0
+  ],
+  "cases": [
+    {
+      "acceptor_doping": 1e+16,
+      "oxide_thickness_nm": 5.0,
+      "gate_voltage": -2.0,
+      "file": "na_1e16__tox_5nm__vg_m2.json.gz",
+      "status": "ok",
+      "regime": "Accumulation",
+      "gate_charge_c_per_cm2": -1.2066955739716782e-06
+    },
+    {
+      "acceptor_doping": 1e+16,
+      "oxide_thickness_nm": 5.0,
+      "gate_voltage": -1.0,
+      "file": "na_1e16__tox_5nm__vg_m1.json.gz",
+      "status": "ok",
+      "regime": "Accumulation",
+      "gate_charge_c_per_cm2": -5.437514150990412e-07
+    },
+    {
+      "acceptor_doping": 1e+16,
+      "oxide_thickness_nm": 5.0,
+      "gate_voltage": 0.0,
+      "file": "na_1e16__tox_5nm__vg_p0.json.gz",
+      "status": "ok",
+      "regime": "Flat-band",
+      "gate_charge_c_per_cm2": 8.814145108706639e-11
+    },
+    {
+      "acceptor_doping": 1e+16,
+      "oxide_thickness_nm": 5.0,
+      "gate_voltage": 1.0,
+      "file": "na_1e16__tox_5nm__vg_p1.json.gz",
+      "status": "ok",
+      "regime": "Inversion",
+      "gate_charge_c_per_cm2": 1.1123862542252192e-07
+    },
+    {
+      "acceptor_doping": 1e+16,
+      "oxide_thickness_nm": 5.0,
+      "gate_voltage": 2.0,
+      "file": "na_1e16__tox_5nm__vg_p2.json.gz",
+      "status": "ok",
+      "regime": "Inversion",
+      "gate_charge_c_per_cm2": 7.307817654405945e-07
+    },
+    {
+      "acceptor_doping": 1e+16,
+      "oxide_thickness_nm": 10.0,
+      "gate_voltage": -2.0,
+      "file": "na_1e16__tox_10nm__vg_m2.json.gz",
+      "status": "ok",
+      "regime": "Accumulation",
+      "gate_charge_c_per_cm2": -6.148770130277977e-07
+    },
+    {
+      "acceptor_doping": 1e+16,
+      "oxide_thickness_nm": 10.0,
+      "gate_voltage": -1.0,
+      "file": "na_1e16__tox_10nm__vg_m1.json.gz",
+      "status": "ok",
+      "regime": "Accumulation",
+      "gate_charge_c_per_cm2": -2.8335625306593053e-07
+    },
+    {
+      "acceptor_doping": 1e+16,
+      "oxide_thickness_nm": 10.0,
+      "gate_voltage": 0.0,
+      "file": "na_1e16__tox_10nm__vg_p0.json.gz",
+      "status": "ok",
+      "regime": "Flat-band",
+      "gate_charge_c_per_cm2": 6.982835502861598e-11
+    },
+    {
+      "acceptor_doping": 1e+16,
+      "oxide_thickness_nm": 10.0,
+      "gate_voltage": 1.0,
+      "file": "na_1e16__tox_10nm__vg_p1.json.gz",
+      "status": "ok",
+      "regime": "Inversion",
+      "gate_charge_c_per_cm2": 6.86701001315299e-08
+    },
+    {
+      "acceptor_doping": 1e+16,
+      "oxide_thickness_nm": 10.0,
+      "gate_voltage": 2.0,
+      "file": "na_1e16__tox_10nm__vg_p2.json.gz",
+      "status": "ok",
+      "regime": "Inversion",
+      "gate_charge_c_per_cm2": 3.7713226124003986e-07
+    },
+    {
+      "acceptor_doping": 1e+16,
+      "oxide_thickness_nm": 20.0,
+      "gate_voltage": -2.0,
+      "file": "na_1e16__tox_20nm__vg_m2.json.gz",
+      "status": "ok",
+      "regime": "Accumulation",
+      "gate_charge_c_per_cm2": -3.1336449133724006e-07
+    },
+    {
+      "acceptor_doping": 1e+16,
+      "oxide_thickness_nm": 20.0,
+      "gate_voltage": -1.0,
+      "file": "na_1e16__tox_20nm__vg_m1.json.gz",
+      "status": "ok",
+      "regime": "Accumulation",
+      "gate_charge_c_per_cm2": -1.4742580993819382e-07
+    },
+    {
+      "acceptor_doping": 1e+16,
+      "oxide_thickness_nm": 20.0,
+      "gate_voltage": 0.0,
+      "file": "na_1e16__tox_20nm__vg_p0.json.gz",
+      "status": "ok",
+      "regime": "Flat-band",
+      "gate_charge_c_per_cm2": 4.932127814085489e-11
+    },
+    {
+      "acceptor_doping": 1e+16,
+      "oxide_thickness_nm": 20.0,
+      "gate_voltage": 1.0,
+      "file": "na_1e16__tox_20nm__vg_p1.json.gz",
+      "status": "ok",
+      "regime": "Inversion",
+      "gate_charge_c_per_cm2": 4.794435877948122e-08
+    },
+    {
+      "acceptor_doping": 1e+16,
+      "oxide_thickness_nm": 20.0,
+      "gate_voltage": 2.0,
+      "file": "na_1e16__tox_20nm__vg_p2.json.gz",
+      "status": "ok",
+      "regime": "Inversion",
+      "gate_charge_c_per_cm2": 1.9468212448789243e-07
+    },
+    {
+      "acceptor_doping": 1e+17,
+      "oxide_thickness_nm": 5.0,
+      "gate_voltage": -2.0,
+      "file": "na_1e17__tox_5nm__vg_m2.json.gz",
+      "status": "ok",
+      "regime": "Accumulation",
+      "gate_charge_c_per_cm2": -1.2466371116720587e-06
+    },
+    {
+      "acceptor_doping": 1e+17,
+      "oxide_thickness_nm": 5.0,
+      "gate_voltage": -1.0,
+      "file": "na_1e17__tox_5nm__vg_m1.json.gz",
+      "status": "ok",
+      "regime": "Accumulation",
+      "gate_charge_c_per_cm2": -5.821938289685567e-07
+    },
+    {
+      "acceptor_doping": 1e+17,
+      "oxide_thickness_nm": 5.0,
+      "gate_voltage": 0.0,
+      "file": "na_1e17__tox_5nm__vg_p0.json.gz",
+      "status": "ok",
+      "regime": "Flat-band",
+      "gate_charge_c_per_cm2": 2.0746698155260924e-10
+    },
+    {
+      "acceptor_doping": 1e+17,
+      "oxide_thickness_nm": 5.0,
+      "gate_voltage": 1.0,
+      "file": "na_1e17__tox_5nm__vg_p1.json.gz",
+      "status": "ok",
+      "regime": "Inversion",
+      "gate_charge_c_per_cm2": 1.5400315934662102e-07
+    },
+    {
+      "acceptor_doping": 1e+17,
+      "oxide_thickness_nm": 5.0,
+      "gate_voltage": 2.0,
+      "file": "na_1e17__tox_5nm__vg_p2.json.gz",
+      "status": "ok",
+      "regime": "Inversion",
+      "gate_charge_c_per_cm2": 6.926259171189053e-07
+    },
+    {
+      "acceptor_doping": 1e+17,
+      "oxide_thickness_nm": 10.0,
+      "gate_voltage": -2.0,
+      "file": "na_1e17__tox_10nm__vg_m2.json.gz",
+      "status": "ok",
+      "regime": "Accumulation",
+      "gate_charge_c_per_cm2": -6.347564519737013e-07
+    },
+    {
+      "acceptor_doping": 1e+17,
+      "oxide_thickness_nm": 10.0,
+      "gate_voltage": -1.0,
+      "file": "na_1e17__tox_10nm__vg_m1.json.gz",
+      "status": "ok",
+      "regime": "Accumulation",
+      "gate_charge_c_per_cm2": -3.023717245429888e-07
+    },
+    {
+      "acceptor_doping": 1e+17,
+      "oxide_thickness_nm": 10.0,
+      "gate_voltage": 0.0,
+      "file": "na_1e17__tox_10nm__vg_p0.json.gz",
+      "status": "ok",
+      "regime": "Flat-band",
+      "gate_charge_c_per_cm2": 1.3563913375832242e-10
+    },
+    {
+      "acceptor_doping": 1e+17,
+      "oxide_thickness_nm": 10.0,
+      "gate_voltage": 1.0,
+      "file": "na_1e17__tox_10nm__vg_p1.json.gz",
+      "status": "ok",
+      "regime": "Inversion",
+      "gate_charge_c_per_cm2": 1.3533094655215873e-07
+    },
+    {
+      "acceptor_doping": 1e+17,
+      "oxide_thickness_nm": 10.0,
+      "gate_voltage": 2.0,
+      "file": "na_1e17__tox_10nm__vg_p2.json.gz",
+      "status": "ok",
+      "regime": "Inversion",
+      "gate_charge_c_per_cm2": 3.5955291240588923e-07
+    },
+    {
+      "acceptor_doping": 1e+17,
+      "oxide_thickness_nm": 20.0,
+      "gate_voltage": -2.0,
+      "file": "na_1e17__tox_20nm__vg_m2.json.gz",
+      "status": "ok",
+      "regime": "Accumulation",
+      "gate_charge_c_per_cm2": -3.2319257104330666e-07
+    },
+    {
+      "acceptor_doping": 1e+17,
+      "oxide_thickness_nm": 20.0,
+      "gate_voltage": -1.0,
+      "file": "na_1e17__tox_20nm__vg_m1.json.gz",
+      "status": "ok",
+      "regime": "Accumulation",
+      "gate_charge_c_per_cm2": -1.5663977076794976e-07
+    },
+    {
+      "acceptor_doping": 1e+17,
+      "oxide_thickness_nm": 20.0,
+      "gate_voltage": 0.0,
+      "file": "na_1e17__tox_20nm__vg_p0.json.gz",
+      "status": "ok",
+      "regime": "Flat-band",
+      "gate_charge_c_per_cm2": 8.013413607274192e-11
+    },
+    {
+      "acceptor_doping": 1e+17,
+      "oxide_thickness_nm": 20.0,
+      "gate_voltage": 1.0,
+      "file": "na_1e17__tox_20nm__vg_p1.json.gz",
+      "status": "ok",
+      "regime": "Depletion",
+      "gate_charge_c_per_cm2": 1.0624166105161201e-07
+    },
+    {
+      "acceptor_doping": 1e+17,
+      "oxide_thickness_nm": 20.0,
+      "gate_voltage": 2.0,
+      "file": "na_1e17__tox_20nm__vg_p2.json.gz",
+      "status": "ok",
+      "regime": "Inversion",
+      "gate_charge_c_per_cm2": 1.9053729554049495e-07
+    },
+    {
+      "acceptor_doping": 1e+18,
+      "oxide_thickness_nm": 5.0,
+      "gate_voltage": -2.0,
+      "file": "na_1e18__tox_5nm__vg_m2.json.gz",
+      "status": "ok",
+      "regime": "Accumulation",
+      "gate_charge_c_per_cm2": -1.2862326718707642e-06
+    },
+    {
+      "acceptor_doping": 1e+18,
+      "oxide_thickness_nm": 5.0,
+      "gate_voltage": -1.0,
+      "file": "na_1e18__tox_5nm__vg_m1.json.gz",
+      "status": "ok",
+      "regime": "Accumulation",
+      "gate_charge_c_per_cm2": -6.196312906681383e-07
+    },
+    {
+      "acceptor_doping": 1e+18,
+      "oxide_thickness_nm": 5.0,
+      "gate_voltage": 0.0,
+      "file": "na_1e18__tox_5nm__vg_p0.json.gz",
+      "status": "ok",
+      "regime": "Flat-band",
+      "gate_charge_c_per_cm2": 3.495319043393839e-10
+    },
+    {
+      "acceptor_doping": 1e+18,
+      "oxide_thickness_nm": 5.0,
+      "gate_voltage": 1.0,
+      "file": "na_1e18__tox_5nm__vg_p1.json.gz",
+      "status": "ok",
+      "regime": "Depletion",
+      "gate_charge_c_per_cm2": 3.7085895925789677e-07
+    },
+    {
+      "acceptor_doping": 1e+18,
+      "oxide_thickness_nm": 5.0,
+      "gate_voltage": 2.0,
+      "file": "na_1e18__tox_5nm__vg_p2.json.gz",
+      "status": "ok",
+      "regime": "Inversion",
+      "gate_charge_c_per_cm2": 6.725681620462511e-07
+    },
+    {
+      "acceptor_doping": 1e+18,
+      "oxide_thickness_nm": 10.0,
+      "gate_voltage": -2.0,
+      "file": "na_1e18__tox_10nm__vg_m2.json.gz",
+      "status": "ok",
+      "regime": "Accumulation",
+      "gate_charge_c_per_cm2": -6.540932691705599e-07
+    },
+    {
+      "acceptor_doping": 1e+18,
+      "oxide_thickness_nm": 10.0,
+      "gate_voltage": -1.0,
+      "file": "na_1e18__tox_10nm__vg_m1.json.gz",
+      "status": "ok",
+      "regime": "Accumulation",
+      "gate_charge_c_per_cm2": -3.2000712181731125e-07
+    },
+    {
+      "acceptor_doping": 1e+18,
+      "oxide_thickness_nm": 10.0,
+      "gate_voltage": 0.0,
+      "file": "na_1e18__tox_10nm__vg_p0.json.gz",
+      "status": "ok",
+      "regime": "Flat-band",
+      "gate_charge_c_per_cm2": 1.9625936698570953e-10
+    },
+    {
+      "acceptor_doping": 1e+18,
+      "oxide_thickness_nm": 10.0,
+      "gate_voltage": 1.0,
+      "file": "na_1e18__tox_10nm__vg_p1.json.gz",
+      "status": "ok",
+      "regime": "Depletion",
+      "gate_charge_c_per_cm2": 2.6141022488581846e-07
+    },
+    {
+      "acceptor_doping": 1e+18,
+      "oxide_thickness_nm": 10.0,
+      "gate_voltage": 2.0,
+      "file": "na_1e18__tox_10nm__vg_p2.json.gz",
+      "status": "ok",
+      "regime": "Inversion",
+      "gate_charge_c_per_cm2": 4.546423494864252e-07
+    },
+    {
+      "acceptor_doping": 1e+18,
+      "oxide_thickness_nm": 20.0,
+      "gate_voltage": -2.0,
+      "file": "na_1e18__tox_20nm__vg_m2.json.gz",
+      "status": "ok",
+      "regime": "Accumulation",
+      "gate_charge_c_per_cm2": -3.3230385800165674e-07
+    },
+    {
+      "acceptor_doping": 1e+18,
+      "oxide_thickness_nm": 20.0,
+      "gate_voltage": -1.0,
+      "file": "na_1e18__tox_20nm__vg_m1.json.gz",
+      "status": "ok",
+      "regime": "Accumulation",
+      "gate_charge_c_per_cm2": -1.6436968214388252e-07
+    },
+    {
+      "acceptor_doping": 1e+18,
+      "oxide_thickness_nm": 20.0,
+      "gate_voltage": 0.0,
+      "file": "na_1e18__tox_20nm__vg_p0.json.gz",
+      "status": "ok",
+      "regime": "Flat-band",
+      "gate_charge_c_per_cm2": 1.0455538772183591e-10
+    },
+    {
+      "acceptor_doping": 1e+18,
+      "oxide_thickness_nm": 20.0,
+      "gate_voltage": 1.0,
+      "file": "na_1e18__tox_20nm__vg_p1.json.gz",
+      "status": "ok",
+      "regime": "Depletion",
+      "gate_charge_c_per_cm2": 1.55100615139723e-07
+    },
+    {
+      "acceptor_doping": 1e+18,
+      "oxide_thickness_nm": 20.0,
+      "gate_voltage": 2.0,
+      "file": "na_1e18__tox_20nm__vg_p2.json.gz",
+      "status": "ok",
+      "regime": "Depletion",
+      "gate_charge_c_per_cm2": 2.9350307046105707e-07
+    }
+  ]
+}
