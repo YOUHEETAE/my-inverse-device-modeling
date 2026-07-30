@@ -21,7 +21,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { label: "Home", path: "/", icon: Activity, enabled: true },
   { label: "Guide", path: "/guide", icon: BookOpen, enabled: true },
-  { label: "Theory", path: "/theory", icon: Sigma, enabled: false },
+  { label: "Theory", path: "/theory", icon: Sigma, enabled: true },
   { label: "Case Study", path: "/case-study", icon: FlaskConical, enabled: true },
   { label: "I-V Curve", path: "/curves", icon: BarChart3, enabled: true },
   { label: "Field Map", path: "/fields", icon: Layers, enabled: true },
