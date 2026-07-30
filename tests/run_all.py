@@ -22,6 +22,18 @@ MODULES = (
     "tests.test_field_structured_renderer",
     "tests.test_language_polish",
     "tests.test_gui_explanation_flow",
+    "tests.test_learning_foundation",
+    "tests.test_learning_analysis_adapter",
+    "tests.test_learning_experiment_runner",
+    "tests.test_learning_llm_service",
+    "tests.test_case_study_ui_contract",
+    "tests.test_learning_end_to_end",
+    "tests.test_tutor_question_router",
+    "tests.test_theory_knowledge",
+    "tests.test_case_study_scenarios",
+    "tests.test_question_intent_pipeline",
+    "tests.test_dialogue_knowledge_layers",
+    "tests.test_tutor_quality_audit",
 )
 
 

@@ -1,5 +1,6 @@
 import json
 import os
+import urllib.error
 
 from backend.explanation.prompts import SYSTEM_PROMPT, build_prompt
 from backend.explanation.providers.config import (
@@ -32,6 +33,24 @@ def test_external_provider_common_response_and_factory():
     assert isinstance(provider, ExternalLLMProvider)
     assert provider.generate("system", "user", {}) == VALID
     del os.environ["TEST_LLM_KEY"]
+
+
+def test_external_provider_preserves_safe_http_status_code():
+    os.environ["TEST_LLM_KEY"] = "secret"
+
+    def rejected(url, _headers, _body, _timeout):
+        raise urllib.error.HTTPError(url, 401, "Unauthorized", None, None)
+
+    try:
+        provider = create_explanation_provider(settings(), rejected)
+        try:
+            provider.generate("system", "user", {})
+        except RuntimeError as error:
+            assert str(error) == "provider_http_401"
+        else:
+            raise AssertionError("HTTP authentication failure was hidden")
+    finally:
+        del os.environ["TEST_LLM_KEY"]
 
 
 def test_external_environment_uses_safe_groq_defaults():

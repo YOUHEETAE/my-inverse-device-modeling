@@ -1,0 +1,262 @@
+{
+  "schema_version": "1.0",
+  "knowledge_id": "semiconductor_theory_core",
+  "concepts": [
+    {
+      "concept_id": "channel_length",
+      "title": "Channel length",
+      "summary": "채널 길이는 Source와 Drain 사이에서 Gate가 전하를 제어하는 유효 거리이다.",
+      "principles": [
+        "채널이 짧아지면 이동 거리가 줄어 구동 전류가 증가할 수 있지만 Drain 전계의 채널 침투도 커질 수 있다."
+      ],
+      "general_effects": [
+        "채널 길이 감소는 Ion 증가와 SCE 악화를 동시에 만들 수 있으므로 성능과 누설을 함께 비교해야 한다."
+      ],
+      "related_concepts": ["short_channel_effect", "on_current", "off_current"],
+      "case_connection": "현재 Case에서 직접 변경한 변수이다.",
+      "caveats": ["채널 길이만의 영향이라고 말하려면 다른 소자 조건이 고정돼야 한다."]
+    },
+    {
+      "concept_id": "short_channel_effect",
+      "title": "Short-channel effect",
+      "summary": "Short-channel effect는 채널이 짧아지면서 Gate 이외 단자의 전위가 채널 장벽에 더 강하게 영향을 주는 현상군이다.",
+      "principles": [
+        "Drain 전계가 Source 쪽 장벽까지 영향을 주면 Gate의 채널 제어력이 상대적으로 약해진다."
+      ],
+      "general_effects": [
+        "SCE가 강해지면 Vth 저하, DIBL 증가, SS 악화와 Ioff 증가가 함께 나타날 수 있다."
+      ],
+      "related_concepts": ["source_barrier", "dibl", "threshold_voltage", "subthreshold_swing"],
+      "case_connection": "700 nm와 300 nm 조건의 차이를 해석하는 중심 개념이다.",
+      "caveats": ["한 지표의 변화만으로 모든 SCE 메커니즘을 단정하지 않는다."]
+    },
+    {
+      "concept_id": "threshold_voltage",
+      "title": "Threshold voltage",
+      "summary": "Vth는 Gate가 채널을 충분히 형성하기 시작하는 전압을 나타내는 추출 지표이다.",
+      "principles": [
+        "짧은 채널에서는 Drain과 Source의 공핍 전하 및 전계가 채널 장벽 제어에 참여해 필요한 Gate 전압이 낮아질 수 있다."
+      ],
+      "general_effects": [
+        "SCE에 의한 threshold lowering은 Vth 감소와 off-state 전류 증가를 함께 유발할 수 있다."
+      ],
+      "related_concepts": ["short_channel_effect", "dibl", "source_barrier"],
+      "case_connection": "현재 결과에서 Drain bias별 Vth 변화를 비교할 수 있다.",
+      "caveats": ["Vth 값은 사용한 추출법과 Drain bias에 의존한다."]
+    },
+    {
+      "concept_id": "dibl",
+      "title": "Drain-induced barrier lowering",
+      "summary": "DIBL은 Drain bias 증가가 Source 쪽 주입 장벽을 낮추어 Vth를 이동시키는 정도를 나타낸다.",
+      "principles": [
+        "Drain 전위가 Source 장벽에 더 강하게 결합할수록 Drain bias에 따른 Vth 감소가 커진다."
+      ],
+      "general_effects": [
+        "DIBL 증가는 Gate의 정전기적 제어 약화와 off-state 누설 증가를 시사할 수 있다."
+      ],
+      "related_concepts": ["source_barrier", "threshold_voltage", "short_channel_effect", "potential"],
+      "case_connection": "현재 Case에서 채널 길이 감소에 따른 SCE 강도를 비교하는 핵심 지표이다.",
+      "caveats": ["DIBL은 정해진 두 Drain bias에서 추출된 Vth에 의존한다."]
+    },
+    {
+      "concept_id": "subthreshold_swing",
+      "title": "Subthreshold swing",
+      "summary": "SS는 subthreshold 영역에서 Drain 전류를 한 decade 변화시키는 데 필요한 Gate 전압이다.",
+      "principles": [
+        "SS가 클수록 Gate 전압으로 off-state 전류를 급격하게 차단하기 어렵다는 뜻이다."
+      ],
+      "general_effects": [
+        "전기적 제어가 약해지거나 단채널 영향이 커지면 SS가 증가할 수 있다."
+      ],
+      "related_concepts": ["short_channel_effect", "off_current", "threshold_voltage"],
+      "case_connection": "현재 Case에서 700 nm와 300 nm의 subthreshold 제어력을 비교한다.",
+      "caveats": ["SS는 온도, 계면 상태, 추출 구간의 영향도 받는다."]
+    },
+    {
+      "concept_id": "on_current",
+      "title": "On current",
+      "summary": "Ion은 소자가 켜진 조건의 구동 전류를 나타낸다.",
+      "principles": [
+        "채널 저항이나 유효 이동 경로가 줄면 Ion이 증가할 수 있다."
+      ],
+      "general_effects": [
+        "Ion 증가는 구동 성능에 유리할 수 있지만 Ioff와 SCE를 함께 확인해야 한다."
+      ],
+      "related_concepts": ["channel_length", "on_resistance", "off_current"],
+      "case_connection": "현재 Case의 성능 측면 변화를 보여주는 지표이다.",
+      "caveats": ["Ion 하나만으로 소자 전체 성능 개선을 판단하지 않는다."]
+    },
+    {
+      "concept_id": "off_current",
+      "title": "Off current",
+      "summary": "Ioff는 Gate가 꺼진 조건에서 흐르는 누설 전류를 나타낸다.",
+      "principles": [
+        "Source 장벽이 낮아지거나 subthreshold 제어가 약해지면 Ioff가 증가할 수 있다."
+      ],
+      "general_effects": [
+        "Ioff 증가는 대기 전력과 Ion/Ioff 비율에 불리하다."
+      ],
+      "related_concepts": ["source_barrier", "dibl", "subthreshold_swing"],
+      "case_connection": "현재 Case에서 Ion 증가와 함께 확인해야 하는 대표적인 trade-off이다.",
+      "caveats": ["Ioff 정의에 사용한 Gate와 Drain bias를 함께 확인해야 한다."]
+    },
+    {
+      "concept_id": "source_barrier",
+      "title": "Source-side barrier",
+      "summary": "Source-side barrier는 Source의 캐리어가 채널로 주입될 때 넘어야 하는 전위 장벽이다.",
+      "principles": [
+        "Gate가 장벽을 주로 제어해야 하지만 짧은 채널에서는 Drain 전위도 장벽에 영향을 줄 수 있다."
+      ],
+      "general_effects": [
+        "장벽이 낮아지면 같은 Gate 전압에서도 캐리어 주입과 누설 전류가 증가할 수 있다."
+      ],
+      "related_concepts": ["dibl", "potential", "electric_field"],
+      "case_connection": "SCE, DIBL, Ioff를 물리적으로 연결하는 개념이다.",
+      "caveats": ["Field Map의 색 변화만으로 장벽 높이를 정량화하지 않는다."]
+    },
+    {
+      "concept_id": "potential",
+      "title": "Electrostatic potential",
+      "summary": "Potential은 소자 내부의 정전기적 에너지 지형과 단자 전위의 침투 범위를 보여준다.",
+      "principles": [
+        "Drain 쪽 전위 영향이 채널을 따라 Source 방향으로 더 깊게 확장되면 Gate의 장벽 제어가 약해질 수 있다."
+      ],
+      "general_effects": [
+        "Potential Map은 DIBL의 공간적 원인을 해석하는 데 사용할 수 있다."
+      ],
+      "related_concepts": ["source_barrier", "dibl", "electric_field"],
+      "case_connection": "현재 Case에서는 Channel과 Drain-side 영역의 공간적 차이를 비교한다.",
+      "caveats": ["서로 다른 색상 범위를 사용한 그림은 색만으로 직접 비교하지 않는다."]
+    },
+    {
+      "concept_id": "electric_field",
+      "title": "Electric field",
+      "summary": "Electric Field는 Potential의 공간적 변화율로, 전위가 급격히 변하는 위치와 방향을 나타낸다.",
+      "principles": [
+        "Drain-side 전계 집중과 채널 방향 침투는 짧은 채널의 정전기적 결합을 해석하는 단서이다."
+      ],
+      "general_effects": [
+        "전계 분포는 Potential과 함께 봐야 장벽 제어와의 관계를 해석할 수 있다."
+      ],
+      "related_concepts": ["potential", "source_barrier", "dibl"],
+      "case_connection": "현재 Case의 Drain 영향 범위를 공간적으로 확인하는 출력이다.",
+      "caveats": ["전계 최대값 하나만으로 전체 소자 거동을 단정하지 않는다."]
+    },
+    {
+      "concept_id": "pn_junction",
+      "title": "PN junction",
+      "summary": "PN 접합은 p형과 n형 영역이 만나는 구조로, 확산과 전기장에 의해 공핍영역과 내장전위가 형성된다.",
+      "principles": [
+        "접합 거동은 도핑, 바이어스, 공핍 폭, 양쪽 중성영역의 물리적 크기에 따라 달라진다."
+      ],
+      "general_effects": [
+        "인접한 접합의 공핍영역이 가까워지면 전기적 상호작용과 punch-through 가능성을 검토해야 한다."
+      ],
+      "related_concepts": ["depletion_region", "punch_through"],
+      "case_connection": "현재 MOSFET Case와 직접 같은 실험은 아니지만 공핍영역과 전계 결합이라는 공통 원리가 있다.",
+      "caveats": ["접합 길이라는 표현은 중성영역 길이와 공핍 폭 중 무엇을 뜻하는지 구분해야 한다."]
+    },
+    {
+      "concept_id": "depletion_region",
+      "title": "Depletion region",
+      "summary": "공핍영역은 이동 캐리어가 줄고 이온화된 도핑 전하가 남아 전기장을 형성하는 영역이다.",
+      "principles": [
+        "공핍 폭은 도핑 농도와 인가 바이어스에 따라 달라진다."
+      ],
+      "general_effects": [
+        "소자 물리적 길이가 공핍 폭과 비슷해지면 인접 경계나 다른 접합의 영향을 무시하기 어렵다."
+      ],
+      "related_concepts": ["pn_junction", "punch_through", "body_doping"],
+      "case_connection": "MOSFET의 Source/Drain 접합과 채널 정전기에도 관련된다.",
+      "caveats": ["공핍 폭과 제작된 영역의 물리적 길이는 서로 다른 양이다."]
+    },
+    {
+      "concept_id": "punch_through",
+      "title": "Punch-through",
+      "summary": "Punch-through는 Source와 Drain 쪽 공핍영역의 상호작용으로 장벽 제어가 크게 약해지는 누설 메커니즘이다.",
+      "principles": [
+        "접합 간 유효 거리가 짧고 공핍영역이 넓을수록 발생 가능성이 커질 수 있다."
+      ],
+      "general_effects": [
+        "Punch-through가 나타나면 Gate가 충분히 꺼져 있어도 Drain 전류가 크게 증가할 수 있다."
+      ],
+      "related_concepts": ["depletion_region", "short_channel_effect", "off_current"],
+      "case_connection": "현재 Case의 일반적인 단채널 누설 개념과 관련되지만 현재 결과가 punch-through를 직접 입증하지는 않는다.",
+      "caveats": ["DIBL 증가만으로 punch-through 발생을 단정하지 않는다."]
+    },
+    {
+      "concept_id": "body_doping",
+      "title": "Body doping",
+      "summary": "Body doping은 채널 아래 기판의 전하 분포와 공핍 폭, Vth에 영향을 준다.",
+      "principles": [
+        "Body 도핑을 높이면 일반적으로 공핍 폭이 줄어 짧은 채널의 전기적 결합을 억제하는 데 도움될 수 있다."
+      ],
+      "general_effects": [
+        "Body 도핑 증가는 DIBL과 punch-through 억제에 유리할 수 있지만 Vth, 이동도, 접합 커패시턴스의 trade-off를 만들 수 있다."
+      ],
+      "related_concepts": ["depletion_region", "dibl", "threshold_voltage"],
+      "case_connection": "현재 Case에서는 고정된 변수이므로 실제 영향 확인에는 Body doping만 바꾼 추가 실험이 필요하다.",
+      "caveats": ["영향 방향과 크기는 구조, 도핑 프로파일, 바이어스에 따라 달라진다."]
+    },
+    {
+      "concept_id": "oxide_thickness",
+      "title": "Oxide thickness",
+      "summary": "Gate oxide 두께는 Gate와 채널 사이의 정전기적 결합 세기를 결정한다.",
+      "principles": [
+        "산화막이 얇아지면 일반적으로 Gate의 채널 제어가 강해질 수 있다."
+      ],
+      "general_effects": [
+        "얇은 산화막은 SCE 억제와 transconductance에 유리할 수 있지만 산화막 전계와 누설 신뢰성을 함께 고려해야 한다."
+      ],
+      "related_concepts": ["short_channel_effect", "transconductance", "electric_field"],
+      "case_connection": "현재 Case에서는 고정된 변수이다.",
+      "caveats": ["현재 Channel Length 비교만으로 oxide thickness 효과를 분리할 수 없다."]
+    },
+    {
+      "concept_id": "ldd",
+      "title": "Lightly doped drain",
+      "summary": "LDD는 Channel과 고농도 Drain 사이에 낮은 도핑 영역을 두어 Drain-side 전계를 완화하는 구조이다.",
+      "principles": [
+        "LDD는 전계 집중을 줄일 수 있지만 추가 직렬 저항을 만든다."
+      ],
+      "general_effects": [
+        "LDD 설계는 신뢰성과 hot-carrier 억제 대 구동 전류 및 저항의 trade-off를 가진다."
+      ],
+      "related_concepts": ["electric_field", "on_resistance", "on_current"],
+      "case_connection": "현재 Case에서는 고정된 변수이다.",
+      "caveats": ["현재 결과만으로 LDD 효과를 분리할 수 없다."]
+    },
+    {
+      "concept_id": "transconductance",
+      "title": "Transconductance",
+      "summary": "gm은 Gate 전압 변화가 Drain 전류를 얼마나 효과적으로 바꾸는지를 나타낸다.",
+      "principles": [
+        "Gate 제어, 이동도, 소자 형상과 직렬 저항이 gm에 영향을 준다."
+      ],
+      "general_effects": ["gm 증가는 입력 전압에 대한 구동 응답 증가를 뜻할 수 있다."],
+      "related_concepts": ["on_current", "oxide_thickness"],
+      "case_connection": "현재 Curve 결과에서 보조 성능 지표로 비교할 수 있다.",
+      "caveats": ["gm 하나만으로 누설이나 정전기적 제어를 평가하지 않는다."]
+    },
+    {
+      "concept_id": "output_conductance",
+      "title": "Output conductance",
+      "summary": "gds는 Drain 전압 변화에 대한 Drain 전류의 민감도를 나타낸다.",
+      "principles": ["포화 영역의 채널 길이 변조와 Drain 전계 영향이 gds에 반영될 수 있다."],
+      "general_effects": ["gds 증가는 포화 영역의 출력 저항 감소를 의미할 수 있다."],
+      "related_concepts": ["channel_length", "short_channel_effect"],
+      "case_connection": "현재 Curve에서 포화 특성 변화를 보조적으로 확인한다.",
+      "caveats": ["추출 bias와 곡선 품질을 함께 확인해야 한다."]
+    },
+    {
+      "concept_id": "on_resistance",
+      "title": "On resistance",
+      "summary": "Ron은 켜진 상태에서 전류 경로가 보이는 유효 저항이다.",
+      "principles": ["채널 길이, 이동도, 접촉 및 Source/Drain 직렬 저항이 Ron에 영향을 준다."],
+      "general_effects": ["Ron 감소는 같은 전압에서 더 큰 구동 전류와 연결될 수 있다."],
+      "related_concepts": ["channel_length", "on_current", "ldd"],
+      "case_connection": "현재 Case의 Ion 변화와 함께 볼 수 있는 저항 지표이다.",
+      "caveats": ["Ron 변화가 채널 저항 하나만의 변화라고 단정하지 않는다."]
+    }
+  ]
+}

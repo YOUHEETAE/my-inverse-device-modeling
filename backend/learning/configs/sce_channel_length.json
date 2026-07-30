@@ -1,0 +1,162 @@
+{
+  "schema_version": "1.0",
+  "topic_id": "sce_channel_length",
+  "title": "Channel Length와 Short Channel Effect",
+  "description": "채널 길이 감소가 Ion, Ioff, Vth, DIBL에 미치는 영향을 학습한다.",
+  "learning_objectives": [
+    "채널 길이 감소에 따른 Ion 변화를 설명한다.",
+    "짧은 채널에서 Ioff와 DIBL이 증가할 수 있는 원인을 설명한다.",
+    "I–V Curve와 Field Map을 연결해 Short Channel Effect를 해석한다."
+  ],
+  "required_outputs": [
+    "idvg",
+    "electric_field",
+    "potential"
+  ],
+  "expected_concepts": [
+    "ion_can_increase",
+    "ioff_increases",
+    "vth_decreases",
+    "dibl_increases",
+    "ss_increases",
+    "drain_field_affects_source_barrier"
+  ],
+  "common_misconceptions": [
+    "shorter_channel_improves_everything",
+    "shorter_path_always_reduces_off_current",
+    "dibl_is_only_a_curve_shift_without_physical_cause"
+  ],
+  "theory_concepts": [
+    "channel_length",
+    "short_channel_effect",
+    "threshold_voltage",
+    "dibl",
+    "subthreshold_swing",
+    "on_current",
+    "off_current",
+    "source_barrier",
+    "potential",
+    "electric_field"
+  ],
+  "experiment": {
+    "baseline": {
+      "L": 700,
+      "T": 10,
+      "B": 1e16,
+      "SD": 1e20,
+      "LDD": 1e18
+    },
+    "comparison": {
+      "L": 300,
+      "T": 10,
+      "B": 1e16,
+      "SD": 1e20,
+      "LDD": 1e18
+    }
+  },
+  "prediction_questions": [
+    {
+      "question_id": "sce_pred_ion_ioff",
+      "type": "multi_select_with_reason",
+      "prompt": "채널 길이가 700 nm에서 300 nm로 감소하면 Ion과 Ioff는 어떻게 변할까요?",
+      "options": [
+        "Ion 증가",
+        "Ion 감소",
+        "Ioff 증가",
+        "Ioff 감소",
+        "큰 변화 없음"
+      ],
+      "reason_required": true,
+      "correct_options": [
+        "Ion 증가",
+        "Ioff 증가"
+      ],
+      "concepts_by_option": {
+        "Ion 증가": [
+          "ion_can_increase"
+        ],
+        "Ioff 증가": [
+          "ioff_increases"
+        ]
+      },
+      "misconceptions_by_option": {
+        "Ioff 감소": [
+          "shorter_path_always_reduces_off_current"
+        ],
+        "큰 변화 없음": [
+          "shorter_channel_improves_everything"
+        ]
+      }
+    }
+  ],
+  "observation_questions": [
+    {
+      "question_id": "sce_obs_subthreshold",
+      "type": "single_select",
+      "prompt": "두 Id–Vg Curve 중 subthreshold 전류가 더 먼저 증가하는 조건은 무엇인가요?",
+      "options": [
+        "700 nm",
+        "300 nm",
+        "차이를 확인하기 어렵다"
+      ],
+      "correct_options": [
+        "300 nm"
+      ],
+      "concepts_by_option": {
+        "300 nm": [
+          "ioff_increases"
+        ]
+      }
+    },
+    {
+      "question_id": "sce_obs_tradeoff",
+      "type": "multi_select_with_reason",
+      "prompt": "Ion 변화와 함께 악화된 전기적 특성을 선택하고 관찰 근거를 적어보세요.",
+      "options": [
+        "Ioff",
+        "DIBL",
+        "SS",
+        "Ron",
+        "악화된 특성 없음"
+      ],
+      "reason_required": true,
+      "correct_options": [
+        "Ioff",
+        "DIBL",
+        "SS"
+      ],
+      "concepts_by_option": {
+        "Ioff": [
+          "ioff_increases"
+        ],
+        "DIBL": [
+          "dibl_increases",
+          "drain_field_affects_source_barrier"
+        ],
+        "SS": [
+          "ss_increases"
+        ]
+      },
+      "misconceptions_by_option": {
+        "악화된 특성 없음": [
+          "shorter_channel_improves_everything"
+        ]
+      }
+    }
+  ],
+  "allowed_next_actions": [
+    {
+      "action_id": "observe_potential_map",
+      "description": "Potential Map에서 Drain 영향 범위를 확인한다."
+    },
+    {
+      "action_id": "retry_sce_prediction",
+      "description": "같은 결과를 보고 핵심 변화 방향을 다시 답한다."
+    },
+    {
+      "action_id": "review_sce_theory",
+      "description": "Theory의 Short Channel Effect 항목을 복습한다."
+    }
+  ],
+  "theory_reference": "Theory > MOSFET Basics > Short-channel effect와 DIBL"
+}

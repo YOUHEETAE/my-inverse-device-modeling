@@ -49,8 +49,12 @@ class ExternalLLMProvider:
             except (TimeoutError, socket.timeout) as error:
                 last_error = TimeoutError("provider_timeout")
             except urllib.error.HTTPError as error:
-                if error.code not in {429, 500, 502, 503, 504}: raise RuntimeError("provider_error") from error
-                last_error = RuntimeError("provider_error")
+                code = int(error.code)
+                if code not in {429, 500, 502, 503, 504}:
+                    raise RuntimeError(f"provider_http_{code}") from error
+                last_error = RuntimeError(f"provider_http_{code}")
+            except urllib.error.URLError as error:
+                raise RuntimeError("provider_network_error") from error
             except (KeyError, IndexError, TypeError, ValueError, json.JSONDecodeError) as error:
                 raise ValueError("invalid_provider_response") from error
             if attempt < self.settings.max_retries: time.sleep(min(.25 * (attempt + 1), .5))

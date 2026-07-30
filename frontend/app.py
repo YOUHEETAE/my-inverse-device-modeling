@@ -41,6 +41,10 @@ from frontend.visualization.field_rendering import (
 )
 from backend.explanation import ExplanationService, MockExplanationProvider
 from backend.explanation.providers import ProviderSettings, create_explanation_provider
+from backend.learning.experiment_runner import LearningExperimentRunner
+from backend.learning.schemas import LearningStep
+from backend.learning.session_repository import InMemorySessionRepository, JsonSessionRepository
+from frontend.visualization.case_study import CaseStudyPanel
 from frontend.visualization.curve_rendering import render_curve_figure
 from frontend.visualization.explanation_panel import EXPLANATION_PROVIDERS, ExplanationPanelMixin
 from frontend.visualization.guide_panel import build_guide_panel
@@ -71,6 +75,16 @@ def _root() -> Path:
     return Path(__file__).resolve().parents[1]
 
 
+def create_case_study_provider():
+    """Create the Case tutor's dedicated Groq provider, independent of the UI selector."""
+    try:
+        return create_explanation_provider(
+            ProviderSettings.from_environment("external_llm")
+        )
+    except RuntimeError:
+        return None
+
+
 class IntegratedModelApp(ExplanationPanelMixin):
     def __init__(
         self,
@@ -78,6 +92,9 @@ class IntegratedModelApp(ExplanationPanelMixin):
         curve_predictor: FinalCurvePredictor,
         field_predictor: FieldMapPredictor,
         geo_template: Path,
+        *,
+        enable_learning_persistence: bool = True,
+        auto_generate: bool = True,
     ) -> None:
         self.window = window; self.curve_predictor = curve_predictor
         self.field_predictor = field_predictor; self.geo_template = geo_template
@@ -139,11 +156,34 @@ class IntegratedModelApp(ExplanationPanelMixin):
         self.notebook = ttk.Notebook(window, style="Main.TNotebook"); self.notebook.pack(fill=tk.BOTH, expand=True, padx=8, pady=(0, 8))
         self.curve_tab = ttk.Frame(self.notebook); self.field_tab = ttk.Frame(self.notebook)
         self.guide_tab = ttk.Frame(self.notebook); self.theory_tab = ttk.Frame(self.notebook)
+        self.case_study_tab = ttk.Frame(self.notebook)
         self.notebook.add(self.guide_tab, text="1. Guide")
         self.notebook.add(self.theory_tab, text="2. Theory")
+        self.notebook.add(self.case_study_tab, text="3. Case Study")
         self.notebook.add(self.curve_tab, text="I–V Curve"); self.notebook.add(self.field_tab, text="Structure / Field Map")
         self._build_curve_tab(); self._build_field_tab(); self._build_guide_tabs()
-        window.after(60, self.generate_all)
+        case_study_provider = create_case_study_provider()
+        learning_repository = (
+            JsonSessionRepository(REPO_ROOT / "runtime" / "learning_sessions")
+            if enable_learning_persistence
+            else InMemorySessionRepository()
+        )
+        learning_runner = LearningExperimentRunner(
+            curve_predictor=self.curve_predictor,
+            field_predictor=self.field_predictor,
+            geo_template=self.geo_template,
+        )
+        self.case_study_panel = CaseStudyPanel(
+            self.case_study_tab,
+            window=self.window,
+            runner=learning_runner,
+            repository=learning_repository,
+            provider=case_study_provider,
+            on_open_theory=lambda: self.notebook.select(self.theory_tab),
+        )
+        self.case_study_panel.pack(fill=tk.BOTH, expand=True)
+        if auto_generate:
+            window.after(60, self.generate_all)
 
     def _provider_changed(self, _event=None) -> None:
         requested = self.explanation_provider_var.get()
@@ -464,14 +504,127 @@ def main() -> int:
     args = _parse_args(); curve_predictor = FinalCurvePredictor(args.curve_model_dir.resolve()); field_predictor = FieldMapPredictor(args.field_model_dir.resolve())
     if args.ui_smoke_test:
         window = tk.Tk(); window.withdraw()
-        app = IntegratedModelApp(window, curve_predictor, field_predictor, args.geo_template.resolve())
+
+        def descendants(widget):
+            for child in widget.winfo_children():
+                yield child
+                yield from descendants(child)
+
+        app = IntegratedModelApp(
+            window,
+            curve_predictor,
+            field_predictor,
+            args.geo_template.resolve(),
+            enable_learning_persistence=False,
+            auto_generate=False,
+        )
         window.update_idletasks()
+        original_session_id = app.case_study_panel.session.session_id
+        app.case_study_panel._new_session()
+        new_session_id = app.case_study_panel.session.session_id
+        original_label = next(
+            label
+            for label, session_id in app.case_study_panel._session_choice_ids.items()
+            if session_id == original_session_id
+        )
+        app.case_study_panel.session_choice_var.set(original_label)
+        app.case_study_panel._resume_selected_session()
+        session_switch_ok = (
+            new_session_id != original_session_id
+            and app.case_study_panel.session.session_id == original_session_id
+            and len(app.case_study_panel.session_choice_box.cget("values")) == 2
+        )
+        app.case_study_panel.session.current_step = LearningStep.RESULT_READY
+        app.case_study_panel.render()
+        window.update_idletasks()
+        result_notebook = next(
+            (
+                widget
+                for widget in descendants(app.case_study_panel.body)
+                if isinstance(widget, ttk.Notebook)
+                and tuple(
+                    widget.tab(tab_id, "text") for tab_id in widget.tabs()
+                ) == ("I–V Curve", "Field Map", "AI 자유 질문")
+            ),
+            None,
+        )
+        fixed_parameters = any(
+            isinstance(widget, ttk.LabelFrame)
+            and str(widget.cget("text")).startswith("전기적 파라미터")
+            for widget in descendants(app.case_study_panel.body)
+        )
+        if result_notebook is not None:
+            result_notebook.select(result_notebook.tabs()[-1])
+            window.update()
+        app.case_study_panel.render()
+        window.update_idletasks()
+        restored_result_notebook = next(
+            (
+                widget
+                for widget in descendants(app.case_study_panel.body)
+                if isinstance(widget, ttk.Notebook)
+                and tuple(
+                    widget.tab(tab_id, "text") for tab_id in widget.tabs()
+                ) == ("I–V Curve", "Field Map", "AI 자유 질문")
+            ),
+            None,
+        )
+        result_tab_preserved = (
+            restored_result_notebook is not None
+            and restored_result_notebook.tab(
+                restored_result_notebook.select(),
+                "text",
+            ) == "AI 자유 질문"
+        )
+        app.case_study_panel.session.current_step = LearningStep.SESSION_COMPLETE
+        app.case_study_panel.render()
+        window.update_idletasks()
+        completion_notebook = next(
+            (
+                widget
+                for widget in app.case_study_panel.body.winfo_children()
+                if isinstance(widget, ttk.Notebook)
+            ),
+            None,
+        )
+        completion_tabs = (
+            tuple(
+                completion_notebook.tab(tab_id, "text")
+                for tab_id in completion_notebook.tabs()
+            )
+            if completion_notebook is not None
+            else ()
+        )
         checks = {
             "provider_visible": app.provider_box.winfo_reqwidth() > 0,
             "provider_choices": tuple(app.provider_box.cget("values")) == EXPLANATION_PROVIDERS,
             "curve_horizontal_scroll": app.electrical_hscroll.winfo_manager() == "pack",
             "curve_prompt_button": any(widget.cget("text") == "Preview LLM Prompt" for widget in app.explanation_buttons["curve"].master.winfo_children()),
             "field_prompt_button": any(widget.cget("text") == "Preview LLM Prompt" for widget in app.explanation_buttons["field"].master.winfo_children()),
+            "case_study_tab": "3. Case Study" in tuple(app.notebook.tab(tab_id, "text") for tab_id in app.notebook.tabs()),
+            "case_study_panel": app.case_study_panel.winfo_reqwidth() > 0,
+            "case_study_topic": app.case_study_panel.topic.topic_id == "sce_channel_length",
+            "case_study_conditions": (
+                app.case_study_panel.topic.baseline_conditions["L"] == 700.0
+                and app.case_study_panel.topic.comparison_conditions["L"] == 300.0
+            ),
+            "case_study_session_selector": app.case_study_panel.session_choice_box.winfo_reqwidth() > 0,
+            "case_study_tutor_mode": (
+                "Case Study" in app.case_study_panel.tutor_mode_var.get()
+                and (
+                    "Groq LLM 연결됨" in app.case_study_panel.tutor_mode_var.get()
+                    or "로컬 fallback" in app.case_study_panel.tutor_mode_var.get()
+                )
+            ),
+            "case_study_session_switch": session_switch_ok,
+            "case_study_fixed_parameters": fixed_parameters,
+            "case_study_result_tab_preserved": result_tab_preserved,
+            "case_study_session_delete": app.case_study_panel.delete_session_button.winfo_reqwidth() > 0,
+            "case_study_completion_tabs": completion_tabs == (
+                "학습 요약",
+                "결과 다시 보기",
+                "AI 자유 질문",
+            ),
         }
         window.destroy()
         print(", ".join(f"{name}={value}" for name, value in checks.items()))
