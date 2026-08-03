@@ -8,7 +8,7 @@ class MockExplanationProvider:
     """Deterministic renderer that consumes the same Payload v3 as an external LLM."""
 
     name = "mock"
-    model = "deterministic-interpretation-v8"
+    model = "deterministic-interpretation-v12"
 
     def generate(self, system_prompt: str, user_prompt: str, payload: dict) -> dict:
         del system_prompt, user_prompt

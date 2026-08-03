@@ -1,0 +1,71 @@
+{
+  "schema_version": "1.0",
+  "topic_id": "sce_channel_length",
+  "learner_profile": {
+    "understanding_level": "partial",
+    "completed_concepts": ["ion_can_increase"],
+    "remaining_concepts": ["vth_decreases", "dibl_increases", "ss_increases"],
+    "detected_misconceptions": []
+  },
+  "scenarios": [
+    {
+      "scenario_id": "current_vth",
+      "question": "이번 결과에서 Vth가 왜 감소했나요?",
+      "expected_type": "current_result",
+      "uses_current_result": true,
+      "needs_new_experiment": false
+    },
+    {
+      "scenario_id": "elliptical_followup",
+      "question": "그 변화가 생기는 물리적 이유는 무엇인가요?",
+      "expected_type": "current_result",
+      "uses_current_result": true,
+      "needs_new_experiment": false
+    },
+    {
+      "scenario_id": "metric_definition",
+      "question": "Ion은 언제의 전류인가요?",
+      "expected_type": "case_theory",
+      "uses_current_result": false,
+      "needs_new_experiment": false
+    },
+    {
+      "scenario_id": "adjacent_theory",
+      "question": "PN 접합이 무엇인가요?",
+      "expected_type": "adjacent_theory",
+      "uses_current_result": false,
+      "needs_new_experiment": false
+    },
+    {
+      "scenario_id": "hypothetical",
+      "question": "Body doping을 높이면 DIBL이 줄어드나요?",
+      "expected_type": "hypothetical",
+      "uses_current_result": false,
+      "needs_new_experiment": true,
+      "expected_learning_move": "separate_prediction_from_result"
+    },
+    {
+      "scenario_id": "new_experiment",
+      "question": "L을 500 nm로 바꿔서 시뮬레이션해줘.",
+      "expected_type": "new_experiment",
+      "uses_current_result": false,
+      "needs_new_experiment": true,
+      "expected_learning_move": "separate_prediction_from_result"
+    },
+    {
+      "scenario_id": "experiment_correction",
+      "question": "이 실험은 길이만 바꾼 거 맞잖아.",
+      "expected_type": "current_result",
+      "uses_current_result": true,
+      "needs_new_experiment": false,
+      "expected_learning_move": "confirm_experiment"
+    },
+    {
+      "scenario_id": "out_of_scope",
+      "question": "오늘 날씨가 어떤가요?",
+      "expected_type": "out_of_scope",
+      "uses_current_result": false,
+      "needs_new_experiment": false
+    }
+  ]
+}

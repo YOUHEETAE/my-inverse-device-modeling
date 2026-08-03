@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import logging
 import tkinter as tk
 from pathlib import Path
 from tkinter import messagebox, ttk
@@ -14,6 +15,9 @@ from matplotlib.figure import Figure
 from ai.field_map_model.inference import FieldMapPredictor, GeneratedMesh, generate_gmsh_mesh
 from ai.shared.field_data import FIELD_DISPLAYS, RANGE_MODES, SCALE_MODES, GeneratedFieldMap
 from frontend.visualization.field_rendering import render_model_field
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 def _root() -> Path:
@@ -83,14 +87,22 @@ class ModelFieldMapApp:
             outside = self._extrapolation_parameters(); warning = f" Extrapolation warning: {', '.join(outside)} outside training range." if outside else " Within training parameter ranges."
             self.status.set(f"Generated {len(mesh.node_xy_nm):,} nodes / {len(mesh.triangles):,} triangles. Fixed bias: Vg=3 V, Vd=3 V.{warning}")
         except Exception as exc:
-            messagebox.showerror("Field-map model error", str(exc)); self.status.set("Generation failed")
+            LOGGER.exception("Field-map model generation failed", exc_info=exc)
+            messagebox.showerror(
+                "Field Map 생성 실패",
+                "Field Map을 생성하지 못했습니다. 입력 조건을 확인하고 다시 시도해 주세요.",
+            ); self.status.set("Generation failed")
 
     def plot(self) -> None:
         if self.output is None: return
         try:
             render_model_field(self.figure, self.output, self.field_var.get(), self.scale_var.get(), self.range_var.get()); self.canvas.draw_idle()
         except Exception as exc:
-            messagebox.showerror("Field-map plot error", str(exc))
+            LOGGER.exception("Field-map rendering failed", exc_info=exc)
+            messagebox.showerror(
+                "Field Map 표시 실패",
+                "Field Map을 표시하지 못했습니다. 다시 생성해 주세요.",
+            )
 
 
 def _parse_args() -> argparse.Namespace:

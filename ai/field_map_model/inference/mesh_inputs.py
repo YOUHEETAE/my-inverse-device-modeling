@@ -46,7 +46,10 @@ def generate_gmsh_mesh(
     with tempfile.TemporaryDirectory(prefix="idm_fieldmap_mesh_") as temporary:
         geo_path = Path(temporary) / "fieldmap.geo"
         geo_path.write_text(text, encoding="utf-8")
-        gmsh.initialize(["gmsh", "-v", "0"])
+        # Tkinter runs Case Study inference in a worker thread. Gmsh's default
+        # interrupt handler calls signal.signal(), which Python only permits in
+        # the main thread. The GUI owns cancellation, so disable that handler.
+        gmsh.initialize(["gmsh", "-v", "0"], interruptible=False)
         try:
             gmsh.option.setNumber("General.Terminal", 0)
             gmsh.open(str(geo_path))

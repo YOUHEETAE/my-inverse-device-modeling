@@ -7,7 +7,8 @@ regenerated only when the comparison baseline is being reset.
 Regenerate with the project's Conda interpreter:
 
 ```powershell
-& "C:/Users/T590/anaconda3/envs/devsim_env/python.exe" tests/baselines/generate_phase1_baseline.py
+conda activate inverse-device-modeling
+python tests/baselines/generate_phase1_baseline.py
 ```
 
 The fixture covers the default single curve, reinforcing and competing L/T

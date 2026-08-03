@@ -48,6 +48,13 @@ tempCodeRunnerFile.py
 *.orig
 *.pid
 
+# Machine-local Case Study learning sessions
+runtime/learning_sessions/
+runtime/*.json
+
+# Local OMX planning and orchestration state
+.omx/
+
 # Generated audit output; the compact Markdown baseline remains versioned
 tests/baselines/phase8_final_snapshot.json
 

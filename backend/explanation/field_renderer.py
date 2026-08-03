@@ -15,7 +15,7 @@ SHARED_SCALE_TYPES = {"regional_level_change", "high_value_area_change", "hotspo
 def validate_field_context(payload: dict[str, Any]) -> tuple[bool, list[str]]:
     context = payload.get("context", {}); reasons = []
     if context.get("display") not in SUPPORTED_DISPLAYS: reasons.append("unsupported_display")
-    if context.get("mode") == "comparison" and len(payload.get("subjects", [])) != 2: reasons.append("invalid_subject_count")
+    if context.get("mode") == "comparison" and len(payload.get("subjects", [])) < 2: reasons.append("invalid_subject_count")
     if context.get("visual_evidence_policy") != "supplied_evidence_only": reasons.append("unsupported_visual_evidence_policy")
     if not context.get("fixed_bias"): reasons.append("missing_fixed_bias")
     return not any(reason in {"unsupported_display", "invalid_subject_count", "unsupported_visual_evidence_policy"} for reason in reasons), reasons
@@ -285,14 +285,39 @@ def _unsupported(policy: dict[str, Any] | None = None) -> dict[str, list[str]]:
 
 def _structured_parameter_principles(comparison: dict[str, Any], display: str) -> str | None:
     phrases = []
-    for change in comparison.get("changed_parameters", []):
+    changes = list(comparison.get("changed_parameters", []))
+    display_priority = {
+        "potential": ("channel_length", "oxide_thickness", "bulk_doping", "ldd_doping", "source_drain_doping"),
+        "electric_field": ("channel_length", "ldd_doping", "source_drain_doping", "oxide_thickness", "bulk_doping"),
+        "energy_band": ("oxide_thickness", "bulk_doping", "channel_length", "ldd_doping", "source_drain_doping"),
+        "electron_density": ("oxide_thickness", "bulk_doping", "channel_length", "ldd_doping", "source_drain_doping"),
+        "hole_density": ("bulk_doping", "oxide_thickness", "channel_length", "source_drain_doping", "ldd_doping"),
+        "electron_current_density": ("channel_length", "oxide_thickness", "source_drain_doping", "ldd_doping", "bulk_doping"),
+        "hole_current_density": ("bulk_doping", "source_drain_doping", "ldd_doping", "oxide_thickness", "channel_length"),
+        "total_current_density": ("channel_length", "oxide_thickness", "source_drain_doping", "ldd_doping", "bulk_doping"),
+        "srh_recombination": ("source_drain_doping", "ldd_doping", "bulk_doping", "oxide_thickness", "channel_length"),
+    }.get(display, ())
+    order = {parameter: index for index, parameter in enumerate(display_priority)}
+    changes.sort(key=lambda item: order.get(item.get("parameter"), 99))
+    if len(changes) > 2:
+        changes = changes[:2]
+    for change in changes:
         parameter, direction = change.get("parameter"), change.get("direction")
         if parameter == "channel_length":
             phrases.append("Channel length 증가는 Drain 영향과 국부 field 집중을 완화하지만 채널 저항은 높이는 방향을 가집니다" if direction == "increased" else "Channel length 감소는 채널 저항을 낮추지만 Drain 영향과 국부 field 집중을 키울 수 있습니다")
         elif parameter == "oxide_thickness":
             phrases.append("Tox 증가는 Gate–Channel coupling을 약화하는 방향을 가집니다" if direction == "increased" else "Tox 감소는 Gate–Channel coupling을 강화하며 Oxide field도 함께 높일 수 있습니다")
         elif parameter == "bulk_doping":
-            phrases.append("Bulk doping 변화는 Channel과 Deep bulk의 depletion 분포를 바꿀 수 있습니다")
+            if direction == "increased":
+                phrases.append(
+                    "Bulk doping 증가는 Gate 아래 공핍 전하 조건을 키우고 공핍 폭을 바꿀 수 있으므로 "
+                    "Channel near-surface와 Deep bulk의 Potential 및 band bending을 함께 확인해야 합니다"
+                )
+            else:
+                phrases.append(
+                    "Bulk doping 감소는 공핍 전하 조건을 낮추는 한편 공핍 폭을 넓힐 수 있으므로 "
+                    "Channel near-surface와 Deep bulk의 공간 분포를 함께 확인해야 합니다"
+                )
         elif parameter == "source_drain_doping":
             phrases.append("Source/Drain doping 증가는 series resistance를 낮추는 한편 junction field를 높일 수 있습니다" if direction == "increased" else "Source/Drain doping 감소는 junction field를 낮출 수 있지만 series resistance를 높이는 방향을 가집니다")
         elif parameter == "ldd_doping":
@@ -300,6 +325,58 @@ def _structured_parameter_principles(comparison: dict[str, Any], display: str) -
     if not phrases:
         return None
     return "일반적으로 " + ". 또한 ".join(phrases) + "."
+
+
+def _field_observation_guide(
+    display: str,
+    conclusions: list[dict[str, Any]],
+) -> str:
+    regions = list(dict.fromkeys(
+        REGION_LABELS.get(item.get("region"), item.get("region"))
+        for item in conclusions
+        if item.get("region")
+    ))
+    location = ", ".join(regions[:3]) or "우선순위 named region"
+    guides = {
+        "potential": (
+            f"화면에서는 {location}의 color level과 contour 간격을 먼저 비교하세요. "
+            "같은 color scale에서 level 변화는 전위 준위 이동을, contour가 촘촘해지는 변화는 "
+            "더 큰 Potential gradient를 뜻합니다."
+        ),
+        "electric_field": (
+            f"화면에서는 {location}의 hotspot 강도와 고전계 색상 영역의 넓이를 함께 비교하세요. "
+            "hotspot은 국부 peak, 색상 영역의 넓이는 높은 전계가 퍼진 범위를 보여줍니다."
+        ),
+        "electron_density": (
+            f"화면에서는 {location}의 Electron level뿐 아니라 Gate 아래 분포의 폭과 "
+            "Source-Channel-Drain 방향 연결성을 확인하세요. 이 둘이 inversion layer와 "
+            "전도 가능한 carrier path를 구분하는 핵심입니다."
+        ),
+        "hole_density": (
+            f"화면에서는 {location}의 Hole level과 surface에서 Deep bulk로 이어지는 분포 폭을 "
+            "비교하세요. 이는 depletion이 확장되거나 축소되는 공간적 범위를 읽는 기준입니다."
+        ),
+        "electron_current_density": (
+            f"화면에서는 {location}에서 Source-Channel-Drain current path의 연속성, 폭, "
+            "국부 crowding을 구분해 보세요."
+        ),
+        "hole_current_density": (
+            f"화면에서는 {location}의 Hole current activity 위치와 국부 집중을 확인하되, "
+            "전체 전류의 지배 성분으로 바로 해석하지 마세요."
+        ),
+        "total_current_density": (
+            f"화면에서는 {location}에서 주 전도 경로가 연속적인지, 넓어졌는지, 특정 접합에 "
+            "crowding되는지를 함께 확인하세요."
+        ),
+        "srh_recombination": (
+            f"화면에서는 {location}의 activity 강도와 영역 넓이를 확인하고, signed scale에서는 "
+            "recombination과 generation의 부호도 별도로 확인하세요."
+        ),
+    }
+    return guides.get(
+        display,
+        f"화면에서는 {location}에서 같은 color scale 기준의 강도와 공간 범위를 비교하세요.",
+    )
 
 
 def _structured_condition(payload: dict[str, Any], comparison: dict[str, Any] | None = None) -> str:
@@ -339,6 +416,137 @@ def _group_structured_conclusions(conclusions: list[dict[str, Any]], candidate: 
     return lines
 
 
+def _structured_energy_band_conclusions(
+    conclusions: list[dict[str, Any]],
+    candidate: str,
+) -> list[str]:
+    lines = []
+    barrier_rendered = False
+    for item in conclusions:
+        concept = item.get("concept")
+        assessment = item.get("assessment")
+        if concept == "channel_entry_barrier":
+            template = FIELD_SPECIFIC_TEMPLATES.get(
+                f"energy_band.barrier.{assessment}"
+            )
+            if template:
+                barrier_rendered = True
+                sentence = template.format(candidate=candidate)
+                if sentence not in lines:
+                    lines.append(
+                        sentence
+                        + " Horizontal cut에서 Source plateau 대비 Source-side Channel의 "
+                        "국부 Ec maximum과 그 위치를 비교하면 됩니다. 이 값은 Carrier가 "
+                        "Channel에 주입될 때 넘어야 하는 상대적 에너지 장벽을 나타냅니다."
+                    )
+        elif concept == "vertical_band_bending":
+            direction = "강화" if assessment == "strengthened" else "완화"
+            lines.append(
+                f"Vertical Gate-Oxide-Bulk cut에서는 Channel surface와 Deep bulk 사이의 "
+                f"Ec separation이 {direction}되어 수직 band bending이 {direction}된 방향입니다. "
+                "surface와 Deep bulk의 band 간격 및 굽힘 방향을 함께 확인하세요."
+            )
+        elif concept == "channel_band_slope":
+            direction = "가팔라진" if assessment == "strengthened" else "완만해진"
+            lines.append(
+                f"Horizontal Channel cut에서는 Source-side에서 Drain-side로 이어지는 Ec 기울기가 "
+                f"{direction} 방향입니다. 채널 양 끝의 band 높이 차와 기울기가 집중되는 위치를 "
+                "비교하면 채널 방향 Potential drop 변화를 볼 수 있습니다."
+            )
+    if not barrier_rendered:
+        lines.append(
+            "Channel 진입 barrier는 Horizontal Source-to-Channel cut에서 Source plateau보다 높은 "
+            "Source-side 국부 Ec maximum으로 비교합니다. 현재 유의 기준에서 뚜렷한 barrier "
+            "상승·하강이 선택되지 않았으므로 band slope와 수직 band bending을 중심으로 해석합니다."
+        )
+    return lines
+
+
+def _single_energy_band_description(payload: dict[str, Any]) -> list[str] | None:
+    profiles = payload.get("interpretation", {}).get("energy_band_profiles", [])
+    if not profiles:
+        return None
+    profile = profiles[0]
+    channel = profile.get("channel_cut", {})
+    vertical = profile.get("vertical_gate_oxide_bulk_cut", {}).get("Bulk", {})
+    if not channel.get("finite"):
+        return None
+    descriptions = [
+        _structured_condition(payload),
+        (
+            (
+                "Horizontal Source-to-Channel cut에서는 Source plateau를 기준으로 Source-side "
+                "Channel의 국부 Ec maximum이 확인되어 이를 Channel 진입 barrier로 추출했습니다. "
+            )
+            if channel.get("positive_barrier_resolved")
+            else
+            (
+                "Horizontal Source-to-Channel cut에서는 Source plateau보다 높은 뚜렷한 positive "
+                "Channel barrier가 현재 해상도에서 분리되지 않았습니다. "
+            )
+        )
+        + (
+            "국부 maximum 위치와 Channel source-edge·center·drain-edge의 band 높이를 함께 확인합니다."
+        ),
+    ]
+    tilt = channel.get("channel_tilt_eV")
+    if tilt is not None:
+        tilt_direction = (
+            "Drain 방향으로 낮아지는"
+            if float(tilt) < 0 else
+            "Drain 방향으로 높아지는"
+            if float(tilt) > 0 else
+            "거의 평탄한"
+        )
+        bending = vertical.get("surface_minus_deep_Ec_eV")
+        bending_text = ""
+        if bending is not None:
+            surface_direction = (
+                "surface band가 Deep bulk보다 높은"
+                if float(bending) > 0 else
+                "surface band가 Deep bulk보다 낮은"
+                if float(bending) < 0 else
+                "surface와 Deep bulk band 차가 작은"
+            )
+            bending_text = (
+                f" Vertical Gate-Oxide-Bulk cut은 {surface_direction} 형태이며, "
+                "두 위치의 Ec separation으로 수직 band bending을 읽습니다."
+            )
+        descriptions.append(
+            f"현재 Horizontal Channel cut은 Ec가 {tilt_direction} 형태입니다. "
+            "Channel 양 끝의 높이 차는 채널 방향 Potential drop과 band slope를 보여줍니다."
+            + bending_text
+        )
+    return descriptions
+
+
+def _structured_iv_verification(
+    links: list[dict[str, Any]],
+) -> str | None:
+    if not links:
+        return None
+    metrics = []
+    meanings = []
+    for item in links[:3]:
+        meanings.append(str(item.get("physical_interpretation", "")).strip())
+        for metric in item.get("iv_metrics_to_check", []):
+            label = {
+                "vth": "Vth", "dibl": "DIBL", "ioff": "Ioff",
+                "ion": "Ion", "ss": "SS", "gm_max": "gm max",
+                "ron": "Ron", "gds": "gds",
+            }.get(str(metric), str(metric))
+            if label not in metrics:
+                metrics.append(label)
+    meaning = " ".join(value for value in meanings if value)
+    check = ", ".join(metrics)
+    if not check:
+        return meaning or None
+    return (
+        f"{meaning} 이 Field 관찰이 실제 전기 특성 변화로 이어졌는지는 "
+        f"I-V의 {check}를 함께 비교해야 확정할 수 있습니다."
+    )
+
+
 def _structured_field_caution(payload: dict[str, Any], comparison: dict[str, Any] | None) -> str:
     display = payload.get("context", {}).get("display")
     parts = []
@@ -353,10 +561,237 @@ def _structured_field_caution(payload: dict[str, Any], comparison: dict[str, Any
     return ". ".join(parts) + "."
 
 
+def _representative_comparison(
+    payload: dict[str, Any],
+) -> dict[str, Any] | None:
+    representative = set(
+        payload.get("comparison_plan", {}).get(
+            "representative_subject_ids", []
+        )
+    )
+    if len(representative) != 2:
+        return None
+    return next(
+        (
+            item for item in payload.get("comparisons", [])
+            if set(item.get("subject_ids", [])) == representative
+        ),
+        None,
+    )
+
+
+def _multi_field_scope_sentence(
+    payload: dict[str, Any],
+    comparison: dict[str, Any] | None,
+) -> str:
+    context = payload.get("context", {})
+    plan = payload.get("comparison_plan", {})
+    subjects = {
+        item["subject_id"]: item["display_name"]
+        for item in payload.get("subjects", [])
+    }
+    display = STRUCTURED_FIELD_LABELS.get(
+        context.get("display"), context.get("display")
+    )
+    bias = context.get("fixed_bias", {})
+    bias_text = (
+        f"Vg={float(bias['vg_v']):g} V, Vd={float(bias['vd_v']):g} V에서 "
+        if bias.get("vg_v") is not None and bias.get("vd_v") is not None
+        else ""
+    )
+    representative_names = [
+        subjects.get(subject_id, subject_id)
+        for subject_id in plan.get("representative_subject_ids", [])
+    ]
+    representative_text = "와 ".join(representative_names)
+    if plan.get("analysis_mode") == "controlled_sweep":
+        parameter = PARAMETER_LABELS.get(
+            plan.get("sweep_parameter"), plan.get("sweep_parameter")
+        )
+        values = "→".join(
+            f"{float(value):g}" for value in plan.get("sweep_values", [])
+        )
+        return (
+            f"{bias_text}{len(subjects)}개 조건의 {display} 특징을 모두 "
+            f"분석했습니다. {parameter} sweep {values}의 전체 추세를 "
+            f"계산하고, 화면에는 양 끝 조건인 {representative_text}를 "
+            "대표 Map으로 표시합니다."
+        )
+    controlled = bool(plan.get("controlled_pair_ids"))
+    basis = (
+        "한 parameter만 다른 controlled pair"
+        if controlled else
+        "변경 폭이 큰 대표 복합 pair"
+    )
+    return (
+        f"{bias_text}{len(subjects)}개 조건의 {display} 영역별 특징과 "
+        f"모든 pair를 분석했습니다. 화면에는 {basis}인 "
+        f"{representative_text}를 표시하며, 나머지 조건도 분석 범위에는 "
+        "포함됩니다."
+    )
+
+
+def _multi_field_trend_sentence(
+    trend: dict[str, Any],
+    display: str,
+) -> str:
+    direction = trend.get("direction")
+    direction_text = {
+        "monotonic_increase": "단조 증가했습니다",
+        "monotonic_decrease": "단조 감소했습니다",
+        "stable": "유의한 변화 없이 유지됐습니다",
+        "non_monotonic": (
+            "단조 경향을 보이지 않아 중간 조건에서 방향이 바뀌었습니다"
+        ),
+    }.get(direction, "일관된 추세를 확인하기 어렵습니다")
+    quantity = trend.get("quantity")
+    if quantity == "channel_entry_barrier":
+        return (
+            f"Channel 진입 barrier는 sweep 전반에서 {direction_text}. "
+            "Horizontal Source-to-Channel cut에서 Source plateau 대비 "
+            "Source-side 국부 Ec maximum을 조건 순서대로 비교하세요."
+        )
+    if quantity == "channel_band_slope":
+        return (
+            f"Horizontal Channel band slope는 sweep 전반에서 "
+            f"{direction_text}. Source-edge와 Drain-edge의 Ec 높이 차와 "
+            "기울기 집중 위치를 비교하세요."
+        )
+    if quantity == "vertical_band_bending":
+        return (
+            f"수직 band bending 크기는 sweep 전반에서 {direction_text}. "
+            "Vertical Gate-Oxide-Bulk cut의 surface와 Deep bulk Ec "
+            "separation을 조건 순서대로 확인하세요."
+        )
+    region = REGION_LABELS.get(
+        trend.get("region"), trend.get("region") or "해당 영역"
+    )
+    feature = {
+        "potential": "Potential 분포 강도",
+        "electric_field": "Electric field 강도",
+        "electron_density": "Electron density 크기",
+        "hole_density": "Hole density 크기",
+        "electron_current_density": "Electron current density 크기",
+        "hole_current_density": "Hole current density 크기",
+        "total_current_density": "Total current density 크기",
+        "srh_recombination": "SRH activity 절대 크기",
+    }.get(display, "공간 분포 강도")
+    return (
+        f"{region}의 {feature}는 sweep 전반에서 {direction_text}. "
+        "같은 color scale에서 해당 영역의 색상 강도와 고값 영역의 "
+        "범위를 조건 순서대로 확인하세요."
+    )
+
+
+def _render_multi_field_explanation(
+    payload: dict[str, Any],
+) -> dict[str, list[str]]:
+    context = payload["context"]
+    display = context["display"]
+    plan = payload.get("comparison_plan", {})
+    representative = _representative_comparison(payload)
+    descriptions = [
+        _multi_field_scope_sentence(payload, representative)
+    ]
+    if representative:
+        principle = _structured_parameter_principles(
+            representative, display
+        )
+        if principle:
+            descriptions.append(principle)
+
+    lines: list[str] = []
+    trends = payload.get("interpretation", {}).get(
+        "multi_condition_trends", []
+    )
+    if plan.get("analysis_mode") == "controlled_sweep" and trends:
+        lines.extend(
+            _multi_field_trend_sentence(item, display)
+            for item in trends[:3]
+        )
+    elif representative:
+        conclusions = [
+            item
+            for item in payload.get("interpretation", {}).get(
+                "field_specific_conclusions", []
+            )
+            if item.get("comparison_id")
+            == representative.get("comparison_id")
+        ]
+        subjects = {
+            item["subject_id"]: item["display_name"]
+            for item in payload.get("subjects", [])
+        }
+        candidate = subjects.get(
+            representative["candidate_subject_id"],
+            representative["candidate_subject_id"],
+        )
+        if display == "energy_band":
+            lines.extend(
+                _structured_energy_band_conclusions(
+                    conclusions, candidate
+                )
+            )
+        else:
+            lines.extend(
+                _group_structured_conclusions(conclusions, candidate)
+            )
+
+    guide_source = [
+        item
+        for item in payload.get("interpretation", {}).get(
+            "field_specific_conclusions", []
+        )
+        if (
+            representative is None
+            or item.get("comparison_id")
+            == representative.get("comparison_id")
+        )
+    ]
+    if display != "energy_band":
+        lines.append(_field_observation_guide(display, guide_source))
+    if not lines:
+        lines.append(
+            "전체 조건의 공간 특징은 분석했지만 현재 유의 기준에서 "
+            "일관된 추세가 선택되지 않았습니다. 대표 Map의 named region을 "
+            "같은 scale에서 비교하고 중간 조건이 양 끝 조건 사이에 놓이는지 "
+            "확인하세요."
+        )
+
+    caution = _structured_field_caution(payload, representative)
+    caution = (
+        "화면에는 대표 2개 Map만 표시되며 전체 추세는 선택된 모든 "
+        "조건의 구조화된 특징으로 계산했습니다. " + caution
+    )
+    response = {
+        "descriptions": descriptions,
+        "comparisons": lines,
+        "tradeoffs": [],
+        "cautions": [caution],
+    }
+    return enforce_output_policy(
+        response, payload.get("output_policy", {})
+    )
+
+
 def render_structured_field_explanation(payload: dict[str, Any]) -> dict[str, list[str]]:
     interpretation = payload.get("interpretation", {})
     comparisons = payload.get("comparisons", [])
+    if len(payload.get("subjects", [])) > 2:
+        return _render_multi_field_explanation(payload)
     if not comparisons:
+        if payload.get("context", {}).get("display") == "energy_band":
+            descriptions = _single_energy_band_description(payload)
+            if descriptions:
+                return enforce_output_policy(
+                    {
+                        "descriptions": descriptions,
+                        "comparisons": [],
+                        "tradeoffs": [],
+                        "cautions": [_structured_field_caution(payload, None)],
+                    },
+                    payload.get("output_policy", {}),
+                )
         regional = interpretation.get("regional_summaries", [])
         if not regional: return _fallback(payload.get("output_policy"))
         policy = FIELD_POLICY_REGISTRY.get(payload["context"]["display"])
@@ -364,7 +799,11 @@ def render_structured_field_explanation(payload: dict[str, Any]) -> dict[str, li
         ranked = sorted((item for item in regional if not allowed or item.get("region") in allowed), key=lambda item: -float(item.get("magnitude_p95", 0)))
         regions = [REGION_LABELS.get(item["region"], item["region"]) for item in ranked[:2]]
         description = f"현재 조건에서는 {', '.join(regions)}에서 상대적으로 큰 공간 분포가 나타났습니다."
-        response = {"descriptions": [_structured_condition(payload), description], "comparisons": [], "tradeoffs": [],
+        guide = _field_observation_guide(
+            payload["context"]["display"],
+            [{"region": item.get("region")} for item in ranked[:2]],
+        )
+        response = {"descriptions": [_structured_condition(payload), description, guide], "comparisons": [], "tradeoffs": [],
                     "cautions": [_structured_field_caution(payload, None)]}
         return enforce_output_policy(response, payload.get("output_policy", {}))
     comparison = comparisons[0]
@@ -375,7 +814,23 @@ def render_structured_field_explanation(payload: dict[str, Any]) -> dict[str, li
     descriptions = [_structured_condition(payload, comparison)]
     principle = _structured_parameter_principles(comparison, payload["context"]["display"])
     if principle: descriptions.append(principle)
-    lines = _group_structured_conclusions(conclusions, candidate)
+    if payload["context"]["display"] == "energy_band":
+        lines = _structured_energy_band_conclusions(conclusions, candidate)
+        if not lines:
+            lines = _group_structured_conclusions(conclusions, candidate)
+    else:
+        lines = _group_structured_conclusions(conclusions, candidate)
+    if payload["context"]["display"] != "energy_band":
+        lines.append(_field_observation_guide(
+            payload["context"]["display"],
+            conclusions,
+        ))
+    verification = _structured_iv_verification([
+        item for item in interpretation.get("cross_domain_links", [])
+        if item.get("comparison_id") == comparison["comparison_id"]
+    ])
+    if verification:
+        lines.append(verification)
     tradeoffs = [render_field_tradeoff_sentence(item) for item in payload.get("conclusions", []) if item.get("conclusion_type") == "tradeoff" and item.get("eligible_for_output")]
     response = {"descriptions": descriptions, "comparisons": lines, "tradeoffs": tradeoffs,
                 "cautions": [_structured_field_caution(payload, comparison)]}
@@ -388,7 +843,11 @@ def render_field_explanation(payload: dict[str, Any]) -> dict[str, list[str]]:
         if "unsupported_display" in reasons: return _unsupported(payload.get("output_policy"))
         if not valid: return _fallback(payload.get("output_policy"))
         interpretation = payload.get("interpretation", {})
-        if interpretation.get("status") in {"partial", "complete"} and (interpretation.get("field_specific_conclusions") or interpretation.get("regional_summaries")):
+        if interpretation.get("status") in {"partial", "complete"} and (
+            interpretation.get("field_specific_conclusions")
+            or interpretation.get("regional_summaries")
+            or interpretation.get("energy_band_profiles")
+        ):
             result = render_structured_field_explanation(payload)
         else:
             result = render_field_single(payload) if payload.get("analysis_type") == "field_single" else render_field_comparison(payload)

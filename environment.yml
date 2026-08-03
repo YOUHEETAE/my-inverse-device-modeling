@@ -9,3 +9,4 @@ dependencies:
   - tk
   - pip:
       - -r ai/requirements.txt
+      - pytest>=8,<10

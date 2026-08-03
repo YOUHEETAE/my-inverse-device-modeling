@@ -22,6 +22,7 @@ def build_interpretation_scaffold(analysis_type: str) -> dict[str, Any]:
         return common | {
             "performance_summaries": [],
             "parameter_effects": [],
+            "mechanism_chains": [],
             "parameter_interactions": [],
             "observed_tradeoffs": [],
             "variant_rankings": [],
@@ -31,6 +32,7 @@ def build_interpretation_scaffold(analysis_type: str) -> dict[str, Any]:
         "analysis_quality": {},
         "regional_summaries": [],
         "spatial_features": [],
+        "multi_condition_trends": [],
         "field_specific_conclusions": [],
         "cross_domain_links": [],
     }
@@ -41,8 +43,8 @@ def validate_interpretation_contract(value: dict[str, Any], analysis_type: str) 
         raise ValueError("Interpretation contract must be an object.")
     family = "curve" if analysis_type.startswith("iv_curve_") else "field"
     common = {"contract_version", "analysis_family", "status", "overall_assessment"}
-    curve = {"performance_summaries", "parameter_effects", "parameter_interactions", "observed_tradeoffs", "variant_rankings"}
-    field_keys = {"geometry_context", "analysis_quality", "regional_summaries", "spatial_features", "field_specific_conclusions", "cross_domain_links"}
+    curve = {"performance_summaries", "parameter_effects", "mechanism_chains", "parameter_interactions", "observed_tradeoffs", "variant_rankings"}
+    field_keys = {"geometry_context", "analysis_quality", "regional_summaries", "spatial_features", "multi_condition_trends", "field_specific_conclusions", "cross_domain_links"}
     required = common | (curve if family == "curve" else field_keys)
     if not required.issubset(value):
         raise ValueError("Interpretation contract is missing required sections.")
@@ -55,4 +57,3 @@ def validate_interpretation_contract(value: dict[str, Any], analysis_type: str) 
         raise ValueError("Interpretation collection sections must be arrays.")
     if family == "field" and not isinstance(value["analysis_quality"], dict):
         raise ValueError("Field analysis_quality must be an object.")
-

@@ -199,8 +199,10 @@ def render_model_field_comparison(
     display: str,
     scale_mode: str = "Auto",
     range_mode: str = "Robust 1-99%",
+    *,
+    normalization_outputs: list[tuple[str, GeneratedFieldMap]] | None = None,
 ) -> None:
-    """Render one or two field maps using one normalization and coordinate frame."""
+    """Render representative maps with a shared comparison normalization."""
     if not outputs:
         figure.clear(); return
     if len(outputs) == 1:
@@ -249,8 +251,16 @@ def render_model_field_comparison(
             apply_comparison_coordinates(axis, output)
     else:
         scalars = [scalar_display(output, display) for _label, output in outputs]
+        scale_sources = normalization_outputs or outputs
+        scale_scalars = [
+            scalar_display(output, display)
+            for _label, output in scale_sources
+        ]
         chosen_scale = scalars[0].default_scale if scale_mode == "Auto" else scale_mode
-        combined = np.concatenate([np.asarray(scalar.values).reshape(-1) for scalar in scalars])
+        combined = np.concatenate([
+            np.asarray(scalar.values).reshape(-1)
+            for scalar in scale_scalars
+        ])
         _values, shared_norm, mode_label = _normalization(combined, chosen_scale, range_mode)
         # Reserve a fixed area for the colorbar and its label first. The two
         # device panels receive only the remaining plotting width.
