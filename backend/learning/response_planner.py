@@ -212,9 +212,27 @@ def build_response_plan(
         reasons.append("current_focus_needs_review")
     if focus and mastered_focus:
         reasons.append("avoid_repeating_mastered_definition")
+    explicitly_short = any(
+        cue in normalized_question
+        for cue in (
+            "짧게",
+            "간단히",
+            "간단하게",
+            "한문장",
+            "한줄",
+            "요약만",
+        )
+    )
     if route.answer_structure == "concise":
-        budget = "concise"
-        reasons.append("user_requested_concise_answer")
+        if explicitly_short:
+            budget = "concise"
+            reasons.append("user_requested_concise_answer")
+        else:
+            # Intent interpreters often classify a direct definition question
+            # as concise. That must not collapse a learning answer to a single
+            # dictionary sentence.
+            budget = "focused"
+            reasons.append("focused_question_with_mechanism")
 
     return LearningResponsePlan(
         dialogue_move=move,
@@ -242,8 +260,8 @@ def build_response_plan(
             and not mastered_focus
         ),
         include_mechanism_chain=(
-            route.answer_structure != "concise"
-            or level != "foundational"
+            route.question_type != "out_of_scope"
+            and not explicitly_short
         ),
         check_understanding=route.question_type != "out_of_scope",
         next_question_style=next_style,

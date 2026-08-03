@@ -5,6 +5,8 @@ import re
 from enum import Enum
 from typing import Any
 
+from backend.answer_contract import normalize_public_text, validate_public_answer_text
+
 from .warnings import make_warning, render_warning_cautions
 
 RESPONSE_KEYS = ("descriptions", "comparisons", "tradeoffs", "cautions")
@@ -58,8 +60,15 @@ def validate_provider_response(data: Any) -> dict[str, list[str]]:
     result = {}
     for key in RESPONSE_KEYS:
         if not isinstance(data[key], list) or any(not isinstance(item, str) for item in data[key]): raise ValueError(f"{key} must be list[str].")
-        result[key] = list(dict.fromkeys(item.strip() for item in data[key] if item.strip()))
+        result[key] = list(dict.fromkeys(
+            clean
+            for item in data[key]
+            if (clean := normalize_public_text(item))
+        ))
     if not result["descriptions"]: raise ValueError("Explanation response is missing descriptions.")
+    validate_public_answer_text(
+        " ".join(sentence for values in result.values() for sentence in values)
+    )
     return result
 
 

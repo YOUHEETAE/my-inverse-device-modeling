@@ -6,6 +6,7 @@ from itertools import combinations
 from typing import Any
 
 from .schemas import AnalysisPayload
+from .comparison_planner import build_comparison_plan
 from .interpretation_contract import build_interpretation_scaffold, validate_interpretation_contract
 from .curve_interpretation import build_curve_interpretation, validate_curve_interpretation
 from .evidence import build_standard_evidence, validate_evidence
@@ -83,7 +84,11 @@ def build_payload(*, kind: str, context: dict[str, Any], items: list[dict[str, A
     mode = "single" if len(items) == 1 else "comparison"
     analysis_type = f"{kind}_{mode}" if kind == "field" else f"iv_curve_{mode}"
     subjects = [build_subject(i, item["label"], item["device_parameters"], count=len(items)) for i, item in enumerate(items)]
-    pairs = list(combinations(range(len(items)), 2)) if kind == "iv_curve" else ([(0, 1)] if len(items) == 2 else [])
+    pairs = (
+        list(combinations(range(len(items)), 2))
+        if len(items) > 1
+        else []
+    )
     comparisons = [build_comparison(i, j, order, items) for order, (i, j) in enumerate(pairs, 1)]
     evidence = build_standard_evidence(kind, context, items, legacy_comparisons, pairs)
     def warning_type(text: str) -> str:
@@ -123,6 +128,20 @@ def build_payload(*, kind: str, context: dict[str, Any], items: list[dict[str, A
                           "primary_baseline_id": None if mode == "single" else "curve_1",
                           "effective_claim_level": "descriptive_only" if mode == "single" else "comparison_specific",
                           "comparison_strategy": "none" if mode == "single" else ("all_pairwise_selected_order" if kind == "iv_curve" else "selected_pair"), **context}
+    comparison_plan = build_comparison_plan(
+        subjects,
+        preferred_baseline_id=normalized_context.get("primary_baseline_id"),
+    )
+    normalized_context["analyzed_subject_count"] = len(subjects)
+    normalized_context["representative_subject_ids"] = list(
+        comparison_plan.representative_subject_ids
+    )
+    if kind == "field" and len(subjects) > 1:
+        normalized_context["comparison_strategy"] = (
+            "all_pairwise_with_representative_display"
+            if len(subjects) > 2
+            else "selected_pair"
+        )
     valid_count = sum(bool(item.get("eligible_for_output")) for item in evidence)
     suppressed_count = len(evidence) - valid_count
     normalized_context["analysis_status"] = "success" if valid_count and not suppressed_count else ("partial_success" if valid_count else "insufficient_data")
@@ -133,6 +152,7 @@ def build_payload(*, kind: str, context: dict[str, Any], items: list[dict[str, A
         _id(analysis_type, normalized_context, subjects), analysis_type, normalized_context,
         subjects, comparisons, evidence, conclusions, structured_warnings,
         build_output_policy(analysis_type), interpretation,
+        comparison_plan.to_dict(),
     )
     validate_analysis_payload(payload)
     return payload
@@ -143,6 +163,13 @@ def validate_analysis_payload(payload: AnalysisPayload) -> None:
         raise ValueError("Unsupported analysis payload schema or type.")
     if payload.context.get("mode") == "single" and payload.comparisons:
         raise ValueError("Single analysis cannot contain comparisons.")
+    if payload.comparison_plan:
+        if payload.comparison_plan.get("subject_count") != len(payload.subjects):
+            raise ValueError("Comparison plan subject count does not match payload.")
+        if payload.comparison_plan.get("baseline_subject_id") not in {
+            None, *(item["subject_id"] for item in payload.subjects)
+        }:
+            raise ValueError("Comparison plan references an unknown baseline.")
     validate_interpretation_contract(payload.interpretation, payload.analysis_type)
     if payload.analysis_type.startswith("iv_curve_"):
         validate_curve_interpretation(payload.interpretation, payload.comparisons, payload.evidence)

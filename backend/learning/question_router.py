@@ -207,7 +207,8 @@ class TutorQuestionRouter:
         if "접합 길이" in text or "junction length" in text:
             return (
                 True,
-                "접합 길이가 중성영역의 물리적 길이인지, 공핍영역 폭인지 알려주세요.",
+                "PN 접합에서 말한 ‘접합 길이’가 중성영역의 물리적 길이인지, "
+                "공핍영역 폭인지 알려주세요.",
             )
         if ("길이" in text or "짧아지" in text or "길어지" in text) and not concepts.intersection(
             {"channel_length", "pn_junction", "depletion_region"}

@@ -25,6 +25,8 @@ def validate_topic(topic: TopicConfig) -> TopicConfig:
         raise TopicConfigError("unsupported_topic_schema")
     if not topic.topic_id or not topic.title or not topic.learning_objectives:
         raise TopicConfigError("missing_topic_identity")
+    if topic.catalog_order < 0 or topic.topic_id in topic.prerequisite_topic_ids:
+        raise TopicConfigError("invalid_topic_curriculum_metadata")
     if not topic.expected_concepts or not topic.prediction_questions or not topic.observation_questions:
         raise TopicConfigError("incomplete_learning_contract")
     unknown_theory = (
@@ -80,4 +82,31 @@ def load_topics(*, config_dir: Path = CONFIG_DIR) -> dict[str, TopicConfig]:
         if topic.topic_id != path.stem:
             raise TopicConfigError(f"topic_filename_mismatch:{path.stem}")
         topics[topic.topic_id] = topic
-    return topics
+    known = set(topics)
+    for topic in topics.values():
+        if not set(topic.prerequisite_topic_ids).issubset(known):
+            raise TopicConfigError(
+                f"unknown_topic_prerequisite:{topic.topic_id}"
+            )
+    visiting: set[str] = set()
+    visited: set[str] = set()
+
+    def visit(topic_id: str) -> None:
+        if topic_id in visiting:
+            raise TopicConfigError("cyclic_topic_prerequisite")
+        if topic_id in visited:
+            return
+        visiting.add(topic_id)
+        for prerequisite in topics[topic_id].prerequisite_topic_ids:
+            visit(prerequisite)
+        visiting.remove(topic_id)
+        visited.add(topic_id)
+
+    for topic_id in topics:
+        visit(topic_id)
+    return dict(
+        sorted(
+            topics.items(),
+            key=lambda item: (item[1].catalog_order, item[0]),
+        )
+    )

@@ -1,3 +1,4 @@
+import io
 import json
 import os
 import urllib.error
@@ -6,7 +7,10 @@ from backend.explanation.prompts import SYSTEM_PROMPT, build_prompt
 from backend.explanation.providers.config import (
     GROQ_BASE_URL, GROQ_DEFAULT_MODEL, ProviderMode, ProviderSettings,
 )
-from backend.explanation.providers.external import ExternalLLMProvider
+from backend.explanation.providers.external import (
+    ExternalLLMProvider,
+    ProviderHTTPError,
+)
 from backend.explanation.providers.factory import create_explanation_provider
 from backend.explanation.render_payload import build_llm_render_payload
 from backend.explanation.safety import enforce_response_policy, validate_grounded_response
@@ -35,6 +39,41 @@ def test_external_provider_common_response_and_factory():
     del os.environ["TEST_LLM_KEY"]
 
 
+def test_external_provider_exposes_actual_usage_once_per_thread():
+    os.environ["TEST_LLM_KEY"] = "secret"
+
+    def with_usage(_url, _headers, _body, _timeout):
+        return json.dumps({
+            "choices": [{"message": {"content": json.dumps(VALID)}}],
+            "usage": {
+                "prompt_tokens": 321,
+                "completion_tokens": 87,
+                "total_tokens": 408,
+                "queue_time": 0.01,
+                "total_time": 0.42,
+            },
+        }).encode()
+
+    try:
+        provider = create_explanation_provider(settings(), with_usage)
+        assert provider.generate("system", "user", {}) == VALID
+        diagnostic = provider.consume_last_call_diagnostic()
+        assert diagnostic["category"] == "provider_success"
+        assert diagnostic["model"] == "fake-model"
+        assert diagnostic["request_bytes"] > 0
+        assert diagnostic["duration_ms"] >= 0
+        assert diagnostic["usage"] == {
+            "prompt_tokens": 321,
+            "completion_tokens": 87,
+            "total_tokens": 408,
+            "queue_time": 0.01,
+            "total_time": 0.42,
+        }
+        assert provider.consume_last_call_diagnostic() == {}
+    finally:
+        del os.environ["TEST_LLM_KEY"]
+
+
 def test_external_provider_preserves_safe_http_status_code():
     os.environ["TEST_LLM_KEY"] = "secret"
 
@@ -49,6 +88,107 @@ def test_external_provider_preserves_safe_http_status_code():
             assert str(error) == "provider_http_401"
         else:
             raise AssertionError("HTTP authentication failure was hidden")
+    finally:
+        del os.environ["TEST_LLM_KEY"]
+
+
+def test_external_provider_preserves_actual_provider_error_body_and_request_size():
+    os.environ["TEST_LLM_KEY"] = "secret"
+    provider_body = {
+        "error": {
+            "message": "Rate limit reached for model openai/gpt-oss-120b.",
+            "type": "rate_limit_error",
+            "code": "rate_limit_exceeded",
+        }
+    }
+
+    def rejected(url, _headers, _body, _timeout):
+        raise urllib.error.HTTPError(
+            url,
+            429,
+            "Too Many Requests",
+            {
+                "retry-after": "17",
+                "x-ratelimit-remaining-tokens": "0",
+                "authorization": "must-not-be-copied",
+            },
+            io.BytesIO(json.dumps(provider_body).encode("utf-8")),
+        )
+
+    try:
+        provider = create_explanation_provider(settings(), rejected)
+        try:
+            provider.generate("system", "Ioff는 어떤 파라미터야?", {})
+        except ProviderHTTPError as error:
+            diagnostic = error.diagnostic()
+            assert diagnostic["http_status"] == 429
+            assert diagnostic["message"] == provider_body["error"]["message"]
+            assert diagnostic["error_type"] == "rate_limit_error"
+            assert diagnostic["provider_code"] == "rate_limit_exceeded"
+            assert diagnostic["request_bytes"] > 0
+            assert diagnostic["model"] == "fake-model"
+            assert diagnostic["headers"] == {
+                "retry-after": "17",
+                "x-ratelimit-remaining-tokens": "0",
+            }
+        else:
+            raise AssertionError("Provider error body was hidden")
+    finally:
+        del os.environ["TEST_LLM_KEY"]
+
+
+def test_external_provider_does_not_immediately_retry_rate_limit():
+    os.environ["TEST_LLM_KEY"] = "secret"
+    calls = 0
+
+    def rejected(url, _headers, _body, _timeout):
+        nonlocal calls
+        calls += 1
+        status, message, error_type = (
+            429,
+            "Token rate limit reached.",
+            "rate_limit_error",
+        )
+        body = {
+            "error": {
+                "message": message,
+                "type": error_type,
+                "code": error_type,
+            }
+        }
+        raise urllib.error.HTTPError(
+            url,
+            status,
+            message,
+            {"x-request-id": f"req_{calls}"},
+            io.BytesIO(json.dumps(body).encode("utf-8")),
+        )
+
+    retry_settings = ProviderSettings(
+        ProviderMode.EXTERNAL,
+        "fake-model",
+        "TEST_LLM_KEY",
+        "https://example.invalid/v1",
+        3,
+        1,
+        .2,
+    )
+    try:
+        provider = create_explanation_provider(retry_settings, rejected)
+        try:
+            provider.generate("system", "user", {})
+        except ProviderHTTPError as error:
+            diagnostic = error.diagnostic()
+            assert calls == 1
+            assert diagnostic["http_status"] == 429
+            assert [
+                (item["attempt"], item["http_status"], item["message"])
+                for item in diagnostic["attempts"]
+            ] == [
+                (1, 429, "Token rate limit reached."),
+            ]
+        else:
+            raise AssertionError("Retry errors were hidden")
     finally:
         del os.environ["TEST_LLM_KEY"]
 
@@ -182,6 +322,33 @@ def test_external_fallback_is_not_cached_as_external_result():
     assert first.provider == second.provider == "mock"
     assert not first.cached and not second.cached
     assert cache._entries == {}
+
+
+def test_strict_external_polish_failure_never_returns_mock_answer():
+    from backend.explanation.service import ExplanationService
+    from tests.test_safety import payload
+
+    class StrictFailingExternal:
+        name = "external_llm"
+        model = "strict-test"
+        settings = ProviderSettings(
+            provider=ProviderMode.EXTERNAL,
+            model="strict-test",
+            allow_mock_fallback=False,
+            allow_safe_fallback=False,
+            cache_enabled=False,
+        )
+
+        def generate(self, _system_prompt, _user_prompt, _payload):
+            raise RuntimeError("provider_network_error")
+
+    service = ExplanationService(StrictFailingExternal())
+    try:
+        service._explain(payload())
+    except RuntimeError as error:
+        assert str(error) == "provider_network_error"
+    else:
+        raise AssertionError("strict external failure returned a fallback answer")
 
 
 def test_external_grounding_failure_is_repaired_once_without_mock_fallback():

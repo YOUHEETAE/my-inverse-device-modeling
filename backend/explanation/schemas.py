@@ -5,6 +5,8 @@ from dataclasses import asdict, dataclass, field
 from enum import Enum
 from typing import Any, Literal
 
+from backend.answer_contract import GroundedAnswerContract
+
 
 AnalysisType = Literal["iv_curve_single", "iv_curve_comparison", "field_single", "field_comparison"]
 
@@ -41,6 +43,7 @@ class AnalysisPayload:
     warnings: list[dict[str, Any]] = field(default_factory=list)
     output_policy: dict[str, Any] = field(default_factory=dict)
     interpretation: dict[str, Any] = field(default_factory=dict)
+    comparison_plan: dict[str, Any] = field(default_factory=dict)
     schema_version: str = "3.0"
 
     def to_dict(self) -> dict[str, Any]:
@@ -56,12 +59,42 @@ class ExplanationResult:
     provider: str = "unknown"
     model: str = "unknown"
     cached: bool = False
+    usage_diagnostics: tuple[dict[str, Any], ...] = ()
+    answer_contract: GroundedAnswerContract | None = None
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any], *, provider: str, model: str, cached: bool = False) -> "ExplanationResult":
+    def from_dict(
+        cls,
+        data: dict[str, Any],
+        *,
+        provider: str,
+        model: str,
+        cached: bool = False,
+        analysis_payload: dict[str, Any] | None = None,
+        usage_diagnostics: tuple[dict[str, Any], ...] = (),
+    ) -> "ExplanationResult":
         from .safety import validate_provider_response
         clean = validate_provider_response(data)
-        return cls(tuple(clean["descriptions"]), tuple(clean["comparisons"]), tuple(clean["tradeoffs"]), tuple(clean["cautions"]), provider, model, cached)
+        contract = (
+            GroundedAnswerContract.from_legacy_response(analysis_payload, clean)
+            if analysis_payload is not None
+            else None
+        )
+        return cls(
+            descriptions=tuple(clean["descriptions"]),
+            comparisons=tuple(clean["comparisons"]),
+            tradeoffs=tuple(clean["tradeoffs"]),
+            cautions=tuple(clean["cautions"]),
+            provider=provider,
+            model=model,
+            cached=cached,
+            usage_diagnostics=tuple(
+                dict(item)
+                for item in usage_diagnostics
+                if isinstance(item, dict)
+            ),
+            answer_contract=contract,
+        )
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -72,5 +105,4 @@ class ExplanationResult:
             blocks = [title + "\n" + " ".join(lines) for title, lines in sections if lines]
         else:
             blocks = [title + "\n" + "\n".join(f"• {line}" for line in lines) for title, lines in sections if lines]
-        source = f"{self.provider} / {self.model}" + (" / cached" if self.cached else "")
-        return "\n\n".join(blocks) + f"\n\nSource: {source}"
+        return "\n\n".join(blocks)

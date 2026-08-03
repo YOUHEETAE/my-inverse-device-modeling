@@ -1,10 +1,19 @@
 from __future__ import annotations
 
+import math
+import re
 from dataclasses import asdict, replace
 from typing import Any, Callable
 
 from backend.explanation.providers.config import ProviderMode, ProviderSettings
-from backend.explanation.providers.external import ExternalLLMProvider, Transport
+from backend.explanation.providers.external import (
+    ExternalLLMProvider,
+    ProviderHTTPError,
+    Transport,
+)
+from backend.explanation.usage import consume_provider_diagnostic
+from backend.answer_quality import build_validation_failure_record
+from backend.public_presentation import public_ai_failure_message
 
 from .analysis_schemas import LearningAnalysisContext
 from .answer_evaluation import evaluate_structured_answer, parse_answer
@@ -15,7 +24,19 @@ from .knowledge_base import (
 )
 from .intent_interpreter import QuestionIntent
 from .dialogue_state import DialogueStateManager
+from .followup_context import (
+    compact_answer_plan,
+    compact_dialogue_state,
+    compact_history,
+    compact_knowledge_layers,
+    compact_simulation_facts,
+    fit_followup_prompt_budget,
+    select_definition_metrics,
+    select_result_metrics,
+    selected_evidence_ids,
+)
 from .knowledge_layers import LearningKnowledgeAssembler
+from .model_answer import build_grounded_model_answer
 from .question_router import QuestionRoute, TutorQuestionRouter
 from .response_planner import LearningResponsePlan, build_response_plan
 from .theory_answerer import GroundedTheoryAnswerer
@@ -73,6 +94,17 @@ class LearningLLMService:
         self.theory_answerer = theory_answerer or GroundedTheoryAnswerer()
         self.last_provider_failure: str | None = None
         self.last_provider_failure_detail: str | None = None
+        self.last_provider_diagnostic: dict[str, Any] = {}
+        self.last_provider_call_diagnostics: tuple[dict[str, Any], ...] = ()
+        self._provider_call_log: list[dict[str, Any]] = []
+
+    def usage_checkpoint(self) -> int:
+        """Return a marker used to measure a bounded learning operation."""
+        return len(self._provider_call_log)
+
+    def usage_since(self, checkpoint: int) -> tuple[dict[str, Any], ...]:
+        start = max(0, min(int(checkpoint), len(self._provider_call_log)))
+        return tuple(dict(item) for item in self._provider_call_log[start:])
 
     @classmethod
     def from_environment(cls, transport: Transport | None = None) -> "LearningLLMService":
@@ -87,14 +119,62 @@ class LearningLLMService:
         builder: Callable[[dict], tuple[str, str]],
         payload: dict,
         validator: Callable[[Any], Any],
+        *,
+        stage: str,
     ) -> Any | None:
         self.last_provider_failure = None
         self.last_provider_failure_detail = None
+        self.last_provider_diagnostic = {}
+        self.last_provider_call_diagnostics = ()
         if self.provider is None:
             return None
         system, user = builder(payload)
+        request_bytes = len((system + user).encode("utf-8"))
+        provider_calls: list[dict[str, Any]] = []
+
+        def generate(active_system: str, active_stage: str) -> Any:
+            try:
+                return self.provider.generate(active_system, user, payload)
+            finally:
+                value = consume_provider_diagnostic(
+                    self.provider, stage=active_stage,
+                )
+                if value:
+                    provider_calls.append(value)
+                    self._provider_call_log.append(dict(value))
+                    self.last_provider_call_diagnostics = tuple(
+                        provider_calls
+                    )
+
+        def record_failure(
+            error: Exception,
+            failure_stage: str,
+            *,
+            category: str | None = None,
+        ) -> None:
+            if isinstance(error, ProviderHTTPError):
+                diagnostic = error.diagnostic()
+            else:
+                diagnostic = {
+                    "category": category or "provider",
+                    "message": str(error)[:1200],
+                    "request_bytes": request_bytes,
+                    "request_bytes_estimated": True,
+                    "model": str(
+                        getattr(self.provider, "model", "unknown")
+                    ),
+                }
+            diagnostic["stage"] = failure_stage
+            diagnostic["internal_code"] = self._provider_failure_code(error)
+            self.last_provider_diagnostic = diagnostic
+            self.last_provider_failure_detail = str(
+                diagnostic.get("message") or str(error)
+            )
+
+        first_raw = None
         try:
-            return validator(self.provider.generate(system, user, payload))
+            first_raw = generate(system, stage)
+            return validator(first_raw)
         except ValueError as error:
             repair_system = (
                 system
@@ -102,27 +182,54 @@ class LearningLLMService:
                 + str(error)
                 + ". 같은 근거만 사용해 전체 JSON을 한 번 다시 생성하라."
             )
+            repair_raw = None
             try:
-                return validator(self.provider.generate(repair_system, user, payload))
+                repair_raw = generate(repair_system, f"{stage}_repair")
+                return validator(repair_raw)
             except TimeoutError as repair_error:
                 self.last_provider_failure = "external_timeout"
-                self.last_provider_failure_detail = str(repair_error)
+                record_failure(repair_error, f"{stage}_repair")
+                self.last_provider_diagnostic["repair_trigger"] = str(error)
                 return None
             except ValueError as repair_error:
                 self.last_provider_failure = "external_validation_failed"
-                self.last_provider_failure_detail = str(repair_error)
+                record_failure(
+                    repair_error,
+                    f"{stage}_repair",
+                    category="response_validation",
+                )
+                self.last_provider_diagnostic["repair_trigger"] = str(error)
+                self.last_provider_diagnostic["quality_failure"] = (
+                    build_validation_failure_record(
+                        domain="case",
+                        stage=f"{stage}_repair",
+                        validation_code=str(error),
+                        repair_validation_code=str(repair_error),
+                        question=str(payload.get("user_question", "")),
+                        model=str(
+                            getattr(self.provider, "model", "unknown")
+                        ),
+                        request_bytes=request_bytes,
+                        provider_response=(
+                            repair_raw
+                            if repair_raw is not None
+                            else first_raw
+                        ),
+                    ).to_dict()
+                )
                 return None
             except Exception as error:
                 self.last_provider_failure = self._provider_failure_code(error)
-                self.last_provider_failure_detail = str(error)
+                record_failure(error, f"{stage}_repair")
+                self.last_provider_diagnostic["repair_trigger"] = str(error)
                 return None
         except TimeoutError as error:
             self.last_provider_failure = "external_timeout"
-            self.last_provider_failure_detail = str(error)
+            record_failure(error, stage)
             return None
         except Exception as error:
             self.last_provider_failure = self._provider_failure_code(error)
-            self.last_provider_failure_detail = str(error)
+            record_failure(error, stage)
             return None
 
     @staticmethod
@@ -178,6 +285,7 @@ class LearningLLMService:
             answer_evaluation_prompt.build_prompt,
             payload,
             lambda data: validate_evaluation(data, topic),
+            stage="answer_evaluation",
         )
         if external is None:
             return deterministic
@@ -231,6 +339,7 @@ class LearningLLMService:
 
     @staticmethod
     def _local_feedback(
+        topic: TopicConfig,
         evaluation: AnswerEvaluation,
         context: LearningAnalysisContext,
     ) -> LearningFeedback:
@@ -245,15 +354,54 @@ class LearningLLMService:
         corrections = tuple(f"{concept} 개념을 결과와 다시 연결해보세요." for concept in evaluation.missing_concepts)
         if evaluation.detected_misconceptions:
             corrections += ("짧은 채널이 모든 특성을 개선하는 것은 아닙니다.",)
+        has_gap = bool(
+            evaluation.missing_concepts
+            or evaluation.detected_misconceptions
+            or evaluation.unsupported_claims
+        )
+        if not has_gap:
+            curve_focus = "추가로 다시 확인할 Curve 위치 없음"
+            field_focus = "추가로 다시 확인할 Field 위치 없음"
+        elif topic.topic_id == "oxide_gate_control":
+            curve_focus = (
+                "log(Id)–Vg의 subthreshold 기울기와 선형 Id–Vg의 최대 dId/dVg를 "
+                "SS·gm 추출값과 다시 연결해보세요."
+            )
+            field_focus = (
+                "Gate/oxide/channel 인접 영역의 Potential과 Electric Field를 같은 "
+                "color scale에서 다시 확인하세요."
+            )
+        else:
+            curve_focus = (
+                "log(Id)–Vg의 subthreshold 기울기, 두 Drain bias의 문턱 이동과 "
+                "정의된 on/off bias 전류를 다시 확인하세요."
+            )
+            field_focus = (
+                "채널 표면과 Source-side 장벽 방향에서 Potential·Electric Field가 "
+                "어떻게 달라지는지 다시 확인하세요."
+            )
+        if topic.topic_id == "oxide_gate_control":
+            summary = (
+                "Oxide 두께 감소에 따른 Gate control 변화와 Ioff·oxide 전계의 "
+                "trade-off를 분리해 판단해야 합니다."
+            )
+            next_question = "gm 증가와 SS 감소가 모두 Gate control과 연결되는 이유는 무엇인가요?"
+        else:
+            summary = (
+                "채널 길이 감소에 따른 구동 성능 변화와 off-state/SCE 악화를 함께 "
+                "판단해야 합니다."
+            )
+            next_question = "Ion 증가와 동시에 악화된 특성은 무엇인가요?"
         return LearningFeedback(
             headline=headline,
+            model_answer=build_grounded_model_answer(topic, context),
             positive_feedback=positive,
             corrections=corrections,
             evidence=evidence,
-            curve_focus="Id–Vg의 subthreshold 영역과 Drain bias에 따른 이동을 비교하세요.",
-            field_focus="Channel과 Drain-side 영역의 Potential 및 Electric Field 변화를 확인하세요.",
-            summary="채널 길이 감소에 따른 구동 성능 변화와 off-state/SCE 악화를 함께 판단해야 합니다.",
-            next_question="Ion 증가와 동시에 악화된 특성은 무엇인가요?",
+            curve_focus=curve_focus,
+            field_focus=field_focus,
+            summary=summary,
+            next_question=next_question,
             source="local",
         )
 
@@ -270,11 +418,17 @@ class LearningLLMService:
             "simulation_facts": self._context_payload(context),
             "server_evidence": [asdict(item) for item in evidence],
         }
-        external = self._call(feedback_prompt.build_prompt, payload, validate_feedback)
+        external = self._call(
+            feedback_prompt.build_prompt,
+            payload,
+            validate_feedback,
+            stage="learning_feedback",
+        )
         if external is None:
-            return self._local_feedback(evaluation, context)
+            return self._local_feedback(topic, evaluation, context)
         return LearningFeedback(
             headline=external["headline"],
+            model_answer=build_grounded_model_answer(topic, context),
             positive_feedback=external["positive_feedback"],
             corrections=external["corrections"],
             evidence=evidence,
@@ -297,6 +451,14 @@ class LearningLLMService:
         selected = allowed.get(preferred) or next(iter(allowed.values()))
         return NextActionDecision(selected.action_id, selected.description, "local")
 
+    def select_local_next_action(
+        self,
+        topic: TopicConfig,
+        evaluation: AnswerEvaluation,
+    ) -> NextActionDecision:
+        """Keep the saved curriculum decision without spending an LLM call."""
+        return self._fallback_action(topic, evaluation)
+
     def select_next_action(
         self,
         topic: TopicConfig,
@@ -314,6 +476,7 @@ class LearningLLMService:
             next_action_prompt.build_prompt,
             payload,
             lambda data: validate_next_action(data, topic),
+            stage="next_action",
         ) or self._fallback_action(topic, evaluation)
 
     def summarize_session(
@@ -333,12 +496,16 @@ class LearningLLMService:
             summary_prompt.build_prompt,
             payload,
             lambda data: validate_summary(data, topic),
+            stage="session_summary",
         )
         if external is not None:
             return external
         return LearningSessionSummary(
-            headline="Channel Length Case 학습 요약",
-            summary="채널 길이 변화에 따른 drive 성능과 SCE 관련 특성을 비교했습니다.",
+            headline=f"{topic.title} 학습 요약",
+            summary=(
+                f"{topic.title}에서 설정한 비교 조건에 따른 소자 특성과 "
+                "물리적 의미를 검토했습니다."
+            ),
             understood_concepts=evaluation.correct_concepts,
             needs_review=evaluation.missing_concepts,
             detected_misconceptions=evaluation.detected_misconceptions,
@@ -373,6 +540,130 @@ class LearningLLMService:
             theory_concepts=theory_concepts,
             case_connection=case_connection,
             interpretation_source=route.intent_source,
+        )
+
+    @staticmethod
+    def _recommended_retry_seconds(
+        failure: str | None,
+        diagnostic: dict[str, Any],
+    ) -> int | None:
+        status = diagnostic.get("http_status")
+        if status == 413 or failure == "external_http_413":
+            return None
+        if status == 429 or failure == "external_http_429":
+            headers = diagnostic.get("headers")
+            if (
+                not diagnostic.get("intent_checkpoint_available")
+                and isinstance(headers, dict)
+            ):
+                reset_value = str(
+                    headers.get("x-ratelimit-reset-tokens", "")
+                )
+                reset_match = re.fullmatch(
+                    r"(?:(\d+(?:\.\d+)?)m)?"
+                    r"(?:(\d+(?:\.\d+)?)s)?",
+                    reset_value.strip(),
+                )
+                if reset_match and any(reset_match.groups()):
+                    minutes = float(reset_match.group(1) or 0)
+                    seconds = float(reset_match.group(2) or 0)
+                    return max(
+                        1,
+                        math.ceil(minutes * 60 + seconds) + 1,
+                    )
+            retry_value = (
+                headers.get("retry-after")
+                if isinstance(headers, dict)
+                else None
+            )
+            try:
+                # One extra second avoids resubmitting exactly on the rolling
+                # rate-limit boundary.
+                return max(1, math.ceil(float(retry_value)) + 1)
+            except (TypeError, ValueError):
+                pass
+            message = str(diagnostic.get("message", ""))
+            match = re.search(
+                r"try again in\s+([0-9]+(?:\.[0-9]+)?)s",
+                message,
+                flags=re.IGNORECASE,
+            )
+            if match:
+                return max(1, math.ceil(float(match.group(1))) + 1)
+            return 60
+        if failure == "external_timeout":
+            return 5
+        if failure == "external_network_error":
+            return 10
+        if status in {500, 502, 503, 504}:
+            return 10
+        if failure == "external_validation_failed":
+            return 1
+        return 5
+
+    @classmethod
+    def _provider_failure_answer(
+        cls,
+        failure: str | None,
+        diagnostic: dict[str, Any],
+    ) -> tuple[str, dict[str, Any]]:
+        value = dict(diagnostic)
+        wait = cls._recommended_retry_seconds(failure, value)
+        if wait is not None:
+            value["recommended_retry_after_seconds"] = wait
+        return public_ai_failure_message(
+            feature="Case Study",
+            failure=failure,
+            diagnostic=value,
+            retry_after_seconds=wait,
+            checkpoint_preserved=bool(
+                value.get("intent_checkpoint_available")
+            ),
+            state_preserved=True,
+        ), value
+
+    @classmethod
+    def _provider_failure_followup(
+        cls,
+        route: QuestionRoute,
+        intent: QuestionIntent | None,
+        response_plan: LearningResponsePlan,
+        *,
+        failure: str | None,
+        detail: str | None,
+        diagnostics: tuple[dict[str, Any], ...],
+        warnings: tuple[str, ...] = (),
+    ) -> FollowupResponse:
+        active_diagnostic = dict(diagnostics[-1]) if diagnostics else {}
+        active_stage = str(active_diagnostic.get("stage", ""))
+        if intent is not None and active_stage.startswith(
+            "answer_generation"
+        ):
+            active_diagnostic["intent_checkpoint_available"] = True
+        answer, enriched = cls._provider_failure_answer(
+            failure,
+            active_diagnostic,
+        )
+        final_diagnostics = (
+            (*diagnostics[:-1], enriched)
+            if diagnostics
+            else ()
+        )
+        base = cls._routed_response(route, answer)
+        return replace(
+            base,
+            source="external_error",
+            fallback_reason=(
+                failure or "external_response_unavailable"
+            ),
+            fallback_detail=detail,
+            interpreted_intent=intent.to_dict() if intent else {},
+            pipeline_warnings=warnings,
+            pipeline_diagnostics=final_diagnostics,
+            learning_move=response_plan.dialogue_move,
+            next_learning_question=None,
+            explanation_level=response_plan.explanation_level,
+            adaptation_reasons=response_plan.adaptation_reasons,
         )
 
     def _local_followup(
@@ -568,7 +859,69 @@ class LearningLLMService:
                 allowed_metrics=set(payload["available_metrics"]),
                 allowed_parameters=set(topic.baseline_conditions),
             ),
+            stage="intent_interpretation",
         )
+
+    def _retry_checkpoint_intent(
+        self,
+        question: str,
+        topic: TopicConfig,
+        context: LearningAnalysisContext,
+        history: list[dict[str, Any]],
+    ) -> QuestionIntent | None:
+        if not history:
+            return None
+        previous = history[-1]
+        if (
+            str(previous.get("source", "")) != "external_error"
+            or sanitize_user_text(
+                previous.get("question", ""),
+                limit=1200,
+            )
+            != question
+        ):
+            return None
+        diagnostics = [
+            item
+            for item in previous.get("pipeline_diagnostics", ())
+            if isinstance(item, dict)
+        ]
+        if not diagnostics or not str(
+            diagnostics[-1].get("stage", "")
+        ).startswith("answer_generation"):
+            return None
+        saved_intent = previous.get("interpreted_intent")
+        if not isinstance(saved_intent, dict) or not saved_intent:
+            return None
+        saved_intent = dict(saved_intent)
+        for name in (
+            "alternative_intents",
+            "target_concepts",
+            "requested_metrics",
+        ):
+            if isinstance(saved_intent.get(name), tuple):
+                saved_intent[name] = list(saved_intent[name])
+        try:
+            validated = validate_question_intent(
+                saved_intent,
+                question=question,
+                allowed_concepts=set(self.knowledge_base.concepts),
+                allowed_metrics={
+                    *context.electrical_changes,
+                    "vth",
+                    "ion",
+                    "ioff",
+                    "ss",
+                    "dibl",
+                    "gm_max",
+                    "gds",
+                    "ron",
+                },
+                allowed_parameters=set(topic.baseline_conditions),
+            )
+        except ValueError:
+            return None
+        return replace(validated, source="retry_checkpoint")
 
     def ask_followup(
         self,
@@ -580,8 +933,17 @@ class LearningLLMService:
         learner_profile: dict[str, Any] | None = None,
     ) -> FollowupResponse:
         clean_question = sanitize_user_text(question)
+        raw_history = list((history or [])[-6:])
+        checkpoint_intent = self._retry_checkpoint_intent(
+            clean_question,
+            topic,
+            context,
+            raw_history,
+        )
         clean_history = []
-        for turn in (history or [])[-6:]:
+        for turn in raw_history:
+            if str(turn.get("source", "")) == "external_error":
+                continue
             clean_history.append({
                 "question": sanitize_user_text(turn.get("question", ""), limit=600),
                 "answer": sanitize_user_text(turn.get("answer", ""), limit=1200),
@@ -590,15 +952,26 @@ class LearningLLMService:
                     str(item) for item in turn.get("matched_concepts", ())
                 ][:12],
             })
-        intent = self._interpret_question(
-            clean_question,
-            topic,
-            context,
-            clean_history,
-            dialogue_state,
-        )
-        intent_failure = self.last_provider_failure
-        intent_failure_detail = self.last_provider_failure_detail
+        if checkpoint_intent is not None:
+            intent = checkpoint_intent
+            intent_failure = intent_failure_detail = None
+            intent_failure_diagnostic = {}
+        else:
+            intent = self._interpret_question(
+                clean_question,
+                topic,
+                context,
+                clean_history,
+                dialogue_state,
+            )
+            intent_failure = self.last_provider_failure
+            intent_failure_detail = self.last_provider_failure_detail
+            intent_failure_diagnostic = dict(
+                self.last_provider_diagnostic
+            )
+            intent_provider_calls = self.last_provider_call_diagnostics
+        if checkpoint_intent is not None:
+            intent_provider_calls = ()
         route = self.question_router.route(
             clean_question,
             topic,
@@ -606,7 +979,16 @@ class LearningLLMService:
             clean_history,
             interpreted_intent=intent,
         )
-        pipeline_warnings: tuple[str, ...] = ()
+        pipeline_warnings: tuple[str, ...] = (
+            ("intent_checkpoint_reused",)
+            if checkpoint_intent is not None
+            else ()
+        )
+        pipeline_diagnostics: tuple[dict[str, Any], ...] = (
+            (*intent_provider_calls, intent_failure_diagnostic)
+            if intent_failure_diagnostic
+            else tuple(intent_provider_calls)
+        )
         if (
             self.provider is not None
             and intent is None
@@ -642,40 +1024,43 @@ class LearningLLMService:
             dialogue_state,
             learner_profile,
         )
+        broad_explanation = (
+            response_plan.structure == "parameter_by_parameter"
+            or len(route.matched_concepts) >= 3
+        )
         concepts = self.knowledge_base.retrieve(
             route.matched_concepts,
-            limit=12,
+            limit=8 if broad_explanation else 5,
         )
-        requested_metrics = (
-            intent.requested_metrics if intent else ()
+        requested_metrics = select_definition_metrics(
+            route,
+            intent,
+        )
+        result_metrics = select_result_metrics(
+            route,
+            intent,
+            context,
         )
         knowledge_layers = LearningKnowledgeAssembler.build(
             topic,
             context,
             concepts,
             requested_metrics=requested_metrics,
+            result_metrics=result_metrics,
         )
         if (
             self.provider is not None
             and intent is None
             and intent_failure != "external_validation_failed"
         ):
-            local = self._local_followup(
-                clean_question,
-                topic,
-                context,
+            return self._provider_failure_followup(
                 route,
-                concepts,
-                metric_definitions=knowledge_layers.metric_definitions,
-                response_plan=response_plan,
-            )
-            return replace(
-                local,
-                fallback_reason=(
-                    intent_failure or "external_response_unavailable"
-                ),
-                fallback_detail=intent_failure_detail,
-                pipeline_warnings=(
+                intent,
+                response_plan,
+                failure=intent_failure,
+                detail=intent_failure_detail,
+                diagnostics=pipeline_diagnostics,
+                warnings=(
                     "intent_stage_failed"
                     + (
                         f":{intent_failure_detail}"
@@ -684,6 +1069,15 @@ class LearningLLMService:
                     ),
                 ),
             )
+        compact_layers = compact_knowledge_layers(
+            knowledge_layers,
+            route,
+        )
+        compact_simulation = compact_simulation_facts(
+            context,
+            route,
+            result_metrics,
+        )
         payload = {
             "learning_topic": {
                 "topic_id": topic.topic_id,
@@ -692,8 +1086,16 @@ class LearningLLMService:
                 "theory_reference": topic.theory_reference,
             },
             "user_question": clean_question,
-            "conversation_history": clean_history,
-            "dialogue_state": dict(dialogue_state or {}),
+            "conversation_history": compact_history(
+                clean_history,
+                route,
+                intent,
+                response_plan,
+            ),
+            "dialogue_state": compact_dialogue_state(
+                dialogue_state,
+                response_plan,
+            ),
             "learner_profile": {
                 "explanation_level": response_plan.explanation_level,
                 "completed_concepts": response_plan.known_concepts,
@@ -702,18 +1104,21 @@ class LearningLLMService:
             },
             "question_route": route.to_dict(),
             "interpreted_intent": intent.to_dict() if intent else None,
-            "answer_plan": {
-                **response_plan.to_dict(),
-                "write_cohesive_korean": True,
-            },
-            "retrieved_theory": [
-                concept.to_prompt_dict() for concept in concepts
-            ],
-            "knowledge_layers": knowledge_layers.to_prompt_dict(),
-            "simulation_facts": self._context_payload(context),
-            "allowed_evidence_ids": sorted(evidence_ids(context)),
+            "answer_plan": compact_answer_plan(response_plan),
+            "knowledge_layers": compact_layers,
+            "simulation_facts": compact_simulation,
+            "allowed_evidence_ids": selected_evidence_ids(
+                context,
+                route,
+                compact_layers["result_facts"],
+                compact_simulation,
+            ),
             "allowed_next_actions": [asdict(item) for item in topic.allowed_next_actions],
         }
+        payload = fit_followup_prompt_budget(
+            payload,
+            followup_prompt.build_prompt,
+        )
         external = self._call(
             followup_prompt.build_prompt,
             payload,
@@ -736,17 +1141,31 @@ class LearningLLMService:
                     intent.to_dict() if intent else {}
                 ),
                 additional_numeric_facts=(
-                    knowledge_layers.metric_definitions
+                    {
+                        "metric_definitions": (
+                            knowledge_layers.metric_definitions
+                        ),
+                        "interpreted_intent": (
+                            intent.to_dict() if intent else {}
+                        ),
+                        "user_question": clean_question,
+                    }
                 ),
                 learning_move=response_plan.dialogue_move,
                 explanation_level=response_plan.explanation_level,
                 adaptation_reasons=response_plan.adaptation_reasons,
+                question=clean_question,
             ),
+            stage="answer_generation",
         )
         if external is not None:
+            answer_provider_calls = self.last_provider_call_diagnostics
             return replace(
                 external,
                 pipeline_warnings=pipeline_warnings,
+                pipeline_diagnostics=(
+                    pipeline_diagnostics + answer_provider_calls
+                ),
                 next_learning_question=(
                     external.next_learning_question
                     or self._adaptive_next_question(
@@ -755,7 +1174,24 @@ class LearningLLMService:
                     )
                 ),
             )
-        local = self._local_followup(
+        if self.provider is not None:
+            answer_provider_calls = self.last_provider_call_diagnostics
+            answer_diagnostic = dict(self.last_provider_diagnostic)
+            final_diagnostics = (
+                pipeline_diagnostics
+                + answer_provider_calls
+                + ((answer_diagnostic,) if answer_diagnostic else ())
+            )
+            return self._provider_failure_followup(
+                route,
+                intent,
+                response_plan,
+                failure=self.last_provider_failure,
+                detail=self.last_provider_failure_detail,
+                diagnostics=final_diagnostics,
+                warnings=pipeline_warnings,
+            )
+        return self._local_followup(
             clean_question,
             topic,
             context,
@@ -765,16 +1201,6 @@ class LearningLLMService:
             knowledge_layers.metric_definitions,
             response_plan,
         )
-        if self.provider is not None:
-            return replace(
-                local,
-                fallback_reason=(
-                    self.last_provider_failure or "external_response_unavailable"
-                ),
-                fallback_detail=self.last_provider_failure_detail,
-                pipeline_warnings=pipeline_warnings,
-            )
-        return local
 
     @staticmethod
     def apply_evaluation(session: LearningSession, evaluation: AnswerEvaluation) -> None:
@@ -809,6 +1235,7 @@ class LearningLLMService:
             interpreted_intent=response.interpreted_intent,
             interpretation_source=response.interpretation_source,
             pipeline_warnings=response.pipeline_warnings,
+            pipeline_diagnostics=response.pipeline_diagnostics,
             fallback_detail=response.fallback_detail,
             learning_move=response.learning_move,
             claim_assessment=response.claim_assessment,

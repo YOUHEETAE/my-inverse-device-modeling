@@ -3,7 +3,8 @@
 Run the integrated desktop application with the project Conda environment:
 
 ```powershell
-C:\Users\T590\anaconda3\envs\devsim_env\python.exe frontend\app.py
+conda activate inverse-device-modeling
+python frontend\app.py
 ```
 
 `app.py` owns the integrated Tk workflow. `visualization/` contains reusable plot,
@@ -18,11 +19,11 @@ the 700 nm baseline with the 300 nm channel-length condition while keeping
 `T`, `B`, `SD`, and `LDD` fixed.
 
 The result view provides I–V curves, Potential/Electric Field maps, extracted
-electrical parameters, and grounded free-form questions. The top explanation
-provider selector applies only to the original Curve/Field explanation comparison.
-Case Study independently creates a dedicated Groq provider at startup. Without
-`GROQ_API_KEY`, the Case remains usable through deterministic local fallback and
-shows that disconnected state explicitly.
+electrical parameters, and grounded free-form questions. I-V, Field Map, and
+Case Study use the configured external AI provider without a public
+Mock/provider selector. Without `GROQ_API_KEY`, model inference and deterministic
+analysis remain available, while AI explanation areas show a clear connection
+error and retry guidance rather than presenting a local answer as an LLM answer.
 
 Sessions are restored from:
 
@@ -44,11 +45,12 @@ The Case header distinguishes:
   confirmation; if it was active, another saved session or a fresh session is
   opened.
 
-Free-question answers show the actual engine (`로컬 튜터`, `Groq LLM`, or
-`로컬 fallback`), route type, Case relevance, current-result usage, evidence
-IDs, retrieved theory concepts, and whether clarification or another experiment
-is required. A selected Groq provider does not hide fallback: timeout, request,
-or response-validation failures are stored with the affected answer.
+Free-question answers show learner-facing route and relevance information,
+friendly evidence labels, and whether clarification or another experiment is
+required. Provider/model identifiers, machine evidence IDs, token usage, raw
+provider messages, request IDs, and validation codes remain internal. A failed
+external request is shown as an actionable AI connection error and is not
+silently replaced by a Mock or local theory answer.
 
 Completing a Case does not close the learning conversation. The completion view
 keeps separate tabs for the summary, saved results, and free-form AI questions.
@@ -64,11 +66,11 @@ free questions. Sending a question preserves the selected tab.
 Run the model-backed Case Study smoke test with:
 
 ```powershell
-& 'C:\Users\T590\anaconda3\envs\devsim_env\python.exe' tools\case_study_smoke.py
+python tools\case_study_smoke.py
 ```
 
 Run the fast free-question quality audit without model inference with:
 
 ```powershell
-& 'C:\Users\T590\anaconda3\envs\devsim_env\python.exe' tools\tutor_quality_audit.py
+python tools\tutor_quality_audit.py
 ```

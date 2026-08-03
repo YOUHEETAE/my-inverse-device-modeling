@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import re
 from dataclasses import asdict, dataclass, field
 from typing import Any, Iterable
 
@@ -8,6 +7,7 @@ from .analysis_schemas import LearningAnalysisContext
 from .schemas import FollowupTurn, LearningSession
 from .schemas import TopicConfig
 from .tutor_validation import evidence_ids
+from backend.answer_quality import audit_answer_quality
 
 
 _QUESTION_TYPES = {
@@ -24,7 +24,6 @@ _CLAIM_MOVES = {
     "confirm_experiment",
 }
 _EXPLANATION_LEVELS = {"foundational", "intermediate", "advanced"}
-_SENTENCE = re.compile(r"(?<=[.!?。！？])\s+|\n+")
 
 
 @dataclass(frozen=True)
@@ -107,15 +106,6 @@ class TutorScenarioAuditReport:
         return asdict(self)
 
 
-def _cohesive(answer: str) -> bool:
-    sentences = [
-        " ".join(item.lower().split())
-        for item in _SENTENCE.split(answer.strip())
-        if item.strip()
-    ]
-    return bool(sentences) and len(sentences) == len(set(sentences))
-
-
 def audit_followup_history(
     turns: Iterable[FollowupTurn],
     context: LearningAnalysisContext,
@@ -125,11 +115,52 @@ def audit_followup_history(
     grounded = separated = claims = adaptive = fallbacks = recoveries = 0
 
     for number, turn in enumerate(turns, start=1):
+        common_quality = audit_answer_quality(
+            domain="case",
+            question=turn.question,
+            answer=turn.answer,
+            route=turn.question_type,
+            uses_current_result=turn.uses_current_result,
+            needs_new_experiment=turn.needs_new_experiment,
+            evidence_ids=turn.evidence_ids,
+            requested_terms=turn.matched_concepts,
+            suggested_followup=turn.next_learning_question,
+        )
         checks: dict[str, bool] = {
             "valid_route": turn.question_type in _QUESTION_TYPES,
             "answer_present": bool(turn.answer.strip()),
-            "answer_cohesion": _cohesive(turn.answer),
+            "answer_cohesion": common_quality.checks[
+                "answer_repeats_sentence"
+            ],
+            "answer_directness": common_quality.checks[
+                "answer_echoes_question"
+            ],
+            "requested_term_coverage": common_quality.checks[
+                "requested_term_coverage"
+            ],
+            "causal_depth": common_quality.checks["causal_depth"],
+            "requested_detail_depth": common_quality.checks[
+                "requested_detail_depth"
+            ],
         }
+        if turn.source == "external_error":
+            checks["provider_error_diagnostic"] = bool(
+                turn.fallback_reason
+                and turn.pipeline_diagnostics
+                and "AI 답변을 생성하지 못했습니다"
+                in turn.answer
+            )
+            failures = tuple(
+                name for name, passed in checks.items() if not passed
+            )
+            audits.append(TutorTurnAudit(
+                turn_number=number,
+                question_type=turn.question_type,
+                passed=not failures,
+                checks=checks,
+                failures=failures,
+            ))
+            continue
         evidence = set(turn.evidence_ids)
         if turn.uses_current_result:
             checks["result_grounding"] = bool(evidence) and evidence <= allowed_evidence

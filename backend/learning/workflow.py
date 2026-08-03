@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from typing import Any, Mapping
 
+from backend.explanation.usage import summarize_usage
+
 from .analysis_schemas import LearningAnalysisContext
 from .llm_service import LearningLLMService
 from .schemas import LearningSession, LearningStep, TopicConfig
@@ -21,6 +23,7 @@ class ObservationReview:
     feedback: LearningFeedback
     next_action: NextActionDecision
     summary: LearningSessionSummary
+    provider_diagnostics: tuple[dict[str, Any], ...] = ()
 
 
 def combine_evaluations(evaluations: list[AnswerEvaluation]) -> AnswerEvaluation:
@@ -79,6 +82,7 @@ def review_observations(
     *,
     prediction_answers: Mapping[str, Any] | None = None,
 ) -> ObservationReview:
+    usage_checkpoint = tutor.usage_checkpoint()
     expected_ids = {question.question_id for question in topic.observation_questions}
     if set(answers) != expected_ids:
         raise ValueError("observation_answer_set_mismatch")
@@ -102,9 +106,15 @@ def review_observations(
     )
     combined = combine_evaluations(evaluations)
     feedback = tutor.generate_feedback(topic, combined, context)
-    next_action = tutor.select_next_action(topic, combined, context)
+    next_action = tutor.select_local_next_action(topic, combined)
     summary = tutor.summarize_session(topic, combined, context, next_action)
-    return ObservationReview(combined, feedback, next_action, summary)
+    return ObservationReview(
+        combined,
+        feedback,
+        next_action,
+        summary,
+        tutor.usage_since(usage_checkpoint),
+    )
 
 
 def apply_observation_review(
@@ -117,5 +127,8 @@ def apply_observation_review(
     LearningLLMService.apply_evaluation(session, review.evaluation)
     session.recommended_next_action = review.next_action.action_id
     session.feedback_snapshot = review.feedback.to_dict()
+    session.feedback_snapshot["llm_usage"] = summarize_usage(
+        review.provider_diagnostics
+    )
     session.summary_snapshot = asdict(review.summary)
     state_machine.transition(session, LearningStep.FEEDBACK_READY)

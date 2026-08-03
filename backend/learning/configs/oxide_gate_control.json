@@ -1,0 +1,173 @@
+{
+  "schema_version": "1.0",
+  "topic_id": "oxide_gate_control",
+  "catalog_order": 2,
+  "prerequisite_topic_ids": [
+    "sce_channel_length"
+  ],
+  "title": "Gate Oxide Thickness와 Gate Control",
+  "description": "Gate oxide 두께 감소가 Gate 제어력, gm, SS, 누설 전류와 Oxide 전계에 미치는 영향을 학습한다.",
+  "learning_objectives": [
+    "산화막 두께와 Gate-to-channel 정전기적 결합의 관계를 설명한다.",
+    "얇은 산화막에서 gm과 SS가 변하는 물리적 이유를 설명한다.",
+    "I–V Curve의 Gate control 변화와 누설 및 Oxide Field의 trade-off를 함께 해석한다."
+  ],
+  "required_outputs": [
+    "idvg",
+    "electric_field",
+    "potential"
+  ],
+  "expected_concepts": [
+    "thinner_oxide_strengthens_gate_control",
+    "gm_can_increase",
+    "ss_can_decrease",
+    "oxide_field_distribution_requires_check",
+    "ioff_increases_in_current_result",
+    "gate_control_reliability_tradeoff"
+  ],
+  "common_misconceptions": [
+    "thinner_oxide_only_changes_current",
+    "stronger_gate_control_has_no_tradeoff",
+    "field_hotspot_alone_proves_breakdown"
+  ],
+  "theory_concepts": [
+    "oxide_thickness",
+    "transconductance",
+    "subthreshold_swing",
+    "electric_field",
+    "potential",
+    "on_current",
+    "threshold_voltage"
+  ],
+  "experiment": {
+    "baseline": {
+      "L": 700,
+      "T": 20,
+      "B": 1e16,
+      "SD": 1e20,
+      "LDD": 1e18
+    },
+    "comparison": {
+      "L": 700,
+      "T": 10,
+      "B": 1e16,
+      "SD": 1e20,
+      "LDD": 1e18
+    }
+  },
+  "prediction_questions": [
+    {
+      "question_id": "oxide_pred_gm_ss",
+      "type": "multi_select_with_reason",
+      "prompt": "Gate oxide가 20 nm에서 10 nm로 얇아지면 gm과 SS는 어떻게 변할까요?",
+      "options": [
+        "gm 증가",
+        "gm 감소",
+        "SS 증가",
+        "SS 감소",
+        "큰 변화 없음"
+      ],
+      "reason_required": true,
+      "correct_options": [
+        "gm 증가",
+        "SS 감소"
+      ],
+      "concepts_by_option": {
+        "gm 증가": [
+          "thinner_oxide_strengthens_gate_control",
+          "gm_can_increase"
+        ],
+        "SS 감소": [
+          "thinner_oxide_strengthens_gate_control",
+          "ss_can_decrease"
+        ]
+      },
+      "misconceptions_by_option": {
+        "큰 변화 없음": [
+          "thinner_oxide_only_changes_current"
+        ]
+      }
+    }
+  ],
+  "observation_questions": [
+    {
+      "question_id": "oxide_obs_gate_control",
+      "type": "single_select",
+      "prompt": "두 Id–Vg Curve에서 더 강한 Gate 제어와 일치하는 조건은 무엇인가요?",
+      "options": [
+        "20 nm",
+        "10 nm",
+        "차이를 확인하기 어렵다"
+      ],
+      "correct_options": [
+        "10 nm"
+      ],
+      "concepts_by_option": {
+        "10 nm": [
+          "thinner_oxide_strengthens_gate_control",
+          "gm_can_increase",
+          "ss_can_decrease"
+        ]
+      }
+    },
+    {
+      "question_id": "oxide_obs_tradeoff",
+      "type": "multi_select_with_reason",
+      "prompt": "Gate control 변화와 함께 확인해야 할 Oxide Field 관찰 및 해석 한계를 선택하세요.",
+      "options": [
+        "Oxide 및 인접 영역의 전계 분포 확인",
+        "Ioff 증가",
+        "Potential 분포 변화",
+        "Field Map만으로 breakdown 확정",
+        "I–V와 Field를 함께 비교",
+        "추가 확인 불필요"
+      ],
+      "reason_required": true,
+      "correct_options": [
+        "Oxide 및 인접 영역의 전계 분포 확인",
+        "Ioff 증가",
+        "Potential 분포 변화",
+        "I–V와 Field를 함께 비교"
+      ],
+      "concepts_by_option": {
+        "Oxide 및 인접 영역의 전계 분포 확인": [
+          "oxide_field_distribution_requires_check",
+          "gate_control_reliability_tradeoff"
+        ],
+        "Ioff 증가": [
+          "ioff_increases_in_current_result",
+          "gate_control_reliability_tradeoff"
+        ],
+        "Potential 분포 변화": [
+          "thinner_oxide_strengthens_gate_control"
+        ],
+        "I–V와 Field를 함께 비교": [
+          "gate_control_reliability_tradeoff"
+        ]
+      },
+      "misconceptions_by_option": {
+        "Field Map만으로 breakdown 확정": [
+          "field_hotspot_alone_proves_breakdown"
+        ],
+        "추가 확인 불필요": [
+          "stronger_gate_control_has_no_tradeoff"
+        ]
+      }
+    }
+  ],
+  "allowed_next_actions": [
+    {
+      "action_id": "observe_oxide_electric_field",
+      "description": "Electric Field Map에서 Oxide 부근의 공간 변화를 확인한다."
+    },
+    {
+      "action_id": "retry_oxide_prediction",
+      "description": "같은 결과를 보고 gm과 SS의 변화 방향을 다시 답한다."
+    },
+    {
+      "action_id": "review_oxide_theory",
+      "description": "Theory의 Gate oxide와 Gate control 항목을 복습한다."
+    }
+  ],
+  "theory_reference": "Theory > MOSFET Basics > Gate oxide와 Gate control"
+}

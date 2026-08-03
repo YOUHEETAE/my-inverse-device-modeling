@@ -39,7 +39,43 @@ def test_sce_topic_is_structured_and_uses_verified_single_change() -> None:
     assert {item.action_id for item in topic.allowed_next_actions} == {
         "observe_potential_map", "retry_sce_prediction", "review_sce_theory",
     }
-    assert load_topics() == {"sce_channel_length": topic}
+    assert load_topics()["sce_channel_length"] == topic
+
+
+def test_oxide_topic_is_isolated_and_changes_only_verified_tox() -> None:
+    topics = load_topics()
+    assert set(topics) == {"sce_channel_length", "oxide_gate_control"}
+    topic = topics["oxide_gate_control"]
+    comparison = compare_experiment_conditions(
+        topic.baseline_conditions,
+        topic.comparison_conditions,
+    )
+    assert comparison.changed_parameters == ("T",)
+    assert comparison.fixed_parameters == ("L", "B", "SD", "LDD")
+    assert topic.baseline_conditions["T"] == 20
+    assert topic.comparison_conditions["T"] == 10
+    assert {"oxide_thickness", "transconductance", "electric_field"} <= set(
+        topic.theory_concepts
+    )
+    assert all(
+        question.question_id.startswith("oxide_")
+        for question in (
+            *topic.prediction_questions,
+            *topic.observation_questions,
+        )
+    )
+
+    repository = InMemorySessionRepository()
+    sce_session = LearningSession.create(topics["sce_channel_length"])
+    oxide_session = LearningSession.create(topic)
+    repository.save(sce_session)
+    repository.save(oxide_session)
+    restored = repository.list_sessions()
+    assert {item.topic_id for item in restored} == {
+        "sce_channel_length",
+        "oxide_gate_control",
+    }
+    assert sce_session.session_id != oxide_session.session_id
 
 
 def test_condition_validation_separates_range_from_verified_values() -> None:
@@ -146,6 +182,35 @@ def test_session_round_trip_preserves_raw_answers_and_enum_values() -> None:
     assert restored.prediction_answers[0].raw_answer == raw_answer
 
 
+def test_session_v1_migrates_and_clone_preserves_learning_state() -> None:
+    session = LearningSession.create(
+        load_topic("sce_channel_length"),
+        now="2026-07-29T00:00:00+00:00",
+    )
+    legacy = session.to_dict()
+    legacy["schema_version"] = "1.0"
+    legacy.pop("display_name")
+    legacy.pop("ui_state")
+    migrated = LearningSession.from_dict(legacy)
+    assert migrated.schema_version == "2.0"
+    assert migrated.display_name == "기존 학습 세션"
+    assert migrated.ui_state == {}
+
+    migrated.rename("SCE 복습", now="2026-07-29T00:01:00+00:00")
+    migrated.remember_ui(
+        result_view_tab="Field Map",
+        completion_view_tab="AI 자유 질문",
+        field_display="Electric field",
+        unsupported="ignored",
+    )
+    clone = migrated.clone(now="2026-07-29T00:02:00+00:00")
+    assert clone.session_id != migrated.session_id
+    assert clone.display_name == "SCE 복습 복사본"
+    assert clone.ui_state == migrated.ui_state
+    assert clone.topic_id == migrated.topic_id
+    assert clone.created_at == clone.updated_at == "2026-07-29T00:02:00+00:00"
+
+
 def test_memory_and_json_repositories_return_restorable_copies() -> None:
     session = LearningSession.create(load_topic("sce_channel_length"))
     memory = InMemorySessionRepository()
@@ -189,3 +254,41 @@ def test_json_repository_rejects_invalid_ids_and_corrupt_sessions() -> None:
             assert str(error) == "session_read_failed"
         else:
             raise AssertionError("corrupt session accepted")
+
+
+def test_json_repository_recovers_last_valid_backup_and_skips_unrecoverable() -> None:
+    with TemporaryDirectory() as directory:
+        root = Path(directory)
+        repository = JsonSessionRepository(root)
+        session = LearningSession.create(load_topic("sce_channel_length"))
+        session.rename("첫 저장")
+        repository.save(session)
+        session.rename("두 번째 저장")
+        repository.save(session)
+        path = root / f"{session.session_id}.json"
+        path.write_text("{broken-primary", encoding="utf-8")
+
+        recovered = repository.load(session.session_id)
+        assert recovered is not None
+        assert recovered.display_name == "첫 저장"
+        notices = repository.consume_recovery_notices()
+        assert notices == [{
+            "session_id": session.session_id,
+            "code": "session_recovered_from_backup",
+        }]
+        assert json.loads(path.read_text(encoding="utf-8"))[
+            "display_name"
+        ] == "첫 저장"
+
+        broken = LearningSession.create(load_topic("sce_channel_length"))
+        (root / f"{broken.session_id}.json").write_text(
+            "{unrecoverable",
+            encoding="utf-8",
+        )
+        listed = repository.list_sessions()
+        assert [item.session_id for item in listed] == [session.session_id]
+        assert any(
+            item["session_id"] == broken.session_id
+            and item["code"] == "session_skipped_unrecoverable"
+            for item in repository.consume_recovery_notices()
+        )

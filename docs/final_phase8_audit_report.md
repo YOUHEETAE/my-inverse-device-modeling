@@ -2,7 +2,7 @@
 
 - Generated: 2026-07-21T05:34:06.035149+00:00
 - Conda environment: `devsim_env`
-- Python: `C:\Users\T590\anaconda3\envs\devsim_env\python.exe` (3.11.15)
+- Python: project Conda environment, Python 3.11.15
 - Mock model: `deterministic-interpretation-v8`
 
 | Frozen real-model case | Result | Checks |

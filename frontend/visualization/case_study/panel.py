@@ -2,25 +2,33 @@ from __future__ import annotations
 
 import threading
 import tkinter as tk
-from tkinter import messagebox, ttk
+from tkinter import messagebox, simpledialog, ttk
 from tkinter.scrolledtext import ScrolledText
 from typing import Any, Callable
 
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 
+from backend.answer_contract import evidence_display_label
+from backend.public_presentation import (
+    public_failure_label,
+    public_source_label,
+)
 from backend.learning import (
     LearningAnalysisContext,
     LearningLLMService,
+    LearningPortfolio,
     LearningSession,
     LearningStateMachine,
     LearningStep,
     audit_learning_session,
     apply_observation_review,
-    load_topic,
+    build_learning_portfolio,
+    load_topics,
     review_observations,
 )
 from backend.learning.experiment_runner import LearningExperimentResult, LearningExperimentRunner
+from backend.learning.model_answer import build_grounded_model_answer
 from backend.learning.session_repository import LearningSessionRepository, SessionStorageError
 from frontend.visualization.curve_rendering import render_curve_figure
 from frontend.visualization.field_rendering import render_model_field_comparison
@@ -71,23 +79,23 @@ RELEVANCE_LABELS = {
     "unrelated": "관련 없음",
 }
 FALLBACK_LABELS = {
-    "external_timeout": "Groq 시간 초과",
-    "external_validation_failed": "Groq 응답 검증 실패",
-    "external_request_failed": "Groq 요청 실패",
-    "external_response_unavailable": "Groq 응답 사용 불가",
-    "external_network_error": "Groq 네트워크 연결 실패",
-    "external_provider_error": "Groq 서비스 오류",
-    "external_http_400": "Groq HTTP 400 · 요청 형식 또는 모델 호환성 오류",
-    "external_http_401": "Groq HTTP 401 · API 키 인증 실패",
-    "external_http_403": "Groq HTTP 403 · API 접근 권한 부족",
-    "external_http_404": "Groq HTTP 404 · 모델 또는 API 경로 없음",
-    "external_http_413": "Groq HTTP 413 · 요청 크기 초과",
-    "external_http_422": "Groq HTTP 422 · 요청 내용 처리 불가",
-    "external_http_429": "Groq HTTP 429 · 요청 한도 초과",
-    "external_http_500": "Groq HTTP 500 · 서비스 내부 오류",
-    "external_http_502": "Groq HTTP 502 · 게이트웨이 오류",
-    "external_http_503": "Groq HTTP 503 · 서비스 일시 중단",
-    "external_http_504": "Groq HTTP 504 · 게이트웨이 시간 초과",
+    "external_timeout": "AI 응답 시간 초과",
+    "external_validation_failed": "AI 응답 확인 실패",
+    "external_request_failed": "AI 요청 실패",
+    "external_response_unavailable": "AI 응답 사용 불가",
+    "external_network_error": "AI 서비스 연결 실패",
+    "external_provider_error": "AI 서비스 오류",
+    "external_http_400": "AI 요청 처리 실패",
+    "external_http_401": "AI 서비스 인증 실패",
+    "external_http_403": "AI 서비스 접근 권한 없음",
+    "external_http_404": "AI 서비스 설정 오류",
+    "external_http_413": "AI 요청 정보 과다",
+    "external_http_422": "AI 요청 처리 실패",
+    "external_http_429": "AI 요청 한도 초과",
+    "external_http_500": "AI 서비스 일시 오류",
+    "external_http_502": "AI 서비스 일시 오류",
+    "external_http_503": "AI 서비스 일시 오류",
+    "external_http_504": "AI 서비스 응답 시간 초과",
 }
 FOLLOWUP_EXAMPLES = (
     ("현재 결과", "이번 결과에서 Vth가 왜 감소했나요?"),
@@ -100,11 +108,23 @@ ERROR_GUIDANCE = {
         "저장된 관찰 답변과 분석 결과로 피드백 생성을 다시 시도합니다."
     ),
     "simulation_failed": (
-        "저장된 예측 답변을 유지한 채 700 nm/300 nm 실험을 다시 실행합니다."
+        "저장된 예측 답변을 유지한 채 현재 Case 실험을 다시 실행합니다."
     ),
 }
-
-
+CONDITION_LABELS = {
+    "L": "Channel length",
+    "T": "Oxide thickness",
+    "B": "Body doping",
+    "SD": "Source/Drain doping",
+    "LDD": "LDD doping",
+}
+CONDITION_UNITS = {
+    "L": "nm",
+    "T": "nm",
+    "B": "cm^-3",
+    "SD": "cm^-3",
+    "LDD": "cm^-3",
+}
 def format_error_guidance(error_code: str | None, recovery_step: LearningStep | None) -> str:
     code = error_code or "unknown"
     if code.startswith("learning_experiment_failed:"):
@@ -121,15 +141,30 @@ def format_error_guidance(error_code: str | None, recovery_step: LearningStep | 
     return f"{detail}\n재시도 단계: {recovery}\n기존 세션 기록은 삭제되지 않습니다."
 
 
+def format_case_comparison(topic: Any) -> tuple[str, str, str]:
+    changed = [
+        name
+        for name in topic.baseline_conditions
+        if topic.baseline_conditions[name] != topic.comparison_conditions[name]
+    ]
+    if len(changed) != 1:
+        return "전기적 파라미터 (Baseline → Comparison)", "Baseline", "Comparison"
+    name = changed[0]
+    unit = CONDITION_UNITS.get(name, "")
+    baseline = f"{topic.baseline_conditions[name]:g}" + (f" {unit}" if unit else "")
+    comparison = f"{topic.comparison_conditions[name]:g}" + (f" {unit}" if unit else "")
+    label = CONDITION_LABELS.get(name, name)
+    return (
+        f"전기적 파라미터 ({label}: {baseline} → {comparison})",
+        baseline,
+        comparison,
+    )
+
+
 def format_followup_metadata(turn: Any) -> tuple[str, str]:
     source = getattr(turn, "source", "local")
     fallback = getattr(turn, "fallback_reason", None)
-    if source == "external_llm":
-        engine = "Groq LLM"
-    elif fallback:
-        engine = "로컬 fallback"
-    else:
-        engine = "로컬 튜터"
+    engine = public_source_label(source, has_fallback=bool(fallback))
     labels = [
         engine,
         QUESTION_TYPE_LABELS.get(
@@ -162,30 +197,37 @@ def format_followup_metadata(turn: Any) -> tuple[str, str]:
     evidence = tuple(getattr(turn, "evidence_ids", ()) or ())
     theory = tuple(getattr(turn, "theory_concepts", ()) or ())
     if evidence:
-        details.append("근거: " + ", ".join(evidence))
-    if theory:
-        details.append("이론: " + ", ".join(theory))
-    if fallback:
-        details.append("fallback: " + FALLBACK_LABELS.get(fallback, fallback))
-    intent = dict(getattr(turn, "interpreted_intent", {}) or {})
-    if intent:
         details.append(
-            "의도: "
-            + str(intent.get("intent", "-"))
-            + " / "
-            + str(intent.get("answer_structure", "-"))
+            "근거: "
+            + ", ".join(evidence_display_label(item) for item in evidence)
         )
-    interpretation_source = str(
-        getattr(turn, "interpretation_source", "") or ""
+    if theory:
+        details.append(
+            "연결 개념: "
+            + ", ".join(
+                str(item).replace("_", " ")
+                for item in theory
+            )
+        )
+    if fallback:
+        prefix = "오류" if source == "external_error" else "보조 해설"
+        details.append(
+            prefix + ": " + FALLBACK_LABELS.get(fallback, fallback)
+        )
+    diagnostics = tuple(
+        item
+        for item in (
+            getattr(turn, "pipeline_diagnostics", ()) or ()
+        )
+        if isinstance(item, dict)
     )
-    if interpretation_source == "deterministic_fallback":
-        details.append("질문 해석: Python 복구")
-    warnings = tuple(getattr(turn, "pipeline_warnings", ()) or ())
-    if warnings:
-        details.append("파이프라인: " + ", ".join(warnings))
-    fallback_detail = getattr(turn, "fallback_detail", None)
-    if fallback_detail:
-        details.append("실패 코드: " + str(fallback_detail))
+    for diagnostic in reversed(diagnostics):
+        recommended_wait = diagnostic.get(
+            "recommended_retry_after_seconds"
+        )
+        if isinstance(recommended_wait, int):
+            details.append(f"다시 시도: {recommended_wait}초 후")
+            break
     assessment = str(
         getattr(turn, "claim_assessment", "not_applicable")
         or "not_applicable"
@@ -228,7 +270,27 @@ class CaseStudyPanel(ttk.Frame):
         self.runner = runner
         self.repository = repository
         self.on_open_theory = on_open_theory
-        self.topic = load_topic("sce_channel_length")
+        self.topics = load_topics()
+        if not self.topics:
+            raise RuntimeError("no_learning_topics")
+        initial_topic_id = (
+            "sce_channel_length"
+            if "sce_channel_length" in self.topics
+            else next(iter(self.topics))
+        )
+        try:
+            latest = next(
+                (
+                    item for item in self.repository.list_sessions()
+                    if item.topic_id in self.topics
+                ),
+                None,
+            )
+        except SessionStorageError:
+            latest = None
+        if latest is not None and latest.topic_id:
+            initial_topic_id = latest.topic_id
+        self.topic = self.topics[initial_topic_id]
         self.state_machine = LearningStateMachine()
         self._provider_name = getattr(provider, "name", "")
         self.llm_service = LearningLLMService(
@@ -249,7 +311,15 @@ class CaseStudyPanel(ttk.Frame):
         self.tutor_mode_var = tk.StringVar(value="")
         self.session_choice_var = tk.StringVar(value="")
         self.session_meta_var = tk.StringVar(value="")
+        self.topic_choice_var = tk.StringVar(value="")
+        self.topic_title_var = tk.StringVar(value=self.topic.title)
+        self.portfolio_var = tk.StringVar(value="")
+        self._topic_choice_ids = {
+            f"{topic.title} · {topic.topic_id}": topic_id
+            for topic_id, topic in self.topics.items()
+        }
         self._session_choice_ids: dict[str, str] = {}
+        self.show_cover = True
         self._update_tutor_mode()
 
         self.session = self._restore_or_create_session()
@@ -257,45 +327,93 @@ class CaseStudyPanel(ttk.Frame):
 
         header = ttk.Frame(self, padding=(12, 9))
         header.pack(fill=tk.X)
-        ttk.Label(header, text=self.topic.title, font=("TkDefaultFont", 12, "bold")).pack(side=tk.LEFT)
+        self.case_selector_label = ttk.Label(header, text="Case")
+        self.case_selector_label.pack(side=tk.LEFT)
+        self.topic_choice_box = ttk.Combobox(
+            header,
+            textvariable=self.topic_choice_var,
+            values=tuple(self._topic_choice_ids),
+            state="readonly",
+            width=43,
+        )
+        self.topic_choice_box.pack(side=tk.LEFT, padx=(5, 10))
+        self.topic_choice_var.set(self._topic_label(self.topic.topic_id))
+        self.topic_choice_box.bind(
+            "<<ComboboxSelected>>", self._switch_topic
+        )
+        self.topic_title_label = ttk.Label(
+            header,
+            textvariable=self.topic_title_var,
+            font=("TkDefaultFont", 12, "bold"),
+        )
+        self.topic_title_label.pack(side=tk.LEFT)
         ttk.Label(header, textvariable=self.step_var, foreground="#1d4ed8").pack(side=tk.RIGHT)
+        self.cover_button = ttk.Button(
+            header,
+            text="Case 선택 화면",
+            command=self._show_cover,
+        )
+        self.cover_button.pack(side=tk.RIGHT, padx=(8, 0))
+        self.portfolio_button = ttk.Button(
+            header,
+            text="전체 학습 현황",
+            command=self._show_learning_portfolio,
+        )
+        self.portfolio_button.pack(side=tk.RIGHT, padx=(8, 4))
+        ttk.Label(
+            header,
+            textvariable=self.portfolio_var,
+            foreground="#4b5563",
+        ).pack(side=tk.RIGHT, padx=4)
 
-        session_bar = ttk.Frame(self, padding=(12, 0, 12, 6))
-        session_bar.pack(fill=tk.X)
-        ttk.Label(session_bar, text="저장 세션").pack(side=tk.LEFT)
+        self.session_bar = ttk.Frame(self, padding=(12, 0, 12, 6))
+        self.session_bar.pack(fill=tk.X)
+        ttk.Label(self.session_bar, text="저장 세션").pack(side=tk.LEFT)
         self.session_choice_box = ttk.Combobox(
-            session_bar,
+            self.session_bar,
             textvariable=self.session_choice_var,
             state="readonly",
             width=49,
         )
         self.session_choice_box.pack(side=tk.LEFT, padx=(5, 4))
         self.resume_session_button = ttk.Button(
-            session_bar,
+            self.session_bar,
             text="계속하기",
             command=self._resume_selected_session,
         )
         self.resume_session_button.pack(side=tk.LEFT, padx=2)
         self.new_session_button = ttk.Button(
-            session_bar,
+            self.session_bar,
             text="새 세션",
             command=self._new_session,
         )
         self.new_session_button.pack(side=tk.LEFT, padx=2)
         self.reset_session_button = ttk.Button(
-            session_bar,
+            self.session_bar,
             text="현재 세션 초기화",
             command=self._reset_current_session,
         )
         self.reset_session_button.pack(side=tk.LEFT, padx=2)
         self.delete_session_button = ttk.Button(
-            session_bar,
+            self.session_bar,
             text="선택 세션 삭제",
             command=self._delete_selected_session,
         )
         self.delete_session_button.pack(side=tk.LEFT, padx=2)
+        self.rename_session_button = ttk.Button(
+            self.session_bar,
+            text="이름 변경",
+            command=self._rename_selected_session,
+        )
+        self.rename_session_button.pack(side=tk.LEFT, padx=2)
+        self.clone_session_button = ttk.Button(
+            self.session_bar,
+            text="복제",
+            command=self._clone_selected_session,
+        )
+        self.clone_session_button.pack(side=tk.LEFT, padx=2)
         ttk.Label(
-            session_bar,
+            self.session_bar,
             textvariable=self.session_meta_var,
             foreground="#4b5563",
         ).pack(side=tk.RIGHT)
@@ -303,7 +421,12 @@ class CaseStudyPanel(ttk.Frame):
 
         self.progress = ttk.Progressbar(self, maximum=len(STEP_ORDER), mode="determinate")
         self.progress.pack(fill=tk.X, padx=12)
-        ttk.Label(self, textvariable=self.status_var, foreground="#4b5563").pack(fill=tk.X, padx=12, pady=(4, 0))
+        self.status_label = ttk.Label(
+            self,
+            textvariable=self.status_var,
+            foreground="#4b5563",
+        )
+        self.status_label.pack(fill=tk.X, padx=12, pady=(4, 0))
         self.body = ttk.Frame(self, padding=12)
         self.body.pack(fill=tk.BOTH, expand=True)
         self.render()
@@ -318,9 +441,9 @@ class CaseStudyPanel(ttk.Frame):
 
     def _update_tutor_mode(self) -> None:
         mode = (
-            "Case Study 전용 Groq LLM 연결됨"
+            "Case Study AI 튜터 사용 가능"
             if self._provider_name == "external_llm"
-            else "Case Study Groq 미연결 · 로컬 fallback"
+            else "Case Study AI 미연결 · 로컬 보조 해설"
         )
         self.tutor_mode_var.set(mode)
 
@@ -336,12 +459,67 @@ class CaseStudyPanel(ttk.Frame):
                 self.context = None
         self.feedback_data = dict(self.session.feedback_snapshot)
         self.summary_data = dict(self.session.summary_snapshot)
+        state = dict(self.session.ui_state)
+        self.result_view_tab = state.get(
+            "result_view_tab", "I–V Curve"
+        )
+        self.completion_view_tab = state.get(
+            "completion_view_tab", "학습 요약"
+        )
+        self.field_display_var.set(
+            state.get("field_display", "Potential")
+        )
+
+    def _topic_label(self, topic_id: str) -> str:
+        return next(
+            (
+                label for label, value in self._topic_choice_ids.items()
+                if value == topic_id
+            ),
+            topic_id,
+        )
+
+    def _switch_topic(self, _event=None) -> None:
+        if self._busy:
+            self.topic_choice_var.set(self._topic_label(self.topic.topic_id))
+            return
+        topic_id = self._topic_choice_ids.get(self.topic_choice_var.get())
+        if not topic_id or topic_id == self.topic.topic_id:
+            return
+        self.topic = self.topics[topic_id]
+        self.topic_title_var.set(self.topic.title)
+        self.session = self._restore_or_create_session()
+        self._restore_session_snapshots()
+        self.status_var.set(
+            f"‘{self.topic.title}’ Case로 전환했습니다. Case별 세션은 분리 저장됩니다."
+        )
+        self._refresh_session_controls()
+        self.render()
 
     @staticmethod
     def _session_label(session: LearningSession) -> str:
         updated = session.updated_at.replace("T", " ")[:16]
         step = STEP_LABELS.get(session.current_step, session.current_step.value)
-        return f"{updated} · {step} · {session.session_id[:8]}"
+        return (
+            f"{session.display_name} · {updated} · {step} · "
+            f"{session.session_id[:8]}"
+        )
+
+    def _session_matches_current_topic(
+        self, session: LearningSession
+    ) -> bool:
+        return self._session_matches_topic(session, self.topic)
+
+    @staticmethod
+    def _session_matches_topic(
+        session: LearningSession,
+        topic: Any,
+    ) -> bool:
+        return (
+            session.topic_id == topic.topic_id
+            and session.baseline_conditions == topic.baseline_conditions
+            and session.comparison_conditions == topic.comparison_conditions
+        )
 
     def _refresh_session_controls(self) -> None:
         if not hasattr(self, "session_choice_box"):
@@ -350,10 +528,28 @@ class CaseStudyPanel(ttk.Frame):
             sessions = [
                 item
                 for item in self.repository.list_sessions()
-                if item.topic_id == self.topic.topic_id
+                if self._session_matches_current_topic(item)
             ]
         except SessionStorageError:
             sessions = [self.session]
+        notices = self.repository.consume_recovery_notices()
+        if notices:
+            recovered = sum(
+                item.get("code") == "session_recovered_from_backup"
+                for item in notices
+            )
+            skipped = sum(
+                item.get("code") == "session_skipped_unrecoverable"
+                for item in notices
+            )
+            if recovered:
+                self.status_var.set(
+                    f"손상된 세션 {recovered}개를 마지막 백업에서 복구했습니다."
+                )
+            elif skipped:
+                self.status_var.set(
+                    f"복구할 수 없는 세션 {skipped}개를 목록에서 제외했습니다."
+                )
         if not any(item.session_id == self.session.session_id for item in sessions):
             sessions.insert(0, self.session)
         self._session_choice_ids = {
@@ -373,6 +569,117 @@ class CaseStudyPanel(ttk.Frame):
         self.session_meta_var.set(
             f"자동 저장 · {self.session.updated_at.replace('T', ' ')[:16]}"
         )
+        self._refresh_portfolio_summary()
+
+    def _learning_portfolio(self) -> LearningPortfolio:
+        try:
+            sessions = self.repository.list_sessions()
+        except SessionStorageError:
+            sessions = [self.session]
+        return build_learning_portfolio(self.topics, sessions)
+
+    def _refresh_portfolio_summary(self) -> None:
+        portfolio = self._learning_portfolio()
+        self.portfolio_var.set(
+            f"전체 Case {portfolio.completed_case_count}/"
+            f"{portfolio.total_case_count} 완료"
+        )
+
+    def _show_learning_portfolio(self) -> None:
+        if self._busy:
+            return
+        portfolio = self._learning_portfolio()
+        dialog = tk.Toplevel(self.window)
+        dialog.title("전체 Case 학습 현황")
+        dialog.transient(self.window)
+        dialog.geometry("920x430")
+        outer = ttk.Frame(dialog, padding=14)
+        outer.pack(fill=tk.BOTH, expand=True)
+        ttk.Label(
+            outer,
+            text=(
+                f"전체 Case {portfolio.completed_case_count}/"
+                f"{portfolio.total_case_count} 완료"
+            ),
+            font=("TkDefaultFont", 12, "bold"),
+        ).pack(anchor="w")
+        columns = ("case", "status", "sessions", "concepts", "updated")
+        tree = ttk.Treeview(
+            outer, columns=columns, show="headings", height=8
+        )
+        headings = {
+            "case": ("Case", 330),
+            "status": ("상태", 100),
+            "sessions": ("세션", 70),
+            "concepts": ("개념 진도", 120),
+            "updated": ("최근 학습", 180),
+        }
+        for name, (title, width) in headings.items():
+            tree.heading(name, text=title)
+            tree.column(name, width=width, anchor=tk.CENTER)
+        status_labels = {
+            "completed": "완료",
+            "in_progress": "진행 중",
+            "not_started": "시작 전",
+            "locked": "선행 학습 필요",
+        }
+        for item in portfolio.cases:
+            tree.insert(
+                "",
+                tk.END,
+                iid=item.topic_id,
+                values=(
+                    item.title,
+                    status_labels.get(item.status, item.status),
+                    item.session_count,
+                    f"{len(item.completed_concepts)}/"
+                    f"{len(item.completed_concepts) + len(item.remaining_concepts)}",
+                    (
+                        item.updated_at.replace("T", " ")[:16]
+                        if item.updated_at
+                        else "-"
+                    ),
+                ),
+            )
+        tree.pack(fill=tk.BOTH, expand=True, pady=(10, 8))
+        ttk.Label(
+            outer,
+            text="추천: " + portfolio.recommendation_reason,
+            foreground="#1d4ed8",
+            wraplength=860,
+            justify=tk.LEFT,
+        ).pack(anchor="w")
+        if portfolio.archived_incompatible_session_count:
+            ttk.Label(
+                outer,
+                text=(
+                    "현재 Case 조건과 다른 이전 세션 "
+                    f"{portfolio.archived_incompatible_session_count}개는 "
+                    "진도 계산에서 분리했습니다."
+                ),
+                foreground="#92400e",
+            ).pack(anchor="w", pady=(4, 0))
+        actions = ttk.Frame(outer)
+        actions.pack(fill=tk.X, pady=(10, 0))
+
+        def open_recommended() -> None:
+            topic_id = portfolio.next_topic_id
+            if topic_id:
+                self.topic_choice_var.set(self._topic_label(topic_id))
+                dialog.destroy()
+                self._switch_topic()
+
+        ttk.Button(
+            actions,
+            text="추천 Case 열기",
+            command=open_recommended,
+            state=(
+                tk.NORMAL if portfolio.next_topic_id else tk.DISABLED
+            ),
+        ).pack(side=tk.RIGHT, padx=(5, 0))
+        ttk.Button(
+            actions, text="닫기", command=dialog.destroy
+        ).pack(side=tk.RIGHT)
 
     def _resume_selected_session(self) -> None:
         if self._busy:
@@ -393,6 +700,7 @@ class CaseStudyPanel(ttk.Frame):
             return
         self.session = session
         self._restore_session_snapshots()
+        self.show_cover = False
         self.status_var.set("저장된 학습 세션을 불러왔습니다.")
         self._refresh_session_controls()
         self.render()
@@ -403,14 +711,95 @@ class CaseStudyPanel(ttk.Frame):
         self.session_choice_box.configure(
             state="readonly" if enabled else tk.DISABLED
         )
+        if hasattr(self, "topic_choice_box"):
+            self.topic_choice_box.configure(
+                state="readonly" if enabled else tk.DISABLED
+            )
+        if hasattr(self, "portfolio_button"):
+            self.portfolio_button.configure(
+                state=tk.NORMAL if enabled else tk.DISABLED
+            )
         state = tk.NORMAL if enabled else tk.DISABLED
         for button in (
             self.resume_session_button,
             self.new_session_button,
             self.reset_session_button,
             self.delete_session_button,
+            self.rename_session_button,
+            self.clone_session_button,
         ):
             button.configure(state=state)
+
+    def _rename_selected_session(self) -> None:
+        if self._busy:
+            return
+        session_id = self._session_choice_ids.get(
+            self.session_choice_var.get()
+        )
+        if not session_id:
+            return
+        try:
+            target = self.repository.load(session_id)
+        except SessionStorageError:
+            target = None
+        if target is None:
+            messagebox.showerror(
+                "세션 이름 변경 실패",
+                "선택한 세션을 불러올 수 없습니다.",
+                parent=self.window,
+            )
+            return
+        value = simpledialog.askstring(
+            "세션 이름 변경",
+            "새 세션 이름을 입력하세요.",
+            initialvalue=target.display_name,
+            parent=self.window,
+        )
+        if value is None:
+            return
+        try:
+            target.rename(value)
+            self.repository.save(target)
+        except (ValueError, SessionStorageError):
+            messagebox.showerror(
+                "세션 이름 변경 실패",
+                "세션 이름은 1~60자의 텍스트여야 합니다.",
+                parent=self.window,
+            )
+            return
+        if target.session_id == self.session.session_id:
+            self.session = target
+        self.status_var.set("세션 이름을 변경했습니다.")
+        self._refresh_session_controls()
+
+    def _clone_selected_session(self) -> None:
+        if self._busy:
+            return
+        session_id = self._session_choice_ids.get(
+            self.session_choice_var.get()
+        )
+        if not session_id:
+            return
+        try:
+            source = self.repository.load(session_id)
+            clone = source.clone() if source else None
+            if clone is not None:
+                self.repository.save(clone)
+        except (ValueError, SessionStorageError):
+            clone = None
+        if clone is None:
+            messagebox.showerror(
+                "세션 복제 실패",
+                "선택한 세션을 복제하지 못했습니다.",
+                parent=self.window,
+            )
+            return
+        self.session = clone
+        self._restore_session_snapshots()
+        self.show_cover = False
+        self.status_var.set("선택한 세션을 복제해 새 세션으로 열었습니다.")
+        self._refresh_session_controls()
+        self.render()
 
     def _delete_selected_session(self) -> None:
         if self._busy:
@@ -429,7 +818,7 @@ class CaseStudyPanel(ttk.Frame):
             remaining = [
                 item
                 for item in self.repository.list_sessions()
-                if item.topic_id == self.topic.topic_id
+                if self._session_matches_current_topic(item)
             ]
         except SessionStorageError:
             messagebox.showerror(
@@ -460,8 +849,12 @@ class CaseStudyPanel(ttk.Frame):
         ):
             return
         session_id = self.session.session_id
+        display_name = self.session.display_name
+        ui_state = dict(self.session.ui_state)
         replacement = LearningSession.create(self.topic)
         replacement.session_id = session_id
+        replacement.display_name = display_name
+        replacement.ui_state = ui_state
         self.session = replacement
         self._restore_session_snapshots()
         self._save()
@@ -472,7 +865,7 @@ class CaseStudyPanel(ttk.Frame):
         try:
             matching = [
                 item for item in self.repository.list_sessions()
-                if item.topic_id == self.topic.topic_id
+                if self._session_matches_current_topic(item)
             ]
         except SessionStorageError:
             matching = []
@@ -482,10 +875,16 @@ class CaseStudyPanel(ttk.Frame):
         self._save(session)
         return session
 
-    def _save(self, session: LearningSession | None = None) -> None:
+    def _save(
+        self,
+        session: LearningSession | None = None,
+        *,
+        refresh_controls: bool = True,
+    ) -> None:
         try:
             self.repository.save(session or self.session)
-            self._refresh_session_controls()
+            if refresh_controls:
+                self._refresh_session_controls()
         except SessionStorageError:
             self.status_var.set("학습 기록을 저장하지 못했습니다. 현재 실행에서는 계속 진행할 수 있습니다.")
 
@@ -501,8 +900,324 @@ class CaseStudyPanel(ttk.Frame):
         for widget in self.body.winfo_children():
             widget.destroy()
 
+    def _set_cover_chrome(self, cover: bool) -> None:
+        if cover:
+            self.case_selector_label.pack_forget()
+            self.topic_choice_box.pack_forget()
+            self.topic_title_label.pack_forget()
+            self.session_bar.pack_forget()
+            self.progress.pack_forget()
+            self.status_label.pack_forget()
+            self.cover_button.configure(state=tk.DISABLED)
+            return
+        self.cover_button.configure(state=tk.NORMAL)
+        if not self.case_selector_label.winfo_manager():
+            self.case_selector_label.pack(side=tk.LEFT)
+        if not self.topic_choice_box.winfo_manager():
+            self.topic_choice_box.pack(side=tk.LEFT, padx=(5, 10))
+        if not self.topic_title_label.winfo_manager():
+            self.topic_title_label.pack(side=tk.LEFT)
+        if not self.session_bar.winfo_manager():
+            self.session_bar.pack(fill=tk.X, before=self.body)
+        if not self.progress.winfo_manager():
+            self.progress.pack(fill=tk.X, padx=12, before=self.body)
+        if not self.status_label.winfo_manager():
+            self.status_label.pack(
+                fill=tk.X,
+                padx=12,
+                pady=(4, 0),
+                before=self.body,
+            )
+
+    def _show_cover(self) -> None:
+        if self._busy:
+            return
+        self.show_cover = True
+        self.render()
+
+    def _sessions_for_topic(self, topic_id: str) -> list[LearningSession]:
+        topic = self.topics[topic_id]
+        try:
+            sessions = [
+                item
+                for item in self.repository.list_sessions()
+                if self._session_matches_topic(item, topic)
+            ]
+        except SessionStorageError:
+            sessions = []
+        return sorted(
+            sessions,
+            key=lambda item: item.updated_at,
+            reverse=True,
+        )
+
+    def _activate_topic(self, topic_id: str) -> None:
+        self.topic = self.topics[topic_id]
+        self.topic_choice_var.set(self._topic_label(topic_id))
+        self.topic_title_var.set(self.topic.title)
+
+    def _open_case_session(self, topic_id: str, session_id: str) -> None:
+        if self._busy:
+            return
+        try:
+            session = self.repository.load(session_id)
+        except SessionStorageError:
+            session = None
+        if session is None:
+            messagebox.showerror(
+                "세션 불러오기 실패",
+                "선택한 Case의 최근 학습 기록을 불러올 수 없습니다.",
+                parent=self.window,
+            )
+            return
+        self._activate_topic(topic_id)
+        self.session = session
+        self._restore_session_snapshots()
+        self.show_cover = False
+        self.status_var.set("저장된 학습 세션을 이어서 엽니다.")
+        self._refresh_session_controls()
+        self.render()
+
+    def _start_new_case(self, topic_id: str) -> None:
+        if self._busy:
+            return
+        self._activate_topic(topic_id)
+        self.session = LearningSession.create(self.topic)
+        self._restore_session_snapshots()
+        self._save()
+        self.show_cover = False
+        self.status_var.set(
+            "새 학습 세션을 시작했습니다. 이전 기록은 그대로 유지됩니다."
+        )
+        self.render()
+
+    def _open_recommended_case(self) -> None:
+        portfolio = self._learning_portfolio()
+        topic_id = portfolio.next_topic_id
+        if not topic_id:
+            return
+        sessions = self._sessions_for_topic(topic_id)
+        if portfolio.recommendation_kind in {"resume", "review"} and sessions:
+            self._open_case_session(topic_id, sessions[0].session_id)
+        else:
+            self._start_new_case(topic_id)
+
+    @staticmethod
+    def _cover_step_label(step: LearningStep) -> str:
+        if step is LearningStep.INTRODUCTION:
+            return "시작 전"
+        return STEP_LABELS.get(step, step.value)
+
+    def _build_cover(self) -> None:
+        portfolio = self._learning_portfolio()
+        hero = ttk.Frame(self.body, padding=(12, 8, 12, 14))
+        hero.pack(fill=tk.X)
+        ttk.Label(
+            hero,
+            text="Case Study Learning Lab",
+            font=("TkDefaultFont", 20, "bold"),
+        ).pack(anchor="w")
+        ttk.Label(
+            hero,
+            text=(
+                "학습할 Case를 선택하거나 저장된 지점에서 이어가세요. "
+                "모든 답변과 분석 결과는 Case별 세션으로 자동 저장됩니다."
+            ),
+            foreground="#4b5563",
+            font=("TkDefaultFont", 10),
+            wraplength=1000,
+            justify=tk.LEFT,
+        ).pack(anchor="w", pady=(6, 0))
+
+        overview = ttk.LabelFrame(
+            self.body,
+            text="학습 현황과 추천",
+            padding=12,
+        )
+        overview.pack(fill=tk.X, padx=12, pady=(0, 10))
+        ttk.Label(
+            overview,
+            text=(
+                f"완료 {portfolio.completed_case_count}/"
+                f"{portfolio.total_case_count} Case"
+            ),
+            font=("TkDefaultFont", 11, "bold"),
+        ).pack(side=tk.LEFT)
+        ttk.Label(
+            overview,
+            text=portfolio.recommendation_reason,
+            foreground="#1d4ed8",
+            wraplength=700,
+            justify=tk.LEFT,
+        ).pack(side=tk.LEFT, padx=18)
+        ttk.Button(
+            overview,
+            text={
+                "resume": "추천 학습 이어서",
+                "start": "추천 Case 시작",
+                "review": "추천 Case 복습",
+            }.get(portfolio.recommendation_kind, "추천 Case 열기"),
+            command=self._open_recommended_case,
+            state=(
+                tk.NORMAL if portfolio.next_topic_id else tk.DISABLED
+            ),
+        ).pack(side=tk.RIGHT)
+
+        cards = ttk.Frame(self.body, padding=(6, 0, 6, 8))
+        cards.pack(fill=tk.BOTH, expand=True)
+        cards.columnconfigure(0, weight=1, uniform="case_card")
+        cards.columnconfigure(1, weight=1, uniform="case_card")
+        progress_by_topic = {
+            item.topic_id: item for item in portfolio.cases
+        }
+        status_labels = {
+            "completed": "완료",
+            "in_progress": "진행 중",
+            "not_started": "시작 전",
+            "locked": "선행 학습 필요",
+        }
+        status_colors = {
+            "completed": "#047857",
+            "in_progress": "#1d4ed8",
+            "not_started": "#4b5563",
+            "locked": "#92400e",
+        }
+        ordered_topics = sorted(
+            self.topics.values(),
+            key=lambda item: (item.catalog_order, item.topic_id),
+        )
+        for index, topic in enumerate(ordered_topics):
+            item = progress_by_topic[topic.topic_id]
+            sessions = self._sessions_for_topic(topic.topic_id)
+            latest = sessions[0] if sessions else None
+            card = ttk.LabelFrame(
+                cards,
+                text=f"Case {index + 1:02d}",
+                padding=14,
+            )
+            card.grid(
+                row=index // 2,
+                column=index % 2,
+                sticky="nsew",
+                padx=6,
+                pady=6,
+            )
+            ttk.Label(
+                card,
+                text=topic.title,
+                font=("TkDefaultFont", 13, "bold"),
+                wraplength=500,
+                justify=tk.LEFT,
+            ).pack(anchor="w")
+            ttk.Label(
+                card,
+                text=status_labels.get(item.status, item.status),
+                foreground=status_colors.get(item.status, "#4b5563"),
+                font=("TkDefaultFont", 9, "bold"),
+            ).pack(anchor="w", pady=(4, 8))
+            ttk.Label(
+                card,
+                text=topic.description,
+                wraplength=500,
+                justify=tk.LEFT,
+            ).pack(anchor="w")
+            caption, _baseline, _comparison = format_case_comparison(topic)
+            comparison_name = (
+                caption.removeprefix("전기적 파라미터 (")
+                .removesuffix(")")
+            )
+            ttk.Label(
+                card,
+                text=f"비교 조건: {comparison_name}",
+                foreground="#1d4ed8",
+            ).pack(anchor="w", pady=(9, 4))
+            for objective in topic.learning_objectives[:2]:
+                ttk.Label(
+                    card,
+                    text=f"• {objective}",
+                    foreground="#4b5563",
+                    wraplength=500,
+                    justify=tk.LEFT,
+                ).pack(anchor="w", pady=1)
+            ttk.Separator(card, orient=tk.HORIZONTAL).pack(
+                fill=tk.X,
+                pady=10,
+            )
+            if latest is not None:
+                latest_text = (
+                    f"최근 기록: {latest.display_name} · "
+                    f"{self._cover_step_label(latest.current_step)} · "
+                    f"{latest.updated_at.replace('T', ' ')[:16]}"
+                )
+            else:
+                latest_text = "저장된 학습 기록이 없습니다."
+            ttk.Label(
+                card,
+                text=latest_text,
+                wraplength=500,
+                foreground="#4b5563",
+                justify=tk.LEFT,
+            ).pack(anchor="w")
+            ttk.Label(
+                card,
+                text=(
+                    f"세션 {item.session_count}개 · 완료 "
+                    f"{item.completed_session_count}개"
+                ),
+                foreground="#4b5563",
+            ).pack(anchor="w", pady=(2, 8))
+            actions = ttk.Frame(card)
+            actions.pack(fill=tk.X, side=tk.BOTTOM)
+            unlocked = item.prerequisites_met
+            if latest is not None:
+                primary_text = (
+                    "완료 결과 보기"
+                    if latest.current_step is LearningStep.SESSION_COMPLETE
+                    else "학습 시작"
+                    if latest.current_step is LearningStep.INTRODUCTION
+                    else "이어서 학습"
+                )
+                ttk.Button(
+                    actions,
+                    text=primary_text,
+                    command=lambda topic_id=topic.topic_id,
+                    session_id=latest.session_id: self._open_case_session(
+                        topic_id,
+                        session_id,
+                    ),
+                    state=tk.NORMAL if unlocked else tk.DISABLED,
+                ).pack(side=tk.LEFT, fill=tk.X, expand=True)
+                ttk.Button(
+                    actions,
+                    text="새로 시작",
+                    command=lambda topic_id=topic.topic_id: (
+                        self._start_new_case(topic_id)
+                    ),
+                    state=tk.NORMAL if unlocked else tk.DISABLED,
+                ).pack(side=tk.LEFT, padx=(6, 0))
+            else:
+                ttk.Button(
+                    actions,
+                    text=(
+                        "이 Case 시작"
+                        if unlocked
+                        else "선행 Case 완료 후 시작"
+                    ),
+                    command=lambda topic_id=topic.topic_id: (
+                        self._start_new_case(topic_id)
+                    ),
+                    state=tk.NORMAL if unlocked else tk.DISABLED,
+                ).pack(fill=tk.X, expand=True)
+
     def render(self) -> None:
         self._clear_body()
+        if self.show_cover:
+            self._set_cover_chrome(True)
+            self.step_var.set("Case 선택")
+            self.progress.configure(value=0)
+            self._build_cover()
+            return
+        self._set_cover_chrome(False)
         self._set_step_header()
         step = self.session.current_step
         if step in {LearningStep.INTRODUCTION, LearningStep.BASELINE_SETUP}:
@@ -548,7 +1263,24 @@ class CaseStudyPanel(ttk.Frame):
         for name in ("L", "T", "B", "SD", "LDD"):
             tree.insert("", tk.END, values=(name, f"{self.topic.baseline_conditions[name]:g}", f"{self.topic.comparison_conditions[name]:g}"))
         tree.pack()
-        ttk.Label(right, text="한 번에 L만 변경합니다.", foreground="#1d4ed8").pack(pady=(10, 8))
+        changed = [
+            name
+            for name in self.topic.baseline_conditions
+            if (
+                self.topic.baseline_conditions[name]
+                != self.topic.comparison_conditions[name]
+            )
+        ]
+        changed_label = (
+            CONDITION_LABELS.get(changed[0], changed[0])
+            if len(changed) == 1
+            else "하나의 parameter"
+        )
+        ttk.Label(
+            right,
+            text=f"한 번에 {changed_label}만 변경합니다.",
+            foreground="#1d4ed8",
+        ).pack(pady=(10, 8))
         ttk.Button(right, text="사전 예측 시작", command=self._begin_prediction).pack(fill=tk.X)
 
     def _begin_prediction(self) -> None:
@@ -723,17 +1455,21 @@ class CaseStudyPanel(ttk.Frame):
         self.render()
 
     def _build_results(self, parent: tk.Misc) -> None:
-        pane = ttk.Panedwindow(parent, orient=tk.HORIZONTAL)
-        pane.pack(fill=tk.BOTH, expand=True)
-        content = ttk.Frame(pane)
-        parameters = ttk.LabelFrame(
-            pane,
-            text="전기적 파라미터 (700 nm → 300 nm)",
-            padding=5,
-            width=430,
+        container = ttk.Frame(parent)
+        container.pack(fill=tk.BOTH, expand=True)
+        content = ttk.Frame(container)
+        parameter_caption, _baseline_label, _comparison_label = (
+            format_case_comparison(self.topic)
         )
-        pane.add(content, weight=4)
-        pane.add(parameters, weight=1)
+        parameters = ttk.LabelFrame(
+            container,
+            text=parameter_caption,
+            padding=5,
+            width=350,
+        )
+        content.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        parameters.pack(side=tk.RIGHT, fill=tk.Y, padx=(6, 0))
+        parameters.pack_propagate(False)
         notebook = ttk.Notebook(content)
         notebook.pack(fill=tk.BOTH, expand=True)
         curve_tab, field_tab = ttk.Frame(notebook), ttk.Frame(notebook)
@@ -751,6 +1487,10 @@ class CaseStudyPanel(ttk.Frame):
             selected = notebook.select()
             if selected:
                 self.result_view_tab = notebook.tab(selected, "text")
+                self.session.remember_ui(
+                    result_view_tab=self.result_view_tab
+                )
+                self._save(refresh_controls=False)
 
         notebook.bind("<<NotebookTabChanged>>", remember_tab)
         if self.result is None:
@@ -790,6 +1530,10 @@ class CaseStudyPanel(ttk.Frame):
                     "Robust 1-99%",
                 )
                 field_canvas.draw_idle()
+                self.session.remember_ui(
+                    field_display=self.field_display_var.get()
+                )
+                self._save(refresh_controls=False)
 
             display_box.bind("<<ComboboxSelected>>", draw_field)
             draw_field()
@@ -800,10 +1544,13 @@ class CaseStudyPanel(ttk.Frame):
         if self.context is None:
             ttk.Label(parent, text="분석 문맥을 복원할 수 없습니다.").pack(expand=True)
             return
+        _caption, baseline_label, comparison_label = format_case_comparison(
+            self.topic
+        )
         columns = (
-            ("metric", "Metric", 115),
-            ("before", "700 nm", 92),
-            ("after", "300 nm", 92),
+            ("metric", "Metric", 105),
+            ("before", baseline_label, 82),
+            ("after", comparison_label, 82),
             ("direction", "변화", 62),
         ) if compact else (
             ("metric", "Metric", 130),
@@ -823,7 +1570,13 @@ class CaseStudyPanel(ttk.Frame):
         )
         for name, title, width in columns:
             tree.heading(name, text=title)
-            tree.column(name, width=width, anchor=tk.CENTER)
+            tree.column(
+                name,
+                width=width,
+                minwidth=width,
+                anchor=tk.CENTER,
+                stretch=False,
+            )
         for name, change in self.context.electrical_changes.items():
             if not change.available:
                 continue
@@ -905,6 +1658,10 @@ class CaseStudyPanel(ttk.Frame):
                     "detail",
                 )
         history.configure(state=tk.DISABLED)
+        history.see(tk.END)
+        history.after_idle(
+            lambda widget=history: widget.yview_moveto(1.0)
+        )
         examples = ttk.Frame(parent, padding=(8, 2))
         examples.pack(fill=tk.X)
         ttk.Label(examples, text="질문 예시").pack(side=tk.LEFT, padx=(0, 5))
@@ -928,6 +1685,12 @@ class CaseStudyPanel(ttk.Frame):
             state=tk.NORMAL if self.context is not None else tk.DISABLED,
         )
         send.pack(side=tk.RIGHT, padx=(6, 0))
+        retry = ttk.Button(
+            row,
+            text="최근 실패 재시도",
+            state=tk.DISABLED,
+        )
+        retry.pack(side=tk.RIGHT, padx=(6, 0))
         if self.context is None:
             ttk.Label(
                 row,
@@ -947,6 +1710,9 @@ class CaseStudyPanel(ttk.Frame):
                     "answer": turn.answer,
                     "question_type": turn.question_type,
                     "matched_concepts": turn.matched_concepts,
+                    "source": turn.source,
+                    "interpreted_intent": turn.interpreted_intent,
+                    "pipeline_diagnostics": turn.pipeline_diagnostics,
                 }
                 for turn in self.session.followup_history
             ]
@@ -955,7 +1721,17 @@ class CaseStudyPanel(ttk.Frame):
                 LearningLLMService.record_followup(self.session, text, response)
                 self._save()
                 if response.source == "external_llm":
-                    status = "Groq LLM 답변이 생성되었습니다."
+                    status = "AI 답변이 생성되었습니다."
+                elif response.source == "external_error":
+                    reason = public_failure_label(
+                        response.fallback_reason,
+                        (
+                            dict(response.pipeline_diagnostics[-1])
+                            if response.pipeline_diagnostics
+                            else {}
+                        ),
+                    )
+                    status = f"{reason}: 오류 안내를 확인해 주세요."
                 elif response.fallback_reason:
                     reason = FALLBACK_LABELS.get(
                         response.fallback_reason,
@@ -990,14 +1766,71 @@ class CaseStudyPanel(ttk.Frame):
             )
 
         send.configure(command=submit)
+        latest = (
+            self.session.followup_history[-1]
+            if self.session.followup_history
+            else None
+        )
+
+        def retry_latest() -> None:
+            if latest is None:
+                return
+            question.delete("1.0", tk.END)
+            question.insert("1.0", latest.question)
+            submit()
+
+        retry.configure(command=retry_latest)
+        retry_seconds = 0
+        retry_enabled = bool(
+            latest is not None and latest.source == "external_error"
+        )
+        if retry_enabled:
+            for diagnostic in reversed(latest.pipeline_diagnostics):
+                value = diagnostic.get(
+                    "recommended_retry_after_seconds"
+                )
+                if isinstance(value, int):
+                    retry_seconds = max(0, value)
+                    break
+        self._arm_case_retry_button(
+            retry,
+            retry_seconds,
+            enabled=retry_enabled,
+        )
+
+    @staticmethod
+    def _arm_case_retry_button(
+        button: ttk.Button,
+        seconds: int,
+        *,
+        enabled: bool,
+    ) -> None:
+        def tick(value: int) -> None:
+            try:
+                if value > 0:
+                    button.configure(
+                        state=tk.DISABLED,
+                        text=f"재시도 {value}초",
+                    )
+                    button.after(1000, lambda: tick(value - 1))
+                else:
+                    button.configure(
+                        state=(tk.NORMAL if enabled else tk.DISABLED),
+                        text="최근 실패 재시도",
+                    )
+            except tk.TclError:
+                return
+
+        tick(max(0, int(seconds)))
 
     def _build_observation(self) -> None:
-        pane = ttk.Panedwindow(self.body, orient=tk.HORIZONTAL)
-        pane.pack(fill=tk.BOTH, expand=True)
-        results = ttk.Frame(pane)
-        questions = ttk.Frame(pane, padding=8, width=390)
-        pane.add(results, weight=3)
-        pane.add(questions, weight=2)
+        container = ttk.Frame(self.body)
+        container.pack(fill=tk.BOTH, expand=True)
+        results = ttk.Frame(container)
+        questions = ttk.Frame(container, padding=8, width=500)
+        results.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        questions.pack(side=tk.RIGHT, fill=tk.Y)
+        questions.pack_propagate(False)
         self._build_results(results)
         ttk.Label(questions, text="그래프와 Field Map을 관찰한 뒤 답하세요.", font=("TkDefaultFont", 10, "bold"), wraplength=360).pack(anchor="w")
         for question in self.topic.observation_questions:
@@ -1066,53 +1899,164 @@ class CaseStudyPanel(ttk.Frame):
         self._run_async(task, complete, "학습 피드백 생성 실패", fail_evaluation)
 
     def _build_feedback(self) -> None:
-        pane = ttk.Panedwindow(self.body, orient=tk.HORIZONTAL)
-        pane.pack(fill=tk.BOTH, expand=True)
-        results = ttk.Frame(pane)
-        feedback = ttk.Frame(pane, padding=8, width=420)
-        pane.add(results, weight=3)
-        pane.add(feedback, weight=2)
+        container = ttk.Frame(self.body)
+        container.pack(fill=tk.BOTH, expand=True)
+        results = ttk.Frame(container)
+        feedback = ttk.Frame(container, padding=8, width=620)
+        results.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        feedback.pack(side=tk.RIGHT, fill=tk.Y)
+        feedback.pack_propagate(False)
         self._build_results(results)
-        self._feedback_cards(feedback)
-        ttk.Button(feedback, text="추천 행동 진행", command=self._take_next_action).pack(fill=tk.X, pady=(8, 3))
-        ttk.Button(feedback, text="현재 Case 완료", command=self._complete).pack(fill=tk.X)
+        canvas = tk.Canvas(
+            feedback,
+            highlightthickness=0,
+            borderwidth=0,
+            yscrollincrement=12,
+        )
+        scrollbar = ttk.Scrollbar(
+            feedback,
+            orient=tk.VERTICAL,
+            command=canvas.yview,
+        )
+        canvas.configure(yscrollcommand=scrollbar.set)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        cards = ttk.Frame(canvas)
+        cards_window = canvas.create_window((0, 0), window=cards, anchor="nw")
+        cards.bind(
+            "<Configure>",
+            lambda _event: canvas.configure(scrollregion=canvas.bbox("all")),
+        )
+
+        def fit_feedback_width(event) -> None:
+            content_width = max(260, int(event.width))
+            canvas.itemconfigure(cards_window, width=content_width)
+            self._set_feedback_wraplength(
+                cards,
+                max(220, content_width - 48),
+            )
+
+        canvas.bind(
+            "<Configure>",
+            fit_feedback_width,
+        )
+        self._feedback_cards(cards)
+        complete_button = ttk.Button(
+            cards,
+            text="현재 Case 완료",
+            command=self._complete,
+        )
+        complete_button.pack(fill=tk.X, pady=(8, 3))
+        self._bind_feedback_mousewheel(canvas)
+
+    @staticmethod
+    def _bind_feedback_mousewheel(
+        canvas: tk.Canvas,
+    ) -> None:
+        """Scroll the complete feedback column from any widget under the pointer."""
+
+        def scroll_units(units: int) -> str:
+            if canvas.winfo_exists():
+                canvas.yview_scroll(units, "units")
+            return "break"
+
+        def on_mousewheel(event: tk.Event) -> str:
+            delta = int(getattr(event, "delta", 0) or 0)
+            if delta == 0:
+                return "break"
+            notches = max(1, abs(delta) // 120)
+            return scroll_units((-3 if delta > 0 else 3) * notches)
+
+        def bind_tree(widget: tk.Misc) -> None:
+            widget.bind("<MouseWheel>", on_mousewheel, add="+")
+            widget.bind("<Button-4>", lambda _event: scroll_units(-3), add="+")
+            widget.bind("<Button-5>", lambda _event: scroll_units(3), add="+")
+            for child in widget.winfo_children():
+                bind_tree(child)
+
+        bind_tree(canvas)
+
+    @staticmethod
+    def _set_feedback_wraplength(
+        parent: tk.Misc,
+        wraplength: int,
+    ) -> None:
+        for child in parent.winfo_children():
+            if isinstance(child, ttk.Label):
+                try:
+                    current = int(float(child.cget("wraplength")))
+                except (TypeError, ValueError, tk.TclError):
+                    current = 0
+                if current > 0:
+                    child.configure(wraplength=wraplength)
+            CaseStudyPanel._set_feedback_wraplength(child, wraplength)
 
     def _feedback_cards(self, parent: tk.Misc) -> None:
         data = self.feedback_data
-        ttk.Label(parent, text=data.get("headline", "학습 피드백"), font=("TkDefaultFont", 11, "bold"), wraplength=390).pack(anchor="w", pady=(0, 6))
+        ttk.Label(
+            parent,
+            text=data.get("headline", "학습 피드백"),
+            font=("TkDefaultFont", 11, "bold"),
+            wraplength=540,
+        ).pack(anchor="w", pady=(0, 6))
+        model_answer = str(data.get("model_answer", "") or "").strip()
+        if not model_answer and self.context is not None:
+            model_answer = build_grounded_model_answer(
+                self.topic,
+                self.context,
+            )
+        answer_frame = ttk.LabelFrame(parent, text="모범 답안", padding=9)
+        answer_frame.pack(fill=tk.X, pady=(0, 6))
+        ttk.Label(
+            answer_frame,
+            text=(
+                model_answer
+                or "모범 답안을 구성할 수 있는 분석 결과가 부족합니다."
+            ),
+            wraplength=540,
+            justify=tk.LEFT,
+        ).pack(fill=tk.X, anchor="w")
         sections = (
             ("잘 이해한 부분", data.get("positive_feedback", [])),
             ("보완할 부분", data.get("corrections", [])),
-            ("Curve 관찰 위치", [data.get("curve_focus", "")]),
-            ("Field Map 관찰 위치", [data.get("field_focus", "")]),
+            ("내 답변에서 다시 확인할 Curve 위치", [data.get("curve_focus", "")]),
+            ("내 답변에서 다시 확인할 Field 위치", [data.get("field_focus", "")]),
             ("핵심 정리", [data.get("summary", "")]),
         )
         for title, lines in sections:
             frame = ttk.LabelFrame(parent, text=title, padding=7)
             frame.pack(fill=tk.X, pady=3)
             text = "\n".join(f"• {line}" for line in lines if line) or "• 추가 보완 사항 없음"
-            ttk.Label(frame, text=text, wraplength=370, justify=tk.LEFT).pack(anchor="w")
-        action = self.session.recommended_next_action or "-"
-        ttk.Label(parent, text=f"추천 다음 행동: {action}", foreground="#1d4ed8", wraplength=390).pack(anchor="w", pady=(7, 0))
+            ttk.Label(
+                frame,
+                text=text,
+                wraplength=540,
+                justify=tk.LEFT,
+            ).pack(anchor="w")
 
     def _take_next_action(self) -> None:
         action = self.session.recommended_next_action
         self.state_machine.transition(self.session, LearningStep.NEXT_EXPERIMENT)
-        if action == "retry_sce_prediction":
+        normalized_action = str(action or "").lower()
+        if "retry" in normalized_action and "prediction" in normalized_action:
             self.state_machine.transition(self.session, LearningStep.PREDICTION_QUESTION)
-        elif action == "review_sce_theory" and self.on_open_theory:
+        elif "review" in normalized_action and "theory" in normalized_action and self.on_open_theory:
             self.on_open_theory()
-        elif action == "observe_potential_map":
+        elif "observe" in normalized_action and "electric_field" in normalized_action:
+            self.field_display_var.set("Electric field")
+        elif "observe" in normalized_action and "potential" in normalized_action:
             self.field_display_var.set("Potential")
         self._save()
         self.render()
 
     def _build_next_action(self) -> None:
-        pane = ttk.Panedwindow(self.body, orient=tk.HORIZONTAL)
-        pane.pack(fill=tk.BOTH, expand=True)
-        results, summary = ttk.Frame(pane), ttk.Frame(pane, padding=12, width=400)
-        pane.add(results, weight=3)
-        pane.add(summary, weight=2)
+        container = ttk.Frame(self.body)
+        container.pack(fill=tk.BOTH, expand=True)
+        results = ttk.Frame(container)
+        summary = ttk.Frame(container, padding=12, width=400)
+        results.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        summary.pack(side=tk.RIGHT, fill=tk.Y)
+        summary.pack_propagate(False)
         self._build_results(results)
         ttk.Label(summary, text=self.summary_data.get("headline", "학습 요약"), font=("TkDefaultFont", 11, "bold"), wraplength=370).pack(anchor="w")
         ttk.Label(summary, text=self.summary_data.get("summary", ""), wraplength=370, justify=tk.LEFT).pack(anchor="w", pady=10)
@@ -1144,9 +2088,17 @@ class CaseStudyPanel(ttk.Frame):
             selected = notebook.select()
             if selected:
                 self.completion_view_tab = notebook.tab(selected, "text")
+                self.session.remember_ui(
+                    completion_view_tab=self.completion_view_tab
+                )
+                self._save(refresh_controls=False)
 
         notebook.bind("<<NotebookTabChanged>>", remember_tab)
-        ttk.Label(box, text=self.summary_data.get("headline", "Channel Length Case 완료"), font=("TkDefaultFont", 12, "bold")).pack(anchor="w")
+        ttk.Label(
+            box,
+            text=self.summary_data.get("headline", f"{self.topic.title} 완료"),
+            font=("TkDefaultFont", 12, "bold"),
+        ).pack(anchor="w")
         ttk.Label(box, text=self.summary_data.get("summary", ""), wraplength=850, justify=tk.LEFT).pack(anchor="w", pady=10)
         understood = self.summary_data.get("understood_concepts", self.session.completed_concepts)
         review = self.summary_data.get("needs_review", self.session.remaining_concepts)
@@ -1168,6 +2120,7 @@ class CaseStudyPanel(ttk.Frame):
         self.session = LearningSession.create(self.topic)
         self._restore_session_snapshots()
         self._save()
+        self.show_cover = False
         self.status_var.set(
             "새 학습 세션을 시작했습니다. 이전 세션은 저장 목록에 유지됩니다."
         )

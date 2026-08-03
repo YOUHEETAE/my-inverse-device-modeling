@@ -10,6 +10,8 @@ from backend.learning import (
     load_topic,
 )
 from backend.learning.tutor_validation import validate_question_intent
+from backend.learning.prompts import followup_qa
+from backend.learning.followup_context import FOLLOWUP_PROMPT_BYTE_BUDGET
 
 
 FIXTURE = Path(__file__).parent / "fixtures" / "learning" / "sce_channel_length_analysis.json"
@@ -98,6 +100,100 @@ def test_external_question_uses_interpreter_then_grounded_writer() -> None:
         .interpreted_intent["intent"]
         == "explain_current_result"
     )
+
+
+def test_definition_question_uses_small_rich_nonduplicated_context_pack() -> None:
+    provider = _Provider(
+        _intent(
+            intent="explain_theory",
+            target_concepts=["off_current"],
+            requested_metrics=["ioff"],
+            needs_current_result=False,
+            answer_structure="concise",
+        ),
+        {
+            "question_type": "case_theory",
+            "answer": (
+                "Ioff는 꺼진 바이어스에서 흐르는 누설 전류이며, "
+                "장벽 제어와 subthreshold 특성을 함께 보여 줍니다."
+            ),
+            "evidence_ids": [],
+            "distinguishes_current_result": False,
+            "needs_new_experiment": False,
+            "suggested_action_id": None,
+        },
+    )
+    response = LearningLLMService(provider).ask_followup(
+        load_topic("sce_channel_length"),
+        "Ioff는 뭐야?",
+        _context(),
+    )
+
+    payload = provider.calls[1][2]
+    system, user = followup_qa.build_prompt(payload)
+    assert len((system + user).encode("utf-8")) < 13_000
+    assert "retrieved_theory" not in payload
+    assert payload["knowledge_layers"]["theory_facts"]
+    assert payload["knowledge_layers"]["metric_definitions"]["ioff"]
+    assert payload["knowledge_layers"]["result_facts"] == {}
+    assert payload["simulation_facts"]["current_result_used"] is False
+    assert payload["conversation_history"] == []
+    assert payload["allowed_evidence_ids"] == ()
+    assert payload["answer_plan"]["detail_budget"] == "focused"
+    assert payload["answer_plan"]["include_mechanism_chain"]
+    assert response.source == "external_llm"
+
+
+def test_broad_parameter_explanation_stays_inside_free_tier_prompt_budget() -> None:
+    metrics = [
+        "ion",
+        "ioff",
+        "vth",
+        "ss",
+        "dibl",
+        "gm_max",
+        "gds",
+        "ron",
+    ]
+    provider = _Provider(
+        _intent(
+            target_concepts=["channel_length", "short_channel_effect"],
+            requested_metrics=metrics,
+            answer_structure="parameter_by_parameter",
+        ),
+        {
+            "question_type": "current_result",
+            "answer": (
+                "각 지표의 변화와 관련 물리 과정을 구분한 뒤 "
+                "성능과 누설의 trade-off로 연결합니다."
+            ),
+            "evidence_ids": [],
+            "distinguishes_current_result": True,
+            "needs_new_experiment": False,
+            "suggested_action_id": None,
+        },
+    )
+    LearningLLMService(provider).ask_followup(
+        load_topic("sce_channel_length"),
+        (
+            "채널 길이가 짧아질 때 각 파라미터가 왜 변하는지 "
+            "전부 자세히 설명해줘."
+        ),
+        _context(),
+    )
+
+    payload = provider.calls[1][2]
+    system, user = followup_qa.build_prompt(payload)
+    assert (
+        len((system + user).encode("utf-8"))
+        <= FOLLOWUP_PROMPT_BYTE_BUDGET
+    )
+    definitions = payload["knowledge_layers"]["metric_definitions"]
+    assert {"ion", "ioff", "vth", "ss", "dibl", "gm_max", "gds", "ron"} <= set(
+        definitions
+    )
+    assert len(payload["knowledge_layers"]["theory_facts"]) >= 4
+    assert payload["answer_plan"]["organize_each_requested_metric"]
 
 
 def test_python_keeps_explicit_result_and_experiment_cues_authoritative() -> None:

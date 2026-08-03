@@ -52,6 +52,7 @@ class LearningKnowledgeAssembler:
         theory: Iterable[TheoryConcept],
         *,
         requested_metrics: Iterable[str] = (),
+        result_metrics: Iterable[str] | None = None,
     ) -> LearningKnowledgeLayers:
         experiment = dict(context.experiment)
         changed = tuple(experiment.get("changed_parameters", ()))
@@ -66,6 +67,11 @@ class LearningKnowledgeAssembler:
             "controlled_single_parameter_comparison": len(changed) == 1,
             "in_training_range": context.in_training_range,
         }
+        selected_results = (
+            None
+            if result_metrics is None
+            else set(str(item) for item in result_metrics)
+        )
         result_facts = {
             name: {
                 "before": change.before,
@@ -77,6 +83,10 @@ class LearningKnowledgeAssembler:
             }
             for name, change in context.electrical_changes.items()
             if change.available
+            and (
+                selected_results is None
+                or name in selected_results
+            )
         }
         requested = tuple(dict.fromkeys(str(item) for item in requested_metrics))
         names = requested or tuple(result_facts)

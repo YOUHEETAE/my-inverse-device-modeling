@@ -90,6 +90,11 @@ class DialogueState:
 class DialogueStateManager:
     @staticmethod
     def update_from_turn(state: DialogueState, turn: Any) -> None:
+        if str(getattr(turn, "source", "")) == "external_error":
+            state.pending_question = (
+                str(getattr(turn, "question", "") or "") or None
+            )
+            return
         concepts = [
             str(item)
             for item in getattr(turn, "matched_concepts", ())
@@ -193,6 +198,7 @@ class DialogueStateManager:
         turn = TurnView()
         turn.question = question
         for name in (
+            "source",
             "matched_concepts",
             "uses_current_result",
             "needs_clarification",

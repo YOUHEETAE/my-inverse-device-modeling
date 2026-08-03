@@ -108,6 +108,7 @@ def test_complete_case_journey_persists_feedback_followup_and_completion() -> No
     assert restored is not None
     assert restored.current_step is LearningStep.SESSION_COMPLETE
     assert restored.feedback_snapshot["evidence"]
+    assert "llm_usage" in restored.feedback_snapshot
     assert restored.summary_snapshot["headline"]
     assert restored.followup_history[-1].evidence_ids == response.evidence_ids
     assert restored.completed_at is not None

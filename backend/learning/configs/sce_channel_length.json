@@ -1,6 +1,8 @@
 {
   "schema_version": "1.0",
   "topic_id": "sce_channel_length",
+  "catalog_order": 1,
+  "prerequisite_topic_ids": [],
   "title": "Channel Length와 Short Channel Effect",
   "description": "채널 길이 감소가 Ion, Ioff, Vth, DIBL에 미치는 영향을 학습한다.",
   "learning_objectives": [

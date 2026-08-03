@@ -7,6 +7,8 @@ from enum import Enum
 from typing import Any
 from uuid import UUID, uuid4
 
+from backend.public_presentation import sanitize_persisted_diagnostics
+
 from .dialogue_state import DialogueState
 
 def utc_now() -> str:
@@ -94,6 +96,8 @@ class TopicConfig:
     allowed_next_actions: tuple[NextActionSpec, ...]
     theory_concepts: tuple[str, ...] = ()
     theory_reference: str | None = None
+    catalog_order: int = 100
+    prerequisite_topic_ids: tuple[str, ...] = ()
     schema_version: str = "1.0"
 
     @classmethod
@@ -114,6 +118,10 @@ class TopicConfig:
             allowed_next_actions=tuple(NextActionSpec.from_dict(item) for item in data["allowed_next_actions"]),
             theory_concepts=tuple(str(item) for item in data.get("theory_concepts", [])),
             theory_reference=str(data["theory_reference"]) if data.get("theory_reference") else None,
+            catalog_order=int(data.get("catalog_order", 100)),
+            prerequisite_topic_ids=tuple(
+                str(item) for item in data.get("prerequisite_topic_ids", [])
+            ),
             schema_version=str(data.get("schema_version", "1.0")),
         )
 
@@ -161,6 +169,7 @@ class FollowupTurn:
     interpreted_intent: dict[str, Any] = field(default_factory=dict)
     interpretation_source: str = "deterministic"
     pipeline_warnings: tuple[str, ...] = ()
+    pipeline_diagnostics: tuple[dict[str, Any], ...] = ()
     fallback_detail: str | None = None
     learning_move: str = "answer_question"
     claim_assessment: str = "not_applicable"
@@ -199,11 +208,12 @@ class FollowupTurn:
             pipeline_warnings=tuple(
                 str(item) for item in data.get("pipeline_warnings", [])
             ),
-            fallback_detail=(
-                str(data["fallback_detail"])
-                if data.get("fallback_detail")
-                else None
+            pipeline_diagnostics=tuple(
+                sanitize_persisted_diagnostics(
+                    data.get("pipeline_diagnostics", [])
+                )
             ),
+            fallback_detail=None,
             learning_move=str(
                 data.get("learning_move", "answer_question")
             ),
@@ -257,7 +267,9 @@ class LearningSession:
     created_at: str = field(default_factory=utc_now)
     updated_at: str = field(default_factory=utc_now)
     completed_at: str | None = None
-    schema_version: str = "1.0"
+    display_name: str = "새 학습 세션"
+    ui_state: dict[str, str] = field(default_factory=dict)
+    schema_version: str = "2.0"
 
     @classmethod
     def create(cls, topic: TopicConfig | None = None, *, now: str | None = None) -> "LearningSession":
@@ -282,15 +294,50 @@ class LearningSession:
 
     def to_dict(self) -> dict[str, Any]:
         data = asdict(self)
+        for turn in data.get("followup_history", []):
+            if not isinstance(turn, dict):
+                continue
+            turn["pipeline_diagnostics"] = sanitize_persisted_diagnostics(
+                turn.get("pipeline_diagnostics", [])
+            )
+            turn["fallback_detail"] = None
         data["current_step"] = self.current_step.value
         data["understanding_level"] = self.understanding_level.value
         data["recovery_step"] = self.recovery_step.value if self.recovery_step else None
         json.dumps(data, ensure_ascii=False, allow_nan=False)
         return data
 
+    def rename(self, value: str, *, now: str | None = None) -> None:
+        name = " ".join(str(value).split())
+        if not name or len(name) > 60:
+            raise ValueError("invalid_session_display_name")
+        self.display_name = name
+        self.updated_at = now or utc_now()
+
+    def remember_ui(self, **values: str) -> None:
+        allowed = {
+            "result_view_tab",
+            "completion_view_tab",
+            "field_display",
+        }
+        for key, value in values.items():
+            clean = str(value).strip()
+            if key in allowed and clean:
+                self.ui_state[key] = clean[:80]
+
+    def clone(self, *, now: str | None = None) -> "LearningSession":
+        timestamp = now or utc_now()
+        value = LearningSession.from_dict(self.to_dict())
+        value.session_id = str(uuid4())
+        value.display_name = (self.display_name + " 복사본")[:60]
+        value.created_at = timestamp
+        value.updated_at = timestamp
+        return value
+
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "LearningSession":
-        if str(data.get("schema_version", "")) != "1.0":
+        data = migrate_learning_session_data(data)
+        if str(data.get("schema_version", "")) != "2.0":
             raise ValueError("unsupported_learning_session_schema")
         session_id = str(data["session_id"])
         UUID(session_id)
@@ -332,8 +379,34 @@ class LearningSession:
             created_at=str(data["created_at"]),
             updated_at=str(data["updated_at"]),
             completed_at=str(data["completed_at"]) if data.get("completed_at") else None,
-            schema_version="1.0",
+            display_name=str(data.get("display_name", "새 학습 세션")),
+            ui_state={
+                str(key): str(value)
+                for key, value in data.get("ui_state", {}).items()
+            },
+            schema_version="2.0",
         )
         if session.attempt_count < 0:
             raise ValueError("invalid_attempt_count")
+        if not session.display_name.strip() or len(session.display_name) > 60:
+            raise ValueError("invalid_session_display_name")
         return session
+
+
+def migrate_learning_session_data(data: dict[str, Any]) -> dict[str, Any]:
+    if not isinstance(data, dict):
+        raise ValueError("invalid_learning_session")
+    value = dict(data)
+    version = str(value.get("schema_version") or "1.0")
+    if version == "1.0":
+        value["display_name"] = str(
+            value.get("display_name") or "기존 학습 세션"
+        )
+        value["ui_state"] = dict(value.get("ui_state") or {})
+        value["schema_version"] = "2.0"
+        version = "2.0"
+    if version != "2.0":
+        raise ValueError("unsupported_learning_session_schema")
+    if not isinstance(value.get("ui_state", {}), dict):
+        value["ui_state"] = {}
+    return value

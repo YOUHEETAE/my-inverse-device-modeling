@@ -6,6 +6,9 @@ import re
 from collections.abc import Iterable, Mapping
 from typing import Any
 
+from backend.answer_contract import normalize_public_text, validate_public_answer_text
+from backend.answer_quality import validate_answer_quality
+
 from .analysis_schemas import LearningAnalysisContext
 from .schemas import TopicConfig
 from .question_router import QUESTION_TYPES, QuestionRoute
@@ -49,7 +52,9 @@ def sanitize_user_text(value: Any, *, limit: int = 1200) -> str:
 def _string_list(data: Any, name: str, *, maximum: int = 20) -> tuple[str, ...]:
     if not isinstance(data, list) or len(data) > maximum or any(not isinstance(item, str) for item in data):
         raise ValueError(f"invalid_{name}")
-    return tuple(item.strip() for item in data if item.strip())
+    return tuple(
+        clean for item in data if (clean := normalize_public_text(item))
+    )
 
 
 def validate_question_intent(
@@ -398,13 +403,15 @@ def validate_followup(
     learning_move: str = "answer_question",
     explanation_level: str = "foundational",
     adaptation_reasons: tuple[str, ...] = (),
+    question: str = "",
 ) -> FollowupResponse:
     if not isinstance(data, dict):
         raise ValueError("invalid_followup")
     question_type = str(data.get("question_type", ""))
-    answer = str(data.get("answer", "")).strip()
+    answer = normalize_public_text(data.get("answer", ""))
     if question_type not in QUESTION_TYPES or not answer or len(answer) > 1800:
         raise ValueError("invalid_followup_content")
+    validate_public_answer_text(answer)
     if route is not None and question_type != route.question_type:
         raise ValueError("followup_route_mismatch")
     response_evidence = _string_list(data.get("evidence_ids"), "evidence_ids", maximum=20)
@@ -456,7 +463,7 @@ def validate_followup(
     )
     next_question_value = data.get("next_learning_question")
     next_question = (
-        str(next_question_value).strip()
+        normalize_public_text(next_question_value)
         if next_question_value is not None
         else None
     )
@@ -505,6 +512,22 @@ def validate_followup(
         and not response_evidence
     ):
         raise ValueError("claim_assessment_evidence_required")
+    validate_answer_quality(
+        domain="case",
+        question=question,
+        answer=answer,
+        route=question_type,
+        uses_current_result=(
+            route.uses_current_result if route else bool(response_evidence)
+        ),
+        needs_new_experiment=needs_new,
+        evidence_ids=response_evidence,
+        requested_terms=(
+            *(route.matched_concepts if route else ()),
+            *theory_concepts,
+        ),
+        suggested_followup=next_question,
+    )
     return FollowupResponse(
         question_type=question_type,
         answer=answer,

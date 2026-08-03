@@ -139,7 +139,7 @@
         "전계 분포는 Potential과 함께 봐야 장벽 제어와의 관계를 해석할 수 있다."
       ],
       "related_concepts": ["potential", "source_barrier", "dibl"],
-      "case_connection": "현재 Case의 Drain 영향 범위를 공간적으로 확인하는 출력이다.",
+      "case_connection": "현재 Case에서 변경한 소자 조건의 영향이 어느 영역에 집중되는지 공간적으로 확인하는 출력이다.",
       "caveats": ["전계 최대값 하나만으로 전체 소자 거동을 단정하지 않는다."]
     },
     {
@@ -209,8 +209,8 @@
         "얇은 산화막은 SCE 억제와 transconductance에 유리할 수 있지만 산화막 전계와 누설 신뢰성을 함께 고려해야 한다."
       ],
       "related_concepts": ["short_channel_effect", "transconductance", "electric_field"],
-      "case_connection": "현재 Case에서는 고정된 변수이다.",
-      "caveats": ["현재 Channel Length 비교만으로 oxide thickness 효과를 분리할 수 없다."]
+      "case_connection": "Case의 실험 조건에서 oxide thickness만 변경했다면 Gate control과 Field 변화를 직접 비교할 수 있고, 고정된 변수라면 그 효과를 분리할 수 없다.",
+      "caveats": ["변경된 변수가 여러 개라면 oxide thickness만의 효과로 단정할 수 없다."]
     },
     {
       "concept_id": "ldd",

@@ -171,9 +171,10 @@ def test_external_success_timeout_and_invalid_response_have_visible_sources() ->
     ).ask_followup(
         topic, question, context,
     )
-    assert timeout.source == "local"
+    assert timeout.source == "external_error"
     assert timeout.fallback_reason == "external_timeout"
-    assert timeout.evidence_ids == ("metric:dibl",)
+    assert timeout.evidence_ids == ()
+    assert "5초 후" in timeout.answer
 
     invalid_payload = _external_followup(evidence_ids=["invented:evidence"])
     invalid = LearningLLMService(
@@ -181,6 +182,6 @@ def test_external_success_timeout_and_invalid_response_have_visible_sources() ->
     ).ask_followup(
         topic, question, context,
     )
-    assert invalid.source == "local"
+    assert invalid.source == "external_error"
     assert invalid.fallback_reason == "external_validation_failed"
-    assert invalid.evidence_ids == ("metric:dibl",)
+    assert invalid.evidence_ids == ()

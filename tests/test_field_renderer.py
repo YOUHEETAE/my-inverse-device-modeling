@@ -135,7 +135,7 @@ def test_15_srh_signed_magnitude():
 def test_16_energy_band_approximation():
     ev = evidence("barrier", "barrier_or_band_change", "raised", display="energy_band", region="channel_near_surface", data={"barrier_ev": .61})
     output = text(render_field_explanation(payload(display="energy_band", evidence_items=[ev])))
-    assert "Channel barrier가 상승" in output and "model-derived approximation" in output and "0.61" not in output
+    assert "Channel barrier가 Channel near-surface에서 상승" in output and "model-derived approximation" in output and "0.61" not in output
 
 
 def test_17_output_policy():

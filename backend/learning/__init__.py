@@ -61,6 +61,12 @@ from .session_repository import (
 )
 from .state_machine import InvalidLearningTransition, LearningStateMachine
 from .topics import TopicConfigError, load_topic, load_topics
+from .progress import CaseProgress, LearningPortfolio, build_learning_portfolio
+from .readiness import (
+    PlatformReadinessReport,
+    ReadinessCheck,
+    run_platform_readiness_audit,
+)
 from .validation import (
     ConditionValidationError,
     compare_experiment_conditions,
@@ -77,6 +83,7 @@ __all__ = [
     "AnswerRecord",
     "AnswerEvaluation",
     "ConditionValidationError",
+    "CaseProgress",
     "ElectricalChange",
     "DialogueState",
     "DialogueStateManager",
@@ -94,6 +101,7 @@ __all__ = [
     "LearningKnowledgeAssembler",
     "LearningKnowledgeLayers",
     "LearningObservation",
+    "LearningPortfolio",
     "LearningResponsePlan",
     "LearningSessionSummary",
     "LearningStateMachine",
@@ -105,6 +113,8 @@ __all__ = [
     "QuestionSpec",
     "QuestionIntent",
     "QuestionRoute",
+    "PlatformReadinessReport",
+    "ReadinessCheck",
     "GroundedTheoryAnswerer",
     "SessionStorageError",
     "TopicConfig",
@@ -121,9 +131,11 @@ __all__ = [
     "UnderstandingLevel",
     "compare_experiment_conditions",
     "build_response_plan",
+    "build_learning_portfolio",
     "audit_followup_history",
     "audit_learning_session",
     "run_tutor_scenarios",
+    "run_platform_readiness_audit",
     "apply_observation_review",
     "combine_evaluations",
     "load_topic",

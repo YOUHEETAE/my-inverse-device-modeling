@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "application_kind": "desktop_tk",
+  "entrypoint": "frontend/app.py",
+  "python": "3.11",
+  "environment_file": "environment.yml",
+  "required_secret_environment": [
+    "GROQ_API_KEY"
+  ],
+  "optional_environment": [
+    "LLM_MODEL",
+    "LLM_BASE_URL",
+    "LLM_API_KEY_ENV"
+  ],
+  "writable_private_paths": [
+    "runtime/learning_sessions"
+  ],
+  "model_validation": "ai/tools/check_runtime_package.py",
+  "smoke_test": "frontend/app.py --smoke-test",
+  "ui_smoke_test": "frontend/app.py --ui-smoke-test",
+  "readiness_check": "tools/deployment_readiness.py",
+  "http_health_endpoint": null
+}
+

@@ -49,6 +49,10 @@ IMPLICATION_MAP: dict[str, dict[tuple[str, str], tuple[str, str]]] = {
     "energy_band": {
         ("barrier_or_band_change", "raised"): ("channel_entry_barrier", "raised"),
         ("barrier_or_band_change", "lowered"): ("channel_entry_barrier", "lowered"),
+        ("barrier_or_band_change", "band_bending_increased"): ("vertical_band_bending", "strengthened"),
+        ("barrier_or_band_change", "band_bending_decreased"): ("vertical_band_bending", "weakened"),
+        ("barrier_or_band_change", "slope_increased"): ("channel_band_slope", "strengthened"),
+        ("barrier_or_band_change", "slope_decreased"): ("channel_band_slope", "weakened"),
     },
 }
 
@@ -95,6 +99,27 @@ def build_field_specific_conclusions(payload: Any) -> list[dict[str, Any]]:
     if policy is None or not mapping:
         return []
     comparison_counts = {item["comparison_id"]: item.get("changed_parameter_count", 0) for item in payload.comparisons}
+    comparison_plan = getattr(payload, "comparison_plan", None) or {}
+    representative_subjects = set(
+        comparison_plan.get(
+            "representative_subject_ids", []
+        )
+    )
+    representative_comparison_id = next(
+        (
+            item["comparison_id"]
+            for item in payload.comparisons
+            if representative_subjects
+            and set(item.get("subject_ids", []))
+            == representative_subjects
+        ),
+        None,
+    )
+    selected_comparison_ids = set(
+        comparison_plan.get(
+            "selected_comparison_ids", []
+        )
+    )
     candidates = []
     for evidence in payload.evidence:
         if not evidence.get("eligible_for_output") or evidence.get("field_display") != display:
@@ -104,8 +129,17 @@ def build_field_specific_conclusions(payload: Any) -> list[dict[str, Any]]:
             continue
         concept, assessment = conclusion
         changed_count = comparison_counts.get(evidence.get("comparison_id"))
+        comparison_id = evidence.get("comparison_id")
+        planner_priority = (
+            100.0 if comparison_id == representative_comparison_id
+            else 10.0 if comparison_id in selected_comparison_ids
+            else 0.0
+        )
         candidates.append((
-            policy.evidence_score(evidence["evidence_type"]) + policy.region_score(evidence.get("region")) + float(evidence.get("importance_score", 0)),
+            planner_priority
+            + policy.evidence_score(evidence["evidence_type"])
+            + policy.region_score(evidence.get("region"))
+            + float(evidence.get("importance_score", 0)),
             {
                 "conclusion_version": FIELD_CONCLUSION_VERSION,
                 "field_display": display, "conclusion_type": "field_specific_spatial_interpretation",
@@ -148,3 +182,85 @@ def validate_field_specific_conclusions(conclusions: list[dict[str, Any]], paylo
             raise ValueError("Field-only conclusions cannot assign parameter causality.")
         if item.get("claim_limit") != "spatial_prediction_only":
             raise ValueError("Field conclusion claim limit is missing.")
+
+
+def build_focused_field_conclusions(
+    payload: dict[str, Any],
+    comparison_ids: set[str],
+    *,
+    maximum: int = 6,
+) -> list[dict[str, Any]]:
+    """Re-rank valid Field evidence for a chat-requested comparison."""
+    display = str(payload.get("context", {}).get("display", ""))
+    policy = FIELD_POLICY_REGISTRY.get(display)
+    mapping = IMPLICATION_MAP.get(display, {})
+    if policy is None or not mapping or not comparison_ids:
+        return []
+    comparison_counts = {
+        str(item.get("comparison_id")): int(
+            item.get("changed_parameter_count", 0)
+        )
+        for item in payload.get("comparisons", [])
+    }
+    candidates: list[tuple[float, dict[str, Any]]] = []
+    for evidence in payload.get("evidence", []):
+        comparison_id = str(evidence.get("comparison_id") or "")
+        if (
+            comparison_id not in comparison_ids
+            or not evidence.get("eligible_for_output", True)
+            or evidence.get("field_display") != display
+        ):
+            continue
+        conclusion = mapping.get((
+            evidence.get("evidence_type"),
+            evidence.get("observation"),
+        ))
+        if (
+            conclusion is None
+            or evidence.get("region") not in policy.region_priority
+        ):
+            continue
+        concept, assessment = conclusion
+        candidates.append((
+            policy.evidence_score(str(evidence.get("evidence_type")))
+            + policy.region_score(evidence.get("region"))
+            + float(evidence.get("importance_score", 0)),
+            {
+                "field_display": display,
+                "concept": concept,
+                "assessment": assessment,
+                "region": evidence.get("region"),
+                "support_level": _support(evidence),
+                "evidence_ids": [evidence.get("evidence_id")],
+                "comparison_id": comparison_id,
+                "causal_attribution": "not_assigned",
+                "parameter_attribution_limit": (
+                    "multiple_parameters_changed"
+                    if comparison_counts.get(comparison_id, 0) > 1
+                    else None
+                ),
+                "claim_limit": "spatial_prediction_only",
+            },
+        ))
+    result: list[dict[str, Any]] = []
+    used: set[tuple[str, str, str]] = set()
+    for _score, item in sorted(
+        candidates,
+        key=lambda value: (
+            -value[0],
+            str(value[1].get("comparison_id")),
+            str(value[1].get("region")),
+        ),
+    ):
+        key = (
+            str(item.get("comparison_id")),
+            str(item.get("concept")),
+            str(item.get("region")),
+        )
+        if key in used:
+            continue
+        result.append(item)
+        used.add(key)
+        if len(result) >= maximum:
+            break
+    return result

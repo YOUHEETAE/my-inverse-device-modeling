@@ -6,9 +6,14 @@ from collections import Counter
 from typing import Any
 
 from .safety import FORBIDDEN_CAUSAL_TERMS, RESPONSE_KEYS, validate_provider_response
+from .tradeoff_policy import deterministic_draft_requires_tradeoff
 
 
-LANGUAGE_POLISH_VERSION = "polish-v3"
+LANGUAGE_POLISH_VERSION = "polish-v4"
+_NUMBER_LITERAL = re.compile(
+    r"(?<![A-Za-z_])[-+]?\d+(?:\.\d+)?(?:[eE][-+]?\d+)?"
+)
+_NUMBER_PLACEHOLDER = re.compile(r"__NUM_[A-Z]+__")
 PROTECTED_TERMS = (
     "Channel length", "Oxide thickness", "Tox", "Bulk doping", "Source/Drain doping", "LDD doping",
     "Ion", "Ioff", "Ion/Ioff", "SS", "DIBL", "gm", "gds", "Ron", "Vth", "Trade-off",
@@ -18,10 +23,47 @@ PROTECTED_TERMS = (
     "증가", "감소", "강화", "완화", "확대", "축소", "개선", "저하", "단정", "prediction", "TCAD",
 )
 
+PROTECTED_TERM_ALIASES = {
+    "channel length": ("channel length", "채널 길이"),
+    "oxide thickness": ("oxide thickness", "산화막 두께"),
+    "bulk doping": ("bulk doping", "벌크 도핑"),
+    "source/drain doping": ("source/drain doping", "source-drain doping", "소스/드레인 도핑"),
+    "ldd doping": ("ldd doping", "ldd 도핑"),
+    "potential": ("potential", "전위"),
+    "electric field": ("electric field", "전계", "전기장"),
+    "electron density": ("electron density", "전자 농도", "전자 밀도"),
+    "hole density": ("hole density", "정공 농도", "정공 밀도"),
+    "current density": ("current density", "전류 밀도"),
+    "gate": ("gate", "게이트"),
+    "oxide": ("oxide", "산화막"),
+    "channel": ("channel", "채널"),
+    "source": ("source", "소스"),
+    "drain": ("drain", "드레인"),
+    "deep bulk": ("deep bulk", "깊은 벌크", "벌크 내부"),
+    "trade-off": ("trade-off", "tradeoff", "상충", "절충"),
+    "prediction": ("prediction", "예측"),
+    "increased": ("increased", "증가"),
+    "decreased": ("decreased", "감소"),
+    "strengthened": ("strengthened", "강화"),
+    "weakened": ("weakened", "완화", "약화"),
+    "expanded": ("expanded", "확대", "확장"),
+    "contracted": ("contracted", "축소"),
+    "증가": ("증가", "increased"),
+    "감소": ("감소", "decreased"),
+    "강화": ("강화", "strengthened"),
+    "완화": ("완화", "약화", "weakened"),
+    "확대": ("확대", "확장", "expanded"),
+    "축소": ("축소", "contracted"),
+    "개선": ("개선", "향상", "improved"),
+    "저하": ("저하", "악화", "degraded"),
+    "단정": ("단정", "확정", "귀속"),
+}
+
 POLISH_SYSTEM_PROMPT = """당신은 MOSFET 분석 초안의 한국어 문장 교정기입니다.
 입력의 content_blocks가 분석 내용의 유일한 권위입니다. 분석, 계산, 선택 또는 물리 판단을 새로 수행하지 마세요.
 각 block의 source_sentences를 개별 문장이 아니라 하나의 의미 단위로 이해하고, 섹션당 하나의 자연스러운 문단으로 다시 구성하세요.
 수치, 단위, 증감 방향, 성능 판정, region, 원인 한계, Trade-off 및 주의사항을 추가·삭제·변경하지 마세요.
+__NUM_A__와 같은 number placeholder는 철자, 개수, 위치를 절대 변경하지 마세요. 숫자로 바꾸거나 새 placeholder를 만들지 마세요.
 각 block 안의 관찰 결과와 종합 판정 사이의 관계가 자연스럽게 드러나도록 어순과 연결 표현을 구성하세요.
 block 사이로 내용을 이동하거나 내용을 생략하지 마세요. 입력에 없는 mechanism이나 인과관계를 만들지 마세요.
 목록 기호, 번호, 소제목 또는 문장별 머릿글을 넣지 마세요.
@@ -43,10 +85,86 @@ def _number_tokens(text: str) -> list[str]:
     # Curve/Field ordinals are labels, and unit exponents are notation rather
     # than analysis values. Neither should make a valid prose rewrite fail.
     text = re.sub(r"(?<![A-Za-z])(?:Curve|Field)\s+\d+(?!\d)", "", text, flags=re.IGNORECASE)
+    text = re.sub(r"\b\d+D\b", "", text, flags=re.IGNORECASE)
     text = re.sub(r"\bcm\s*\^\s*[-+]?\d+", "cm", text, flags=re.IGNORECASE)
     raw = re.findall(r"(?<![A-Za-z_])[-+]?\d+(?:\.\d+)?(?:[eE][-+]?\d+)?", text)
     # Normalize 1.2e+03, 1200 and 1200.0 to the same semantic value.
     return [format(float(token), ".15g") for token in raw]
+
+
+def _alpha_token(index: int) -> str:
+    value = index + 1
+    letters = ""
+    while value:
+        value, remainder = divmod(value - 1, 26)
+        letters = chr(ord("A") + remainder) + letters
+    return f"__NUM_{letters}__"
+
+
+def _skip_number_placeholder(text: str, start: int, end: int) -> bool:
+    prefix = text[max(0, start - 24):start]
+    suffix = text[end:end + 1]
+    if re.search(r"(?:Curve|Field)\s*$", prefix, flags=re.IGNORECASE):
+        return True
+    if re.search(r"\bcm\s*\^\s*$", prefix, flags=re.IGNORECASE):
+        return True
+    if suffix and suffix.isalpha():
+        return True
+    return False
+
+
+def _protect_draft_numbers(
+    draft: dict[str, list[str]],
+) -> tuple[dict[str, list[str]], list[dict[str, str]]]:
+    entries: list[dict[str, str]] = []
+    protected: dict[str, list[str]] = {key: [] for key in RESPONSE_KEYS}
+    for key in RESPONSE_KEYS:
+        for sentence in draft[key]:
+            chunks = []
+            cursor = 0
+            for match in _NUMBER_LITERAL.finditer(sentence):
+                if _skip_number_placeholder(
+                    sentence, match.start(), match.end()
+                ):
+                    continue
+                placeholder = _alpha_token(len(entries))
+                chunks.extend((sentence[cursor:match.start()], placeholder))
+                entries.append({
+                    "placeholder": placeholder,
+                    "literal": match.group(0),
+                    "section": key,
+                })
+                cursor = match.end()
+            chunks.append(sentence[cursor:])
+            protected[key].append("".join(chunks))
+    return protected, entries
+
+
+def _restore_number_placeholders(
+    clean: dict[str, list[str]],
+    entries: list[dict[str, str]],
+) -> dict[str, list[str]]:
+    replacements = {
+        item["placeholder"]: item["literal"] for item in entries
+    }
+    return {
+        key: [
+            _NUMBER_PLACEHOLDER.sub(
+                lambda match: replacements.get(match.group(0), match.group(0)),
+                paragraph,
+            )
+            for paragraph in clean[key]
+        ]
+        for key in RESPONSE_KEYS
+    }
+
+
+def _protected_term_present(term: str, text: str) -> bool:
+    lowered = text.lower()
+    aliases = PROTECTED_TERM_ALIASES.get(
+        term.lower(), (term.lower(),)
+    )
+    return any(alias.lower() in lowered for alias in aliases)
 
 
 def _coalesce_section_paragraphs(response: dict[str, Any]) -> dict[str, list[str]]:
@@ -61,6 +179,7 @@ def _coalesce_section_paragraphs(response: dict[str, Any]) -> dict[str, list[str
 
 def build_language_polish_package(payload: dict[str, Any], mock_draft: dict[str, Any], *, mock_model: str) -> dict[str, Any]:
     draft = validate_provider_response(mock_draft)
+    protected_draft, number_entries = _protect_draft_numbers(draft)
     text = _all_text(draft)
     protected = [term for term in PROTECTED_TERMS if term.lower() in text.lower()]
     return {
@@ -69,7 +188,10 @@ def build_language_polish_package(payload: dict[str, Any], mock_draft: dict[str,
         "analysis_authority": "python_payload_and_deterministic_mock",
         "source": {"analysis_id": payload.get("analysis_id"), "analysis_type": payload.get("analysis_type"), "mock_model": mock_model},
         "content_blocks": {
-            key: {"purpose": BLOCK_PURPOSES[key], "source_sentences": draft[key]}
+            key: {
+                "purpose": BLOCK_PURPOSES[key],
+                "source_sentences": protected_draft[key],
+            }
             for key in RESPONSE_KEYS
         },
         "preservation_manifest": {
@@ -83,22 +205,45 @@ def build_language_polish_package(payload: dict[str, Any], mock_draft: dict[str,
                 for key in RESPONSE_KEYS
             },
             "empty_sections": [key for key in RESPONSE_KEYS if not draft[key]],
+            "number_placeholders": [
+                item["placeholder"] for item in number_entries
+            ],
+            "section_number_placeholders": {
+                key: [
+                    item["placeholder"]
+                    for item in number_entries
+                    if item["section"] == key
+                ]
+                for key in RESPONSE_KEYS
+            },
         },
         "constraints": {
             "preserve_meaning": True, "preserve_sections": True, "one_paragraph_per_section": True,
             "preserve_numbers_and_units": True, "preserve_directions_and_assessments": True,
             "do_not_add_analysis": True, "do_not_remove_supported_findings": True,
+            "preserve_number_placeholders_exactly": True,
         },
+        "_local_number_restore": number_entries,
     }
 
 
 def build_language_polish_prompt(package: dict[str, Any]) -> tuple[str, str]:
     if package.get("task") != "language_polish_only" or package.get("contract_version") != LANGUAGE_POLISH_VERSION:
         raise ValueError("invalid_language_polish_package")
+    public_package = {
+        key: package[key]
+        for key in (
+            "contract_version",
+            "task",
+            "analysis_authority",
+            "content_blocks",
+            "constraints",
+        )
+    }
     return POLISH_SYSTEM_PROMPT, (
         "다음 검증된 Mock content block을 바탕으로 각 섹션을 응집된 문단 하나로 재구성하세요. JSON 밖의 텍스트를 출력하지 마세요.\n"
         "<LANGUAGE_POLISH_PACKAGE>\n"
-        + json.dumps(package, ensure_ascii=False, allow_nan=False, separators=(",", ":"))
+        + json.dumps(public_package, ensure_ascii=False, allow_nan=False, separators=(",", ":"))
         + "\n</LANGUAGE_POLISH_PACKAGE>"
     )
 
@@ -109,21 +254,49 @@ def validate_language_polish_response(response: dict[str, Any], package: dict[st
     counts = {key: len(clean[key]) for key in RESPONSE_KEYS}
     if counts != manifest["target_paragraph_counts"]:
         raise ValueError("language_polish_changed_section_structure")
+    entries = list(package.get("_local_number_restore", []))
+    expected_placeholders = Counter(manifest.get("number_placeholders", []))
+    actual_placeholders = Counter(_NUMBER_PLACEHOLDER.findall(_all_text(clean)))
+    if entries and actual_placeholders:
+        if actual_placeholders != expected_placeholders:
+            raise ValueError("language_polish_changed_number_placeholders")
+        for key in RESPONSE_KEYS:
+            section_placeholders = Counter(
+                _NUMBER_PLACEHOLDER.findall(" ".join(clean[key]))
+            )
+            if section_placeholders != Counter(
+                manifest["section_number_placeholders"][key]
+            ):
+                raise ValueError("language_polish_moved_number_placeholders")
+        clean = _restore_number_placeholders(clean, entries)
+    elif entries and actual_placeholders != expected_placeholders:
+        # Cached responses are stored after local restoration and therefore
+        # contain all original numbers but no placeholders.
+        if Counter(_number_tokens(_all_text(clean))) != Counter(
+            manifest["number_tokens"]
+        ):
+            raise ValueError("language_polish_changed_numbers")
     if Counter(_number_tokens(_all_text(clean))) != Counter(manifest["number_tokens"]):
         raise ValueError("language_polish_changed_numbers")
     lowered = _all_text(clean).lower()
-    if any(term.lower() not in lowered for term in manifest["protected_terms"]):
+    if any(
+        not _protected_term_present(term, lowered)
+        for term in manifest["protected_terms"]
+    ):
         raise ValueError("language_polish_removed_protected_term")
     for key in RESPONSE_KEYS:
         section_text = " ".join(clean[key])
         if Counter(_number_tokens(section_text)) != Counter(manifest["section_number_tokens"][key]):
             raise ValueError("language_polish_moved_number_between_sections")
-        if any(term.lower() not in section_text.lower() for term in manifest["section_protected_terms"][key]):
+        if any(
+            not _protected_term_present(term, section_text)
+            for term in manifest["section_protected_terms"][key]
+        ):
             raise ValueError("language_polish_moved_term_between_sections")
-    source = {
+    source = _restore_number_placeholders({
         key: list(package["content_blocks"][key]["source_sentences"])
         for key in RESPONSE_KEYS
-    }
+    }, entries)
     if any(term in _all_text(clean) and term not in _all_text(source) for term in FORBIDDEN_CAUSAL_TERMS):
         raise ValueError("language_polish_added_causal_claim")
     return clean
@@ -207,6 +380,7 @@ def _compact_interpretation(value: dict[str, Any], subject_names: dict[str, str]
             "overall_assessment": value.get("overall_assessment"),
             "performance_summaries": value.get("performance_summaries"),
             "parameter_interactions": value.get("parameter_interactions"),
+            "mechanism_chains": value.get("mechanism_chains"),
             "observed_tradeoffs": value.get("observed_tradeoffs"),
             "variant_rankings": value.get("variant_rankings"),
         }, subject_names, comparison_names)
@@ -325,12 +499,7 @@ def validate_mock_draft_coverage(payload: dict[str, Any], draft: dict[str, Any])
     clean = validate_provider_response(draft)
     if payload.get("context", {}).get("mode") == "comparison" and not clean["comparisons"]:
         raise ValueError("mock_draft_missing_comparison")
-    interpretation = payload.get("interpretation") or {}
-    has_tradeoff = bool(interpretation.get("observed_tradeoffs")) or any(
-        item.get("conclusion_type") == "tradeoff" and item.get("eligible_for_output", True)
-        for item in payload.get("conclusions", [])
-    )
-    if has_tradeoff and not clean["tradeoffs"]:
+    if deterministic_draft_requires_tradeoff(payload) and not clean["tradeoffs"]:
         raise ValueError("mock_draft_missing_tradeoff")
     warning_types = {item.get("warning_type") for item in payload.get("warnings", []) if item.get("eligible_for_output", True)}
     if warning_types & {"multiple_parameter_change", "model_approximation"} and not clean["cautions"]:

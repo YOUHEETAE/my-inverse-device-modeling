@@ -33,6 +33,7 @@ class FeedbackEvidence:
 @dataclass(frozen=True)
 class LearningFeedback:
     headline: str
+    model_answer: str = ""
     positive_feedback: tuple[str, ...] = ()
     corrections: tuple[str, ...] = ()
     evidence: tuple[FeedbackEvidence, ...] = ()
@@ -86,6 +87,7 @@ class FollowupResponse:
     interpreted_intent: dict[str, Any] = field(default_factory=dict)
     interpretation_source: str = "deterministic"
     pipeline_warnings: tuple[str, ...] = ()
+    pipeline_diagnostics: tuple[dict[str, Any], ...] = ()
     fallback_detail: str | None = None
     learning_move: str = "answer_question"
     claim_assessment: str = "not_applicable"

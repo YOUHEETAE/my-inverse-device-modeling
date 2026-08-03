@@ -9,7 +9,8 @@ For the current terminal session:
 
 ```powershell
 $env:GROQ_API_KEY = "your-new-key"
-& 'C:\Users\T590\anaconda3\envs\devsim_env\python.exe' frontend\app.py
+conda activate inverse-device-modeling
+python frontend\app.py
 ```
 
 In the GUI, choose `external_llm` under **Explanation Provider**. Choose `auto`

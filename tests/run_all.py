@@ -12,6 +12,7 @@ if str(REPO_ROOT) not in sys.path:
 
 MODULES = (
     "tests.test_analysis_payload_v3", "tests.test_relationships", "tests.test_selection",
+    "tests.test_comparison_planner",
     "tests.test_iv_renderer", "tests.test_field_renderer", "tests.test_field_specific_renderer",
     "tests.test_safety", "tests.test_provider_integration", "tests.test_final_audit",
     "tests.test_interpretation_contract",
@@ -21,6 +22,8 @@ MODULES = (
     "tests.test_field_conclusions",
     "tests.test_field_structured_renderer",
     "tests.test_language_polish",
+    "tests.test_iv_chat",
+    "tests.test_field_chat",
     "tests.test_gui_explanation_flow",
     "tests.test_learning_foundation",
     "tests.test_learning_analysis_adapter",
@@ -28,6 +31,9 @@ MODULES = (
     "tests.test_learning_llm_service",
     "tests.test_case_study_ui_contract",
     "tests.test_learning_end_to_end",
+    "tests.test_learning_progress",
+    "tests.test_oxide_case_learning",
+    "tests.test_platform_readiness",
     "tests.test_tutor_question_router",
     "tests.test_theory_knowledge",
     "tests.test_case_study_scenarios",
