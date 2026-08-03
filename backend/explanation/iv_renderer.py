@@ -7,6 +7,8 @@ from typing import Any
 from .iv_templates import (CONCEPT_LABELS, IV_TEMPLATES, METRIC_LABELS,
                            PARAMETER_LABELS, PERFORMANCE_AREA_LABELS,
                            TRADEOFF_TEMPLATES)
+from .physical_principles import PHYSICAL_PRINCIPLES
+from .tradeoff_policy import select_observed_tradeoffs_for_output
 
 GROUPS = {
     "switching": ("vth_at_vd_0_05", "vth_at_vd_1_5", "ioff", "ion_ioff_ratio", "ss", "dibl"),
@@ -57,6 +59,24 @@ def select_evidence_for_rendering(payload: dict[str, Any], comparison_id: str | 
     return sorted(selected, key=lambda item: (-float(item.get("importance_score", 0)), -METRIC_PRIORITY.get(item.get("quantity"), 0), item["evidence_id"]))
 
 
+def _eligible_iv_evidence(payload: dict[str, Any], comparison_id: str | None = None) -> list[dict[str, Any]]:
+    eligible = [
+        item for item in payload.get("evidence", [])
+        if item.get("eligible_for_output")
+        and item.get("source_type") in {"curve_parameter_analyzer", "curve_array_analyzer"}
+        and item.get("comparison_id") == comparison_id
+        and "physically_ambiguous_sign" not in item.get("suppression_reasons", [])
+    ]
+    return sorted(
+        eligible,
+        key=lambda item: (
+            -METRIC_PRIORITY.get(item.get("quantity"), 0),
+            -float(item.get("importance_score", 0)),
+            item["evidence_id"],
+        ),
+    )
+
+
 def group_iv_evidence(evidence: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
     grouped = {name: [] for name in GROUPS}; grouped["array"] = []
     for item in evidence:
@@ -85,6 +105,20 @@ def _metric_change(item: dict[str, Any], *, numeric: bool = True) -> str:
     label = METRIC_LABELS.get(item["quantity"], item["quantity"])
     direction = {"increased": "증가", "decreased": "감소", "unchanged": "유사"}.get(item.get("observation"), item.get("observation", "변화"))
     data = item.get("data", {})
+    if (
+        item["quantity"] in {"vth_at_vd_0_05", "vth_at_vd_1_5"}
+        and numeric
+        and item.get("numeric_display", {}).get("allowed")
+        and data.get("baseline") is not None
+        and data.get("candidate") is not None
+        and data.get("absolute_difference") is not None
+    ):
+        unit = data.get("unit") or "V"
+        return (
+            f"{label} {_number(data['baseline'], unit)}→"
+            f"{_number(data['candidate'], unit)} "
+            f"({_number(abs(float(data['absolute_difference'])), unit)} {direction})"
+        )
     if item["quantity"] in {"ioff", "ion_ioff_ratio"} and numeric and data.get("decade_difference") is not None and abs(float(data["decade_difference"])) >= 1:
         return f"{label} {abs(float(data['decade_difference'])):.1f} decade {direction}"
     if numeric and item.get("numeric_display", {}).get("allowed") and data.get("percent_difference") is not None:
@@ -93,7 +127,7 @@ def _metric_change(item: dict[str, Any], *, numeric: bool = True) -> str:
 
 
 def render_iv_single(payload: dict[str, Any]) -> dict[str, list[str]]:
-    subjects = payload.get("subjects", []); evidence = select_evidence_for_rendering(payload)
+    subjects = payload.get("subjects", []); evidence = _eligible_iv_evidence(payload)
     if not subjects or not evidence:
         return _fallback()
     policy = payload.get("output_policy", {}); grouped = group_iv_evidence(evidence)
@@ -148,7 +182,11 @@ def render_multi_parameter_principles(payload: dict[str, Any], comparison_id: st
     effects = conclusion.get("parameter_effects", [])
     principle_groups = [item.get("principle_ids", []) for item in effects] if effects else [conclusion.get("principle_ids", [])]
     for principle_ids in principle_groups:
-        group = [IV_TEMPLATES.get("multi_principle." + principle_id) for principle_id in principle_ids]
+        group = [
+            IV_TEMPLATES.get("multi_principle." + principle_id)
+            or IV_TEMPLATES.get("principle." + principle_id)
+            for principle_id in principle_ids
+        ]
         phrases = list(dict.fromkeys(item for item in group[:2] if item))
         if phrases: lines.append(" ".join(phrases))
     return list(dict.fromkeys(lines))
@@ -226,20 +264,92 @@ def _structured_area_sentence(summary: dict[str, Any], evidence_by_id: dict[str,
 
 
 def _structured_interaction_sentence(payload: dict[str, Any], comparison_id: str) -> str | None:
+    sentences = _structured_interaction_sentences(payload, comparison_id, maximum=1)
+    return sentences[0] if sentences else None
+
+
+def _structured_interaction_sentences(
+    payload: dict[str, Any],
+    comparison_id: str,
+    *,
+    maximum: int = 2,
+) -> list[str]:
     interactions = [item for item in payload.get("interpretation", {}).get("parameter_interactions", [])
                     if item.get("comparison_id") == comparison_id and item.get("quantity") and item.get("observed_direction") in {"increased", "decreased"}]
     interactions.sort(key=lambda item: (-METRIC_PRIORITY.get(item.get("quantity"), 0), item["interaction_id"]))
     if not interactions:
-        return None
-    item = interactions[0]; metric = METRIC_LABELS.get(item["quantity"], item["quantity"])
-    observed = "증가" if item["observed_direction"] == "increased" else "감소"
-    parameters = [PARAMETER_LABELS.get(value["parameter"], value["parameter"]) for value in item.get("contributors", [])]
-    joined = _join(parameters)
-    if item["interaction_type"] == "reinforcing":
-        return f"{metric} {observed}에는 {joined}의 일반적 영향이 같은 {observed} 방향으로 겹치며, 실제 모델 결과도 이 방향과 일치했습니다."
-    if item["interaction_type"] == "competing":
-        return f"{metric}에는 {joined}가 서로 반대 방향의 영향을 가질 수 있으며, 실제 모델에서는 {observed} 방향이 최종 관찰됐습니다."
-    return None
+        return []
+    rendered = []
+    used_types = set()
+    for item in interactions:
+        if item.get("interaction_type") in used_types:
+            continue
+        metric = METRIC_LABELS.get(item["quantity"], item["quantity"])
+        observed = "증가" if item["observed_direction"] == "increased" else "감소"
+        parameters = [PARAMETER_LABELS.get(value["parameter"], value["parameter"]) for value in item.get("contributors", [])]
+        joined = _join(parameters)
+        if item["interaction_type"] == "reinforcing":
+            rendered.append(
+                f"{metric}에 대해서는 {joined}의 일반적 영향이 같은 {observed} 방향으로 겹칠 수 있고, "
+                f"이번 모델에서는 {observed}가 관찰됐습니다."
+            )
+        elif item["interaction_type"] == "competing":
+            rendered.append(
+                f"{metric}에 대해서는 {joined}의 일반적 영향이 서로 경쟁할 수 있으며, "
+                f"이번 모델에서는 최종적으로 {observed}가 관찰됐습니다."
+            )
+        else:
+            continue
+        used_types.add(item.get("interaction_type"))
+        if len(rendered) >= maximum:
+            break
+    return rendered
+
+
+def _structured_mechanism_sentences(
+    payload: dict[str, Any],
+    comparison_id: str,
+    evidence_by_id: dict[str, dict[str, Any]],
+) -> list[str]:
+    chains = [
+        item
+        for item in payload.get("interpretation", {}).get("mechanism_chains", [])
+        if item.get("comparison_id") == comparison_id
+        and item.get("alignment") == "consistent"
+    ]
+    chains.sort(key=lambda item: (int(item.get("priority", 99)), item.get("mechanism_id", "")))
+    rendered: list[str] = []
+    used_quantities: set[str] = set()
+    for chain in chains:
+        mechanism_key = "mechanism." + str(chain.get("mechanism_key", ""))
+        template = (
+            IV_TEMPLATES.get(
+                mechanism_key + "." + str(chain.get("change_direction", ""))
+            )
+            or IV_TEMPLATES.get(mechanism_key)
+        )
+        if not template:
+            continue
+        linked = [
+            evidence_by_id[item["evidence_id"]]
+            for item in chain.get("observed_metric_links", [])
+            if item.get("evidence_id") in evidence_by_id
+            and item.get("quantity") not in used_quantities
+        ]
+        linked.sort(
+            key=lambda item: (
+                -METRIC_PRIORITY.get(item.get("quantity"), 0),
+                -float(item.get("importance_score", 0)),
+            )
+        )
+        if not linked:
+            continue
+        chosen = linked[:3]
+        used_quantities.update(item["quantity"] for item in chosen)
+        rendered.append(
+            template.format(metrics=_join([_metric_change(item) for item in chosen]))
+        )
+    return rendered
 
 
 def _structured_overall_sentence(result: dict[str, Any], comparison: dict[str, Any], subjects: dict[str, str]) -> str:
@@ -249,16 +359,103 @@ def _structured_overall_sentence(result: dict[str, Any], comparison: dict[str, A
     return template.format(baseline=subjects[comparison["baseline_subject_id"]], candidate=subjects[comparison["candidate_subject_id"]])
 
 
+def _comparison_mode(payload: dict[str, Any], comparison: dict[str, Any]) -> str:
+    mode = payload.get("comparison_plan", {}).get("analysis_mode")
+    if mode in {"controlled_pair", "compound_pair"}:
+        return mode
+    return "compound_pair" if comparison.get("changed_parameter_count", 0) > 1 else "controlled_pair"
+
+
+def _comparison_curve_focus(
+    payload: dict[str, Any],
+    comparison_id: str,
+    candidate: str,
+    *,
+    maximum: int = 2,
+) -> list[str]:
+    items = _eligible_iv_evidence(payload, comparison_id)
+    by_quantity = {item.get("quantity"): item for item in items}
+    lines = []
+
+    switching = []
+    ss = by_quantity.get("ss")
+    if ss:
+        shape = "더 완만해지고 한 decade 변화에 필요한 Gate 전압 폭이 커진" if ss.get("observation") == "increased" else "더 가팔라지고 한 decade 변화에 필요한 Gate 전압 폭이 작아진"
+        switching.append(f"log(Id)-Vg의 subthreshold 구간이 {shape} 모습({_metric_change(ss)})")
+    dibl = by_quantity.get("dibl")
+    if dibl:
+        separation = "커진" if dibl.get("observation") == "increased" else "작아진"
+        switching.append(
+            "낮은 Drain bias와 높은 Drain bias에서 추출한 threshold 위치 차이가 "
+            f"{separation} 모습({_metric_change(dibl)})"
+        )
+    ioff = by_quantity.get("ioff")
+    if ioff and len(switching) < 2:
+        switching.append(f"정의된 off-bias에서의 누설 전류 차이({_metric_change(ioff)})")
+    if switching:
+        lines.append(f"{candidate}의 switching 변화는 " + _join(switching[:2]) + "에서 확인할 수 있습니다.")
+
+    drive = []
+    ion = by_quantity.get("ion")
+    if ion:
+        drive.append(f"Id-Vg의 정의된 on-bias 전류({_metric_change(ion)})")
+    gm = by_quantity.get("gm_max")
+    if gm:
+        drive.append(f"Id-Vg에서 가장 가파른 구간의 기울기({_metric_change(gm)})")
+    ron = by_quantity.get("ron")
+    if ron and len(drive) < 2:
+        drive.append(f"낮은 Drain voltage Id-Vd 선형 구간의 기울기({_metric_change(ron)})")
+    if drive:
+        lines.append(f"{candidate}의 drive 변화는 " + _join(drive[:2]) + "에서 확인할 수 있습니다.")
+    saturation = []
+    gds = by_quantity.get("gds")
+    lambda_clm = by_quantity.get("lambda_clm")
+    if gds:
+        saturation.append(f"Id-Vd 고전압 구간의 잔류 기울기({_metric_change(gds)})")
+    if lambda_clm:
+        saturation.append(f"saturation 이후 전류 증가 민감도({_metric_change(lambda_clm)})")
+    if saturation:
+        lines.append(
+            f"{candidate}의 saturation 변화는 "
+            + _join(saturation[:2])
+            + "에서 확인할 수 있습니다."
+        )
+    return lines[:maximum]
+
+
+def _controlled_experiment_sentence(comparison: dict[str, Any], subjects: dict[str, str]) -> str | None:
+    changes = comparison.get("changed_parameters", [])
+    if len(changes) < 2:
+        return None
+    baseline = subjects.get(comparison["baseline_subject_id"], comparison["baseline_subject_id"])
+    experiments = []
+    for item in changes:
+        parameter = PARAMETER_LABELS.get(item["parameter"], item["parameter"])
+        experiments.append(f"{parameter}만 {_number(item['candidate'], item.get('unit'))}로 바꾼 조건")
+    return (
+        f"개별 기여를 분리하려면 {baseline}을 기준으로 나머지 조건을 고정하고 "
+        f"{_join(experiments)}을 각각 추가해 비교해야 합니다"
+    )
+
+
 def _structured_tradeoff_sentence(item: dict[str, Any]) -> str | None:
     if item.get("tradeoff_type") == "mechanism_supported_tradeoff":
         return TRADEOFF_TEMPLATES.get(str(item.get("result_pattern")))
     return IV_TEMPLATES.get("structured.tradeoff." + str(item.get("result_pattern")))
 
 
-def _structured_caution(payload: dict[str, Any], comparisons: list[dict[str, Any]]) -> str:
+def _structured_caution(
+    payload: dict[str, Any],
+    comparisons: list[dict[str, Any]],
+    subjects: dict[str, str] | None = None,
+) -> str:
     parts = []
     if any(item.get("changed_parameter_count", 0) > 1 for item in comparisons):
         parts.append("여러 parameter가 동시에 변경되어 각 parameter의 개별 기여도를 현재 비교만으로 분리해 단정할 수 없습니다")
+        if subjects and len(comparisons) == 1:
+            experiment = _controlled_experiment_sentence(comparisons[0], subjects)
+            if experiment:
+                parts.append(experiment)
     if any("physically_ambiguous_sign" in item.get("suppression_reasons", []) for item in payload.get("evidence", [])):
         parts.append("DIBL 부호가 일반적인 barrier-lowering 정의와 일치하지 않아 해당 값은 성능 방향 판정에서 제외했습니다")
     warning_types = {item.get("warning_type") for item in payload.get("warnings", [])}
@@ -272,22 +469,37 @@ def _structured_caution(payload: dict[str, Any], comparisons: list[dict[str, Any
 def _structured_two_curve(payload: dict[str, Any], comparisons: list[dict[str, Any]], subjects: dict[str, str]) -> dict[str, list[str]]:
     comparison = comparisons[0]; comparison_id = comparison["comparison_id"]
     summaries, evidence_by_id, overall = _interpretation_maps(payload)
+    mode = _comparison_mode(payload, comparison)
     descriptions = [render_condition_sentence(comparison, subjects)]
-    if comparison.get("effective_claim_level") == "multi_parameter_association":
+    if mode == "compound_pair":
         descriptions.extend(render_multi_parameter_principles(payload, comparison_id))
     else:
         principle = render_principle_sentence(payload, comparison_id)
         if principle: descriptions.append(principle)
-    area_order = ("off_state_control", "drive_performance", "short_channel_control", "subthreshold_behavior", "saturation_behavior")
     comparison_summaries = {item["performance_area"]: item for item in summaries.values() if item["comparison_id"] == comparison_id}
+    candidate = subjects[comparison["candidate_subject_id"]]
     lines = []
-    for area in area_order:
-        if area not in comparison_summaries: continue
-        sentence = _structured_area_sentence(comparison_summaries[area], evidence_by_id, subjects[comparison["candidate_subject_id"]])
-        if sentence: lines.append(sentence)
-        if len(lines) >= 4: break
-    interaction = _structured_interaction_sentence(payload, comparison_id)
-    if interaction: lines.append(interaction)
+    if mode == "controlled_pair":
+        lines.extend(_structured_mechanism_sentences(
+            payload, comparison_id, evidence_by_id,
+        )[:3])
+        lines.extend(_comparison_curve_focus(payload, comparison_id, candidate, maximum=2))
+    else:
+        area_order = ("off_state_control", "drive_performance", "short_channel_control", "subthreshold_behavior", "saturation_behavior")
+        for area in area_order:
+            if area not in comparison_summaries: continue
+            sentence = _structured_area_sentence(comparison_summaries[area], evidence_by_id, candidate)
+            if sentence: lines.append(sentence)
+            if len(lines) >= 2: break
+        lines.extend(_structured_interaction_sentences(payload, comparison_id, maximum=2))
+        lines.extend(_comparison_curve_focus(payload, comparison_id, candidate, maximum=1))
+    if not lines:
+        area_order = ("off_state_control", "drive_performance", "short_channel_control", "subthreshold_behavior", "saturation_behavior")
+        for area in area_order:
+            if area not in comparison_summaries: continue
+            sentence = _structured_area_sentence(comparison_summaries[area], evidence_by_id, candidate)
+            if sentence: lines.append(sentence)
+            if len(lines) >= 4: break
     if comparison_id in overall: lines.append(_structured_overall_sentence(overall[comparison_id], comparison, subjects))
     tradeoffs = []
     candidates = [item for item in payload.get("interpretation", {}).get("observed_tradeoffs", []) if item.get("comparison_id") == comparison_id]
@@ -296,7 +508,7 @@ def _structured_two_curve(payload: dict[str, Any], comparisons: list[dict[str, A
         sentence = _structured_tradeoff_sentence(item)
         if sentence: tradeoffs.append(sentence); break
     response = {"descriptions": descriptions, "comparisons": lines, "tradeoffs": tradeoffs,
-                "cautions": [_structured_caution(payload, comparisons)]}
+                "cautions": [_structured_caution(payload, comparisons, subjects)]}
     return enforce_output_policy(response, payload.get("output_policy", {}))
 
 
@@ -326,7 +538,340 @@ def _ranking_sentence(ranking: dict[str, Any], subjects: dict[str, str]) -> str 
     return f"{area} 비교에서는 {candidate}가 상대적으로 가장 유리한 결과를 보였습니다."
 
 
+def _trend_direction(values: list[float]) -> str:
+    if len(values) < 2:
+        return "insufficient"
+    scale = max(1.0, *(abs(value) for value in values))
+    tolerance = scale * 1e-9
+    steps = [
+        1 if right - left > tolerance else -1 if left - right > tolerance else 0
+        for left, right in zip(values, values[1:])
+    ]
+    nonzero = {step for step in steps if step}
+    if not nonzero:
+        return "unchanged"
+    if nonzero == {1}:
+        return "increased"
+    if nonzero == {-1}:
+        return "decreased"
+    return "non_monotonic"
+
+
+def _sweep_metric_trends(payload: dict[str, Any]) -> dict[str, str]:
+    plan = payload.get("comparison_plan", {})
+    ordered_subjects = plan.get("sweep_subject_ids", [])
+    values_by_quantity: dict[str, dict[str, float]] = {}
+    for item in _eligible_iv_evidence(payload):
+        subject_ids = item.get("subject_ids", [])
+        value = item.get("data", {}).get("value")
+        if len(subject_ids) != 1 or value is None:
+            continue
+        try:
+            numeric = float(value)
+        except (TypeError, ValueError):
+            continue
+        if not math.isfinite(numeric):
+            continue
+        values_by_quantity.setdefault(str(item.get("quantity")), {})[subject_ids[0]] = numeric
+    result = {}
+    for quantity, by_subject in values_by_quantity.items():
+        if all(subject_id in by_subject for subject_id in ordered_subjects):
+            result[quantity] = _trend_direction(
+                [by_subject[subject_id] for subject_id in ordered_subjects]
+            )
+    return result
+
+
+def _trend_phrase(quantity: str, direction: str) -> str:
+    label = METRIC_LABELS.get(quantity, quantity)
+    suffix = {
+        "increased": "지속 증가",
+        "decreased": "지속 감소",
+        "unchanged": "현재 유의 수준에서 유사",
+        "non_monotonic": "중간 조건에서 방향이 바뀌는 비단조 변화",
+    }.get(direction, "추세 판단 불가")
+    return f"{label}: {suffix}"
+
+
+def _sweep_condition(payload: dict[str, Any], subjects: dict[str, str]) -> str:
+    plan = payload.get("comparison_plan", {})
+    parameter = PARAMETER_LABELS.get(plan.get("sweep_parameter"), plan.get("sweep_parameter", "parameter"))
+    unit = {
+        "channel_length": "nm",
+        "oxide_thickness": "nm",
+        "bulk_doping": "cm^-3",
+        "source_drain_doping": "cm^-3",
+        "ldd_doping": "cm^-3",
+    }.get(plan.get("sweep_parameter"), "")
+    ordered = [
+        f"{_number(value, unit)} ({subjects.get(subject_id, subject_id)})"
+        for subject_id, value in zip(
+            plan.get("sweep_subject_ids", []),
+            plan.get("sweep_values", []),
+        )
+    ]
+    return (
+        f"{parameter}만 변화한 controlled sweep이며, "
+        f"{' → '.join(ordered)} 순서로 정렬해 추세를 분석했습니다."
+    )
+
+
+def _sweep_principle(payload: dict[str, Any]) -> str | None:
+    plan = payload.get("comparison_plan", {})
+    parameter = plan.get("sweep_parameter")
+    values = plan.get("sweep_values", [])
+    if not parameter or len(values) < 2:
+        return None
+    direction = "increased" if values[-1] > values[0] else "decreased"
+    principle_ids = [
+        item.get("principle_id")
+        for item in PHYSICAL_PRINCIPLES.get((parameter, direction), [])
+    ]
+    rendered = [
+        IV_TEMPLATES.get("principle." + str(principle_id))
+        or IV_TEMPLATES.get("multi_principle." + str(principle_id))
+        for principle_id in principle_ids
+    ]
+    return " ".join(item for item in rendered[:2] if item) or None
+
+
+def _sweep_tradeoff(trends: dict[str, str]) -> str | None:
+    preferences = {
+        "ion": "increased", "ion_ioff_ratio": "increased", "gm_max": "increased",
+        "ioff": "decreased", "dibl": "decreased", "ss": "decreased",
+        "ron": "decreased", "gds": "decreased", "lambda_clm": "decreased",
+    }
+    improved = [
+        METRIC_LABELS.get(quantity, quantity)
+        for quantity, direction in trends.items()
+        if direction == preferences.get(quantity)
+    ]
+    degraded = [
+        METRIC_LABELS.get(quantity, quantity)
+        for quantity, direction in trends.items()
+        if direction in {"increased", "decreased"}
+        and preferences.get(quantity)
+        and direction != preferences[quantity]
+    ]
+    if not improved or not degraded:
+        return None
+    return (
+        f"Sweep 방향에서 개선된 지표는 {_join(improved[:2])}이고, "
+        f"저하된 지표는 {_join(degraded[:2])}이어서 Trade-off가 나타났습니다."
+    )
+
+
+def _structured_controlled_sweep(
+    payload: dict[str, Any],
+    subjects: dict[str, str],
+) -> dict[str, list[str]]:
+    trends = _sweep_metric_trends(payload)
+    descriptions = [_sweep_condition(payload, subjects)]
+    principle = _sweep_principle(payload)
+    if principle:
+        descriptions.append(principle)
+    comparisons = []
+    for quantities, label in (
+        (("dibl", "ss", "ioff", "ion_ioff_ratio", "vth_at_vd_1_5"), "Switching"),
+        (("ion", "gm_max", "ron"), "Drive"),
+        (("gds", "lambda_clm"), "Saturation"),
+    ):
+        phrases = [
+            _trend_phrase(quantity, trends[quantity])
+            for quantity in quantities if quantity in trends
+        ]
+        if phrases:
+            comparisons.append(f"{label} 추세는 " + ", ".join(phrases[:3]) + "입니다.")
+    non_monotonic = [
+        METRIC_LABELS.get(quantity, quantity)
+        for quantity, direction in trends.items()
+        if direction == "non_monotonic"
+    ]
+    if non_monotonic:
+        comparisons.append(
+            f"{_join(non_monotonic[:3])}은 비단조 변화이므로 두 endpoint만으로 "
+            "중간 조건을 추정하지 말고 각 Curve를 개별 확인해야 합니다."
+        )
+    comparisons.append(
+        "Curve에서는 정렬된 순서대로 log(Id)-Vg의 threshold 이동·subthreshold 기울기·off 전류와 "
+        "Id-Vg의 on 전류, Id-Vd의 선형 및 saturation 기울기가 일관되게 이동하는지 확인합니다."
+    )
+    tradeoff = _sweep_tradeoff(trends)
+    caution = (
+        "이 추세는 선택한 sweep 지점과 고정된 나머지 조건 안에서의 모델 관찰입니다. "
+        "지점 사이 또는 범위 밖을 단조롭게 이어서 단정하려면 추가 시뮬레이션이 필요합니다."
+    )
+    response = {
+        "descriptions": descriptions,
+        "comparisons": comparisons,
+        "tradeoffs": [tradeoff] if tradeoff else [],
+        "cautions": [caution],
+    }
+    return enforce_output_policy(response, payload.get("output_policy", {}))
+
+
+def _compact_pair_observation(
+    payload: dict[str, Any],
+    comparison: dict[str, Any],
+    subjects: dict[str, str],
+) -> str:
+    condition = render_condition_sentence(comparison, subjects)
+    items = _eligible_iv_evidence(payload, comparison["comparison_id"])
+    chosen = []
+    for group in ("switching", "drive", "saturation"):
+        grouped = group_iv_evidence(items)[group]
+        if grouped:
+            chosen.append(_metric_change(grouped[0]))
+    if not chosen:
+        return condition
+    return condition + f" 관찰값은 {_join(chosen[:3])}했습니다."
+
+
+def _structured_mixed_group(
+    payload: dict[str, Any],
+    comparisons: list[dict[str, Any]],
+    subjects: dict[str, str],
+) -> dict[str, list[str]]:
+    plan = payload.get("comparison_plan", {})
+    by_id = {item["comparison_id"]: item for item in comparisons}
+    controlled = [
+        by_id[comparison_id]
+        for comparison_id in plan.get("controlled_pair_ids", [])
+        if comparison_id in by_id
+    ]
+    compound = [
+        by_id[comparison_id]
+        for comparison_id in plan.get("compound_pair_ids", [])
+        if comparison_id in by_id
+    ]
+    controlled_parameters = list(dict.fromkeys(
+        change["parameter"]
+        for comparison in controlled
+        for change in comparison.get("changed_parameters", [])
+    ))
+    if controlled:
+        descriptions = [
+            "여러 device parameter 조합이 포함되어 전체 Curve를 하나의 원인 순서로 정렬하지 않고, "
+            "한 parameter만 달라지는 controlled pair를 우선 분석했습니다."
+        ]
+    else:
+        descriptions = [
+            "모든 pair에서 여러 device parameter가 함께 변경되어 controlled pair가 없습니다. "
+            "첫 Curve를 공통 기준으로 관찰된 결과 차이를 비교하되, 특정 parameter의 개별 영향으로 "
+            "귀속하지 않습니다."
+        ]
+    if controlled_parameters:
+        descriptions.append(
+            "통제 가능한 비교 변수는 "
+            + _join([PARAMETER_LABELS.get(item, item) for item in controlled_parameters])
+            + "입니다."
+        )
+    descriptions.append(
+        "I-V에서는 log(Id)-Vg의 threshold 위치·subthreshold 기울기·off-current floor로 "
+        "switching을, Id-Vg의 on-current와 gm으로 drive를, Id-Vd의 저전압 선형 기울기와 "
+        "고전압 잔류 기울기로 Ron과 saturation을 구분해 확인합니다."
+    )
+    lines = [
+        _compact_pair_observation(payload, comparison, subjects)
+        for comparison in controlled
+    ]
+    remaining = max(0, int(payload.get("output_policy", {}).get("max_comparisons", 6)) - len(lines))
+    primary_compound = [
+        item for item in compound
+        if item.get("comparison_role") == "primary_baseline_to_variant"
+    ]
+    for comparison in primary_compound[:remaining]:
+        lines.append(
+            _compact_pair_observation(payload, comparison, subjects)
+            + " 이 비교는 여러 조건이 함께 달라 결과만 기술합니다."
+        )
+    ranking_priority = {
+        "off_state_control": 0,
+        "drive_performance": 1,
+        "short_channel_control": 2,
+        "subthreshold_behavior": 3,
+        "saturation_behavior": 4,
+    }
+    rankings = sorted(
+        payload.get("interpretation", {}).get("variant_rankings", []),
+        key=lambda item: ranking_priority.get(item.get("performance_area"), 9),
+    )
+    for ranking in rankings:
+        sentence = _ranking_sentence(ranking, subjects)
+        if sentence:
+            lines.append(
+                sentence
+                + " 이는 baseline 대비 관찰 성능 순위이며 개별 parameter의 원인 순위는 아닙니다."
+            )
+        if len(lines) >= int(payload.get("output_policy", {}).get("max_comparisons", 6)):
+            break
+    if not lines:
+        summaries, evidence, _overall = _interpretation_maps(payload)
+        lines = [
+            _compact_multi_sentence(
+                payload, comparison, subjects, {}, summaries, evidence,
+            )
+            for comparison in comparisons[:2]
+        ]
+    tradeoffs = []
+    selected_tradeoffs = select_observed_tradeoffs_for_output(payload)
+    controlled_ids = {comparison["comparison_id"] for comparison in controlled}
+    controlled_tradeoff = next(
+        (
+            item for item in selected_tradeoffs
+            if item.get("comparison_id") in controlled_ids
+        ),
+        None,
+    )
+    if controlled_tradeoff:
+        comparison = by_id.get(controlled_tradeoff.get("comparison_id"))
+        observed = _structured_tradeoff_sentence(controlled_tradeoff)
+        pair = (
+            f"{subjects.get(comparison['baseline_subject_id'], comparison['baseline_subject_id'])}과 "
+            f"{subjects.get(comparison['candidate_subject_id'], comparison['candidate_subject_id'])}"
+            if comparison else "Controlled pair"
+        )
+        tradeoffs.append(
+            f"{pair}의 controlled 비교에서 {observed or '개선 영역과 저하 영역이 함께 관찰됐습니다.'} "
+            "따라서 목표 지표를 정한 뒤 후보를 선택해야 합니다."
+        )
+    elif selected_tradeoffs:
+        item = selected_tradeoffs[0]
+        comparison = by_id.get(item.get("comparison_id"))
+        observed = _structured_tradeoff_sentence(item)
+        if observed:
+            pair = (
+                f"{subjects.get(comparison['baseline_subject_id'], comparison['baseline_subject_id'])}과 "
+                f"{subjects.get(comparison['candidate_subject_id'], comparison['candidate_subject_id'])}"
+                if comparison else "일부 Curve"
+            )
+            tradeoffs.append(
+                f"{pair}의 복합 비교에서 {observed} "
+                "여러 parameter가 함께 달라 이 Trade-off의 존재만 기술하며 특정 parameter의 영향으로 귀속하지 않습니다."
+            )
+    caution_parts = []
+    if compound:
+        caution_parts.append(
+            "여러 parameter가 동시에 달라지는 pair는 개별 변수의 기여도 산정이나 원인 귀속에 사용하지 않았습니다"
+        )
+    caution_parts.append(
+        "전체 우열은 누설·구동·short-channel·saturation 중 어떤 성능을 우선하는지 정한 뒤 판단해야 합니다"
+    )
+    response = {
+        "descriptions": descriptions,
+        "comparisons": lines,
+        "tradeoffs": tradeoffs,
+        "cautions": [". 또한 ".join(caution_parts) + "."],
+    }
+    return enforce_output_policy(response, payload.get("output_policy", {}))
+
+
 def _structured_multi_curve(payload: dict[str, Any], comparisons: list[dict[str, Any]], subjects: dict[str, str]) -> dict[str, list[str]]:
+    mode = payload.get("comparison_plan", {}).get("analysis_mode")
+    if mode == "controlled_sweep":
+        return _structured_controlled_sweep(payload, subjects)
+    if mode == "mixed_group":
+        return _structured_mixed_group(payload, comparisons, subjects)
     summaries, evidence, overall = _interpretation_maps(payload)
     primary = [item for item in comparisons if item.get("comparison_role") == "primary_baseline_to_variant"]
     lines = [_compact_multi_sentence(payload, item, subjects, overall, summaries, evidence) for item in primary]
@@ -381,8 +926,6 @@ def render_iv_comparison(payload: dict[str, Any]) -> dict[str, list[str]]:
             lines.append(observation)
         interaction = render_parameter_interaction(payload, comparison["comparison_id"])
         if interaction and len(payload.get("subjects", [])) < 3: lines.append(interaction)
-        alignment = render_dominant_alignment(payload, comparison["comparison_id"])
-        if alignment and len(payload.get("subjects", [])) < 3: lines.append(alignment)
         consistency = _consistency_sentence(payload, comparison["comparison_id"])
         if consistency and comparison.get("comparison_role") != "variant_to_variant" and len(payload.get("subjects", [])) < 3: lines.append(consistency)
     for conclusion in payload.get("conclusions", []):

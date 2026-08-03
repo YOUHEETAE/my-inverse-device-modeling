@@ -319,6 +319,92 @@ def build_barrier_or_band_change_evidence(comparison_id: str, subject_ids: list[
                            implication="channel_entry_more_restricted" if raised else "channel_entry_less_restricted", importance=.75)
 
 
+def build_band_bending_change_evidence(
+    comparison_id: str,
+    subject_ids: list[str],
+    before: float,
+    after: float,
+) -> Evidence:
+    increased = after > before
+    percent = None if before == 0 else (after - before) / abs(before) * 100
+    evidence = _field_evidence(
+        comparison_id=comparison_id,
+        subject_ids=subject_ids,
+        display="energy_band",
+        region="channel_near_surface",
+        evidence_type="barrier_or_band_change",
+        quantity="vertical_band_bending",
+        observation=(
+            "band_bending_increased"
+            if increased else
+            "band_bending_decreased"
+            if after < before else
+            "unchanged"
+        ),
+        data={
+            "baseline_internal_value_ev": before,
+            "candidate_internal_value_ev": after,
+            "absolute_difference_ev": after - before,
+            "percent_difference": percent,
+            "extraction": "vertical_channel_center_surface_to_deep_bulk",
+        },
+        magnitude=(
+            classify_hotspot_strength_magnitude(percent)
+            if percent is not None else "not_applicable"
+        ),
+        confidence="medium",
+        importance=.74,
+    )
+    evidence.evidence_id = (
+        f"ev_{comparison_id}_energy_band_channel_near_surface_"
+        "vertical_band_bending_change"
+    )
+    return evidence
+
+
+def build_channel_band_slope_change_evidence(
+    comparison_id: str,
+    subject_ids: list[str],
+    before: float,
+    after: float,
+) -> Evidence:
+    increased = after > before
+    percent = None if before == 0 else (after - before) / abs(before) * 100
+    evidence = _field_evidence(
+        comparison_id=comparison_id,
+        subject_ids=subject_ids,
+        display="energy_band",
+        region="channel_near_surface",
+        evidence_type="barrier_or_band_change",
+        quantity="channel_band_slope",
+        observation=(
+            "slope_increased"
+            if increased else
+            "slope_decreased"
+            if after < before else
+            "unchanged"
+        ),
+        data={
+            "baseline_internal_value_ev_per_nm": before,
+            "candidate_internal_value_ev_per_nm": after,
+            "absolute_difference_ev_per_nm": after - before,
+            "percent_difference": percent,
+            "extraction": "horizontal_channel_source_edge_to_drain_edge",
+        },
+        magnitude=(
+            classify_hotspot_strength_magnitude(percent)
+            if percent is not None else "not_applicable"
+        ),
+        confidence="medium",
+        importance=.72,
+    )
+    evidence.evidence_id = (
+        f"ev_{comparison_id}_energy_band_channel_near_surface_"
+        "channel_band_slope_change"
+    )
+    return evidence
+
+
 # Interfaces reserved for analyzers that do not yet have stable calculations.
 build_regional_level_evidence = _field_evidence
 build_regional_level_change_evidence = _field_evidence
@@ -397,4 +483,18 @@ def build_standard_evidence(kind: str, context: dict[str, Any], items: list[dict
                 evidence.append(build_hotspot_location_shift_evidence(comparison_id, subjects, display, visual["shift_nm"], visual["delta_xy_nm"], length))
             elif visual.get("visual_cue") == "channel_barrier_changed":
                 evidence.append(build_barrier_or_band_change_evidence(comparison_id, subjects, visual["baseline_barrier_eV"], visual["candidate_barrier_eV"]))
+            elif visual.get("visual_cue") == "vertical_band_bending_changed":
+                evidence.append(build_band_bending_change_evidence(
+                    comparison_id,
+                    subjects,
+                    visual["baseline_bending_eV"],
+                    visual["candidate_bending_eV"],
+                ))
+            elif visual.get("visual_cue") == "channel_band_slope_changed":
+                evidence.append(build_channel_band_slope_change_evidence(
+                    comparison_id,
+                    subjects,
+                    visual["baseline_slope"],
+                    visual["candidate_slope"],
+                ))
     return [item.to_dict() for item in evidence]

@@ -1,0 +1,368 @@
+{
+  "schema_version": "1.0",
+  "scenario_count": 36,
+  "scenarios": [
+    {
+      "id": "case_current_vth_cause",
+      "domain": "case",
+      "question": "이번 결과에서 Vth가 왜 감소했나요?",
+      "route": "current_result",
+      "uses_current_result": true,
+      "needs_new_experiment": false,
+      "requested_terms": ["threshold_voltage", "short_channel_effect"],
+      "reference_answer": "현재 비교에서는 채널 길이가 감소하면서 Vth가 낮아졌습니다. 채널이 짧아지면 Drain과 Source 전계가 채널 장벽 제어에 더 참여하므로 Gate에 필요한 문턱전압이 낮아질 수 있습니다."
+    },
+    {
+      "id": "case_elliptical_followup",
+      "domain": "case",
+      "question": "그 변화가 생기는 물리적 이유는 무엇인가요?",
+      "route": "current_result",
+      "uses_current_result": true,
+      "needs_new_experiment": false,
+      "requested_terms": ["source_barrier"],
+      "reference_answer": "앞서 말한 Vth 감소는 Source 쪽 주입 장벽에 대한 Gate 제어가 약해진 결과입니다. 채널 길이가 짧아지면서 Drain 전위가 장벽에 더 강하게 결합하기 때문입니다."
+    },
+    {
+      "id": "case_define_ion",
+      "domain": "case",
+      "question": "Ion은 언제의 전류인가요?",
+      "route": "case_theory",
+      "uses_current_result": false,
+      "needs_new_experiment": false,
+      "requested_terms": ["on_current"],
+      "reference_answer": "Ion은 소자가 켜진 것으로 정의한 Gate와 Drain bias 조건에서의 구동 전류입니다. 값을 해석할 때는 프로젝트가 사용한 정확한 bias와 전류 정규화 단위를 함께 확인해야 합니다."
+    },
+    {
+      "id": "case_define_ioff",
+      "domain": "case",
+      "question": "Ioff는 어떤 파라미터야?",
+      "route": "case_theory",
+      "uses_current_result": false,
+      "needs_new_experiment": false,
+      "requested_terms": ["off_current"],
+      "reference_answer": "Ioff는 소자를 끈 것으로 정의한 Gate bias에서 흐르는 누설 전류입니다. Source 장벽 제어와 subthreshold 특성을 살펴볼 때 사용하는 대표적인 off-state 지표입니다."
+    },
+    {
+      "id": "case_sce_ss_relation",
+      "domain": "case",
+      "question": "SCE와 SS를 연결지어 설명해줘.",
+      "route": "case_theory",
+      "uses_current_result": false,
+      "needs_new_experiment": false,
+      "requested_terms": ["short_channel_effect", "subthreshold_swing"],
+      "reference_answer": "SCE가 강해지면 Gate 이외 단자의 전위가 채널 장벽에 더 크게 영향을 줍니다. 이로 인해 Gate의 subthreshold 제어력이 약해질 수 있고, 전류 한 decade를 바꾸는 데 필요한 전압인 SS가 커질 수 있습니다."
+    },
+    {
+      "id": "case_dibl_theory",
+      "domain": "case",
+      "question": "DIBL의 물리적 원인을 자세히 설명해줘.",
+      "route": "case_theory",
+      "uses_current_result": false,
+      "needs_new_experiment": false,
+      "requested_terms": ["dibl", "source_barrier"],
+      "reference_answer": "DIBL은 높은 Drain 전위가 채널을 따라 Source 쪽 주입 장벽에 결합하는 현상입니다. 장벽이 낮아지면 같은 Gate 전압에서도 캐리어가 더 쉽게 주입되므로 추출된 Vth가 낮아질 수 있습니다. 따라서 DIBL이 크다는 것은 Drain bias에 따른 장벽과 문턱전압 변화가 크다는 의미이며, 짧은 채널에서 더 두드러질 수 있습니다."
+    },
+    {
+      "id": "case_adjacent_pn",
+      "domain": "case",
+      "question": "PN 접합에서 공핍영역은 어떻게 형성되나요?",
+      "route": "adjacent_theory",
+      "uses_current_result": false,
+      "needs_new_experiment": false,
+      "requested_terms": ["pn_junction"],
+      "reference_answer": "PN 접합에서는 전자와 정공이 농도 차이로 확산하고 접합 근처에서 재결합합니다. 그 결과 이동 전하가 줄고 이온화된 도펀트가 남아 내부 전계와 공핍영역이 형성됩니다."
+    },
+    {
+      "id": "case_hypothetical_l200",
+      "domain": "case",
+      "question": "채널을 200 nm까지 줄이면 SCE가 더 증가하는 거지?",
+      "route": "hypothetical",
+      "uses_current_result": false,
+      "needs_new_experiment": true,
+      "requested_terms": ["channel_length", "short_channel_effect"],
+      "reference_answer": "일반적으로 채널 길이를 더 줄이면 Drain과 Source 전위의 영향이 커져 SCE가 강해질 가능성이 있습니다. 다만 현재 결과가 200 nm 조건을 직접 검증한 것은 아니므로 같은 나머지 조건으로 새 실험이 필요합니다."
+    },
+    {
+      "id": "case_new_experiment_l500",
+      "domain": "case",
+      "question": "L을 500 nm로 바꾼 결과도 추가해줘.",
+      "route": "new_experiment",
+      "uses_current_result": false,
+      "needs_new_experiment": true,
+      "requested_terms": ["channel_length"],
+      "reference_answer": "500 nm 조건은 현재 저장된 두 조건과 별도의 새 실험입니다. 다른 파라미터를 유지하고 채널 길이만 변경하는지 확인한 뒤 실행해야 합니다."
+    },
+    {
+      "id": "case_experiment_correction",
+      "domain": "case",
+      "question": "이 실험은 700과 300 nm로 길이만 바꾼 거 맞잖아.",
+      "route": "current_result",
+      "uses_current_result": true,
+      "needs_new_experiment": false,
+      "requested_terms": ["channel_length"],
+      "reference_answer": "맞습니다. 현재 비교에서는 채널 길이만 변경하고 산화막 두께와 도핑 조건은 고정했으므로 길이 변화에 대한 통제 비교로 해석할 수 있습니다."
+    },
+    {
+      "id": "case_mos_capacitor_adjacent",
+      "domain": "case",
+      "question": "MOS capacitor의 depletion은 이 결과와 어떻게 연결돼?",
+      "route": "adjacent_theory",
+      "uses_current_result": false,
+      "needs_new_experiment": false,
+      "requested_terms": ["threshold_voltage"],
+      "reference_answer": "MOS capacitor의 depletion은 Gate 전압이 반도체 표면 전하와 전위를 제어하는 기본 과정입니다. 이 개념은 MOSFET의 문턱전압과 채널 형성을 이해하는 배경이지만 현재 비교 결과의 수치 근거와는 구분해야 합니다."
+    },
+    {
+      "id": "case_out_of_scope_weather",
+      "domain": "case",
+      "question": "오늘 밖에 온도가 어떻게 돼?",
+      "route": "out_of_scope",
+      "uses_current_result": false,
+      "needs_new_experiment": false,
+      "requested_terms": [],
+      "reference_answer": "현재 질문은 반도체 소자 학습 범위 밖이므로 이 플랫폼의 결과만으로 답할 수 없습니다."
+    },
+
+    {
+      "id": "iv_overview",
+      "domain": "iv",
+      "question": "이 I-V 결과에서 전체적으로 무엇을 봐야 해?",
+      "route": "explain_overall",
+      "uses_current_result": true,
+      "needs_new_experiment": false,
+      "requested_terms": [],
+      "reference_answer": "현재 곡선에서는 off-state 누설, 문턱 부근의 기울기, on-state 구동 전류와 포화영역 형태를 함께 비교해야 합니다. 한 지표의 개선만 보지 말고 성능과 누설의 Trade-off를 확인해야 합니다."
+    },
+    {
+      "id": "iv_define_ion",
+      "domain": "iv",
+      "question": "Ion이 정확히 무엇이야?",
+      "route": "explain_metric",
+      "uses_current_result": false,
+      "needs_new_experiment": false,
+      "requested_terms": ["ion"],
+      "reference_answer": "Ion은 지정된 on-state Gate와 Drain bias에서 추출한 구동 전류입니다. 비교할 때는 같은 추출 bias와 정규화 단위를 사용했는지 확인해야 합니다."
+    },
+    {
+      "id": "iv_define_ioff",
+      "domain": "iv",
+      "question": "Ioff를 설명해줘.",
+      "route": "explain_metric",
+      "uses_current_result": false,
+      "needs_new_experiment": false,
+      "requested_terms": ["ioff"],
+      "reference_answer": "Ioff는 지정된 off-state Gate bias에서 흐르는 누설 전류입니다. 값이 클수록 꺼진 상태의 전력 손실과 전류 차단 측면에서 불리할 수 있습니다."
+    },
+    {
+      "id": "iv_dibl_cause",
+      "domain": "iv",
+      "question": "채널이 짧아질 때 DIBL이 왜 증가해?",
+      "route": "explain_mechanism",
+      "uses_current_result": true,
+      "needs_new_experiment": false,
+      "requested_terms": ["dibl", "short_channel_effect"],
+      "reference_answer": "현재 짧은 채널 조건에서 DIBL이 더 크게 관찰됩니다. 채널이 짧아지면 Drain 전위가 Source 장벽에 더 강하게 결합하여 Gate의 장벽 제어를 약화시키기 때문입니다."
+    },
+    {
+      "id": "iv_vth_cause",
+      "domain": "iv",
+      "question": "Vth가 감소한 물리적 이유는 뭐야?",
+      "route": "explain_mechanism",
+      "uses_current_result": true,
+      "needs_new_experiment": false,
+      "requested_terms": ["vth", "source_barrier"],
+      "reference_answer": "현재 비교에서는 짧은 채널 조건의 Vth가 더 낮습니다. Drain과 Source 전계가 채널 장벽 제어에 참여하면서 채널 형성에 필요한 Gate 전압이 낮아질 수 있기 때문입니다."
+    },
+    {
+      "id": "iv_compare_curves",
+      "domain": "iv",
+      "question": "두 Curve의 장단점을 비교해줘.",
+      "route": "compare_curves",
+      "uses_current_result": true,
+      "needs_new_experiment": false,
+      "requested_terms": [],
+      "reference_answer": "두 번째 Curve는 더 큰 Ion과 더 작은 Ron으로 구동 측면에서 유리합니다. 반면 Ioff와 DIBL, SS가 커져 off-state 제어 측면에서는 불리하므로 성능과 누설의 Trade-off가 나타납니다."
+    },
+    {
+      "id": "iv_ss_extraction",
+      "domain": "iv",
+      "question": "SS는 곡선에서 어떻게 추출해?",
+      "route": "define_extraction",
+      "uses_current_result": false,
+      "needs_new_experiment": false,
+      "requested_terms": ["ss"],
+      "reference_answer": "SS는 subthreshold 영역의 log Drain current 대 Gate voltage 기울기에서 구합니다. 전류가 한 decade 변하는 데 필요한 Gate 전압으로 표현하므로 사용한 fitting 구간을 함께 확인해야 합니다."
+    },
+    {
+      "id": "iv_evaluate_claim",
+      "domain": "iv",
+      "question": "Ion이 증가했으니 소자 성능이 무조건 좋아진 거지?",
+      "route": "evaluate_claim",
+      "uses_current_result": true,
+      "needs_new_experiment": false,
+      "requested_terms": ["ion", "ioff"],
+      "reference_answer": "현재 Ion 증가는 구동 성능의 이득이지만 전체 성능 개선을 단독으로 뜻하지는 않습니다. Ioff와 SS, DIBL 같은 누설 및 제어 지표도 함께 악화됐는지 비교해야 합니다."
+    },
+    {
+      "id": "iv_hypothetical_l200",
+      "domain": "iv",
+      "question": "L을 200 nm로 줄이면 Ioff도 더 커질까?",
+      "route": "hypothetical",
+      "uses_current_result": false,
+      "needs_new_experiment": true,
+      "requested_terms": ["ioff", "channel_length"],
+      "reference_answer": "채널 길이가 더 짧아지면 장벽 제어가 약해져 Ioff가 증가할 가능성이 있습니다. 그러나 200 nm 조건은 현재 Curve에서 확인하지 않았으므로 새 계산으로 검증해야 합니다."
+    },
+    {
+      "id": "iv_new_curve",
+      "domain": "iv",
+      "question": "500 nm Curve를 하나 더 추가해줘.",
+      "route": "new_experiment",
+      "uses_current_result": false,
+      "needs_new_experiment": true,
+      "requested_terms": ["channel_length"],
+      "reference_answer": "500 nm Curve는 새로운 조건의 모델 실행이 필요합니다. 나머지 소자 조건을 고정할지 확인한 뒤 기존 Curve와 같은 추출 기준으로 비교해야 합니다."
+    },
+    {
+      "id": "iv_output_saturation",
+      "domain": "iv",
+      "question": "Id-Vd 포화영역 기울기는 무엇을 의미해?",
+      "route": "explain_metric",
+      "uses_current_result": false,
+      "needs_new_experiment": false,
+      "requested_terms": ["gds"],
+      "reference_answer": "Id-Vd 포화영역의 잔여 기울기는 출력 컨덕턴스 gds와 연결됩니다. 기울기가 크면 Drain 전압 변화에 전류가 더 민감하다는 뜻이지만 정확한 값은 지정된 추출 구간에서 구해야 합니다."
+    },
+    {
+      "id": "iv_out_of_scope",
+      "domain": "iv",
+      "question": "서울 날씨를 알려줘.",
+      "route": "out_of_scope",
+      "uses_current_result": false,
+      "needs_new_experiment": false,
+      "requested_terms": [],
+      "reference_answer": "이 질문은 현재 I-V 소자 분석 범위 밖이므로 곡선 데이터로 답할 수 없습니다."
+    },
+
+    {
+      "id": "field_overview",
+      "domain": "field",
+      "question": "fieldmap에서는 뭐를 보면 되는거야?",
+      "route": "explain_overall",
+      "uses_current_result": true,
+      "needs_new_experiment": false,
+      "requested_terms": ["electric_field"],
+      "reference_answer": "현재 Field Map에서는 먼저 표시 물리량과 색상 범위를 확인해야 합니다. 그다음 채널 표면과 Source 및 Drain 인접 영역의 공간 분포와 국부 전계 집중을 비교하고 I-V에서 확인할 지표를 구분해야 합니다."
+    },
+    {
+      "id": "field_define_potential",
+      "domain": "field",
+      "question": "Potential map의 색은 무엇을 뜻해?",
+      "route": "define_display",
+      "uses_current_result": false,
+      "needs_new_experiment": false,
+      "requested_terms": ["potential"],
+      "reference_answer": "Potential map의 색은 각 공간 위치의 전위를 나타냅니다. 색의 절대 의미는 color scale과 bias 조건에 의존하므로 서로 다른 Map을 비교할 때 같은 범위를 사용했는지 확인해야 합니다."
+    },
+    {
+      "id": "field_channel_region",
+      "domain": "field",
+      "question": "채널 표면 영역에서는 무엇을 봐야 해?",
+      "route": "explain_region",
+      "uses_current_result": true,
+      "needs_new_experiment": false,
+      "requested_terms": ["field_concentration"],
+      "reference_answer": "현재 채널 표면에서는 Source에서 Drain으로 이어지는 전위 또는 전계 분포의 연속성을 봐야 합니다. 특히 국부 집중 위치와 분포가 채널 안쪽으로 얼마나 침투하는지를 비교할 수 있습니다."
+    },
+    {
+      "id": "field_drain_hotspot",
+      "domain": "field",
+      "question": "Drain 근처 hotspot은 왜 생기는 거야?",
+      "route": "explain_hotspot",
+      "uses_current_result": true,
+      "needs_new_experiment": false,
+      "requested_terms": ["electric_field"],
+      "reference_answer": "현재 Drain 인접 영역에는 전위가 짧은 거리에서 크게 변하는 구간이 있습니다. 전위 기울기가 큰 위치에서 전계가 집중되므로 hotspot처럼 보일 수 있습니다."
+    },
+    {
+      "id": "field_physical_meaning",
+      "domain": "field",
+      "question": "채널 쪽 전계 변화는 물리적으로 무슨 뜻이야?",
+      "route": "explain_physical_meaning",
+      "uses_current_result": true,
+      "needs_new_experiment": false,
+      "requested_terms": ["electric_field", "source_barrier"],
+      "reference_answer": "현재 채널 쪽 전계 분포 변화는 Drain 전위가 채널 내부와 Source 장벽에 결합하는 공간적 영향이 달라졌다는 의미일 수 있습니다. 다만 전계 관찰만으로 DIBL의 실제 변화 방향을 확정하지 말고 I-V에서 별도로 확인해야 합니다."
+    },
+    {
+      "id": "field_compare_maps",
+      "domain": "field",
+      "question": "두 Field Map의 차이를 영역별로 비교해줘.",
+      "route": "compare_maps",
+      "uses_current_result": true,
+      "needs_new_experiment": false,
+      "requested_terms": [],
+      "reference_answer": "채널 표면에서는 분포의 침투 범위와 기울기를 비교하고, Source 쪽에서는 주입 장벽 인접 변화를 확인해야 합니다. Drain 쪽에서는 국부 전계 집중을 비교하되 deep bulk와 oxide 영역의 변화도 분리해서 살펴봐야 합니다."
+    },
+    {
+      "id": "field_cross_check_iv",
+      "domain": "field",
+      "question": "이 전계 분포를 DIBL과 어떻게 같이 확인해?",
+      "route": "cross_check_iv",
+      "uses_current_result": true,
+      "needs_new_experiment": false,
+      "requested_terms": ["electric_field", "dibl"],
+      "reference_answer": "Field에서는 Drain 전계가 채널과 Source 장벽 방향으로 침투하는 공간적 경향을 봅니다. DIBL의 실제 변화는 별도의 I-V에서 Drain bias별 Vth 차이로 확인해야 하며 두 관찰을 함께 해석해야 합니다."
+    },
+    {
+      "id": "field_evaluate_breakdown",
+      "domain": "field",
+      "question": "hotspot이 있으니 breakdown이 발생한 거지?",
+      "route": "evaluate_claim",
+      "uses_current_result": true,
+      "needs_new_experiment": false,
+      "requested_terms": ["electric_field"],
+      "reference_answer": "현재 전계 hotspot은 국부 전계 집중이 있다는 관찰입니다. 이것만으로 breakdown 발생을 확정할 수 없으며 임계 전계, 전류 변화와 추가적인 물리 모델을 확인해야 합니다."
+    },
+    {
+      "id": "field_hypothetical_bias",
+      "domain": "field",
+      "question": "Drain bias를 더 높이면 hotspot이 강해질까?",
+      "route": "hypothetical",
+      "uses_current_result": false,
+      "needs_new_experiment": true,
+      "requested_terms": ["electric_field"],
+      "reference_answer": "일반적으로 Drain bias를 높이면 Drain 인접 전위 기울기와 전계 집중이 강해질 가능성이 있습니다. 하지만 현재보다 높은 bias 조건은 새 Field 계산으로 확인해야 합니다."
+    },
+    {
+      "id": "field_new_display_condition",
+      "domain": "field",
+      "question": "200 nm 조건의 Potential map도 추가해줘.",
+      "route": "new_experiment",
+      "uses_current_result": false,
+      "needs_new_experiment": true,
+      "requested_terms": ["potential", "channel_length"],
+      "reference_answer": "200 nm Potential map은 새로운 소자 조건의 모델 실행이 필요합니다. 나머지 조건과 bias를 고정할지 확인한 뒤 기존 Map과 같은 color scale로 비교해야 합니다."
+    },
+    {
+      "id": "field_current_density_boundary",
+      "domain": "field",
+      "question": "current density가 크면 Ion도 큰 거야?",
+      "route": "cross_check_iv",
+      "uses_current_result": true,
+      "needs_new_experiment": false,
+      "requested_terms": ["ion"],
+      "reference_answer": "현재 Map의 국부 current density는 특정 위치의 전류 밀도 분포입니다. Terminal Ion과 직접 동일시할 수 없으므로 접촉 단자에서 적분된 I-V 전류를 별도로 확인해야 합니다."
+    },
+    {
+      "id": "field_out_of_scope",
+      "domain": "field",
+      "question": "반도체 회사 주가를 알려줘.",
+      "route": "out_of_scope",
+      "uses_current_result": false,
+      "needs_new_experiment": false,
+      "requested_terms": [],
+      "reference_answer": "이 질문은 현재 Field Map 기반 소자 학습 범위 밖이므로 이 결과만으로 답할 수 없습니다."
+    }
+  ]
+}

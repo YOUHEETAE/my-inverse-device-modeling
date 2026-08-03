@@ -73,7 +73,7 @@ FIELD_COMMON_TEMPLATES.update({
     "multi_principle.oxide_thickness_decrease_may_raise_oxide_field": "반면 Tox 감소는 Oxide field concentration을 높이는 방향을 가질 수 있습니다.",
     "multi_principle.source_drain_doping_increase_may_raise_junction_field": "Source/Drain doping 증가는 junction field를 강화하는 방향을 가질 수 있습니다.",
     "multi_principle.ldd_doping_increase_may_concentrate_drain_field": "LDD doping 증가는 Drain-side field를 집중시키는 방향을 가질 수 있습니다.",
-    "multi_principle.bulk_doping_change_modifies_depletion": "Bulk doping 변화는 Channel과 Bulk의 depletion 분포를 변화시키는 방향을 가집니다.",
+    "multi_principle.bulk_doping_change_modifies_depletion": "Bulk doping 변화는 Gate 아래 공핍 전하와 공핍 폭을 바꾸므로 Channel near-surface와 Deep bulk의 분포를 함께 확인해야 합니다.",
 })
 
 FIELD_LABELS = {"potential": "Potential", "electric_field": "Electric field", "electron_density": "Electron density",
@@ -102,6 +102,7 @@ STRUCTURED_CONCEPT_LABELS = {
     "current_path": "current path", "current_path_extent": "고전류 영역",
     "current_crowding": "current crowding", "srh_activity_magnitude": "SRH activity 절대 크기",
     "srh_activity_extent": "SRH activity 영역", "channel_entry_barrier": "Channel 진입 barrier",
+    "vertical_band_bending": "수직 band bending", "channel_band_slope": "채널 방향 band slope",
 }
 
 STRUCTURED_ASSESSMENT_LABELS = {

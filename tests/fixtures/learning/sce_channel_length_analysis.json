@@ -1,0 +1,142 @@
+{
+  "fixture_version": "1.0",
+  "generated_by": "LearningExperimentRunner with finalized local model artifacts",
+  "topic_id": "sce_channel_length",
+  "curve_analysis_id": "analysis_debc860faad86309",
+  "field_analysis_ids": {
+    "electric_field": "analysis_319797cf8b44d560",
+    "potential": "analysis_b371297a897383f2"
+  },
+  "learning_context": {
+    "schema_version": "1.0",
+    "experiment": {
+      "changed_parameter": "L",
+      "changed_parameters": [
+        "L"
+      ],
+      "before": 700.0,
+      "after": 300.0,
+      "baseline_conditions": {
+        "L": 700.0,
+        "T": 10.0,
+        "B": 1e+16,
+        "SD": 1e+20,
+        "LDD": 1e+18
+      },
+      "comparison_conditions": {
+        "L": 300.0,
+        "T": 10.0,
+        "B": 1e+16,
+        "SD": 1e+20,
+        "LDD": 1e+18
+      },
+      "fixed_parameters": {
+        "T": 10.0,
+        "B": 1e+16,
+        "SD": 1e+20,
+        "LDD": 1e+18
+      }
+    },
+    "electrical_changes": {
+      "vth_low": {
+        "before": 0.008657702803611757,
+        "after": -0.018542832136154173,
+        "direction": "decrease",
+        "available": true,
+        "evidence_id": "metric:vth_low"
+      },
+      "vth_high": {
+        "before": 0.5976437330245972,
+        "after": 0.44163942337036133,
+        "direction": "decrease",
+        "available": true,
+        "evidence_id": "metric:vth_high"
+      },
+      "ion": {
+        "before": 6.253228187561035,
+        "after": 16.343727111816406,
+        "change_percent": 161.36463633819506,
+        "change_ratio": 2.613646363381951,
+        "direction": "increase",
+        "unit": "mA/µm",
+        "available": true,
+        "evidence_id": "metric:ion"
+      },
+      "ioff": {
+        "before": 0.006652287517984708,
+        "after": 0.06690820306539536,
+        "change_percent": 905.7924117757468,
+        "change_ratio": 10.057924117757468,
+        "direction": "increase",
+        "unit": "mA/µm",
+        "available": true,
+        "evidence_id": "metric:ioff"
+      },
+      "ion_ioff_ratio": {
+        "before": 940.0117133625387,
+        "after": 244.2709019676141,
+        "direction": "decrease",
+        "available": true,
+        "evidence_id": "metric:ion_ioff_ratio"
+      },
+      "ss": {
+        "before": 69.27070881774601,
+        "after": 75.48192345930966,
+        "direction": "increase",
+        "available": true,
+        "evidence_id": "metric:ss"
+      },
+      "dibl": {
+        "before": 13.62092401066422,
+        "after": 59.27673713034462,
+        "change_percent": 335.1888101272361,
+        "change_ratio": 4.351888101272361,
+        "direction": "increase",
+        "unit": "mV/V",
+        "available": true,
+        "evidence_id": "metric:dibl"
+      },
+      "gm_max": {
+        "before": 0.07543003559112549,
+        "after": 0.19351649284362793,
+        "direction": "increase",
+        "available": true,
+        "evidence_id": "metric:gm_max"
+      },
+      "gds": {
+        "before": 0.12075976322840647,
+        "after": 0.6581098305164022,
+        "direction": "increase",
+        "available": true,
+        "evidence_id": "metric:gds"
+      },
+      "ron": {
+        "before": 0.2702134809290447,
+        "after": 0.11542601467507116,
+        "direction": "decrease",
+        "available": true,
+        "evidence_id": "metric:ron"
+      },
+      "lambda_clm": {
+        "before": 0.06343260329511323,
+        "after": 0.11430745367861281,
+        "direction": "increase",
+        "available": true,
+        "evidence_id": "metric:lambda_clm"
+      }
+    },
+    "curve_observation_count": 1,
+    "field_observation_count": 9,
+    "validated_observation_count": 14,
+    "warning_types": [
+      "model_approximation"
+    ],
+    "in_training_range": true,
+    "analysis_status": "partial",
+    "source_schema_versions": {
+      "curve": "3.0",
+      "field:electric_field": "3.0",
+      "field:potential": "3.0"
+    }
+  }
+}

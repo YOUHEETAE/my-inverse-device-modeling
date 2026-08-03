@@ -1,9 +1,16 @@
 from __future__ import annotations
 
-import argparse
-import math
-import sys
 import tkinter as tk
+
+# Initialize Tcl before numerical/GUI backends load native DLLs.  This avoids
+# the Windows Conda runtime resolving an incompatible Tcl library first.
+_TCL_BOOTSTRAP = tk.Tcl() if __name__ == "__main__" else None
+
+import argparse
+from dataclasses import replace
+import logging
+import sys
+import math
 from pathlib import Path
 from tkinter import messagebox, ttk
 from tkinter.scrolledtext import ScrolledText
@@ -12,6 +19,9 @@ import numpy as np
 from matplotlib.backends.backend_agg import FigureCanvasAgg
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 from matplotlib.figure import Figure
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 # Support both `python ai/tools/visualization_models.py` and direct execution of
@@ -41,14 +51,22 @@ from frontend.visualization.field_rendering import (
     render_model_field_comparison,
 )
 from backend.explanation import ExplanationService, MockExplanationProvider
+from backend.explanation.iv_chat import IVChatService
+from backend.explanation.field_chat import FieldChatService
+from backend.explanation.comparison_planner import build_comparison_plan
 from backend.explanation.providers import ProviderSettings, create_explanation_provider
+from backend.learning.experiment_runner import LearningExperimentRunner
+from backend.learning.schemas import LearningStep
+from backend.learning.session_repository import InMemorySessionRepository, JsonSessionRepository
+from frontend.visualization.case_study import CaseStudyPanel
 from frontend.visualization.curve_rendering import render_curve_figure
-from frontend.visualization.explanation_panel import EXPLANATION_PROVIDERS, ExplanationPanelMixin
+from frontend.visualization.explanation_panel import ExplanationPanelMixin
 from frontend.visualization.guide_panel import build_guide_panel
 from frontend.visualization.guide_content import GUIDE_CHAPTERS, THEORY_CHAPTERS
 
 
 PARAMETERS = ("L", "T", "B", "SD", "LDD")
+MAX_FIELD_SELECTIONS = 2
 PARAMETER_TITLES = {
     "L": "L (nm)", "T": "T (nm)", "B": "B (cm⁻³)",
     "SD": "SD (cm⁻³)", "LDD": "LDD (cm⁻³)",
@@ -72,6 +90,38 @@ def _root() -> Path:
     return Path(__file__).resolve().parents[1]
 
 
+def _create_tk_window() -> tk.Tk:
+    """Create Tk, repairing Conda's missing tk8.6 auto_path when necessary."""
+    window = tk.Tk(useTk=False)
+    try:
+        tk_library = Path(sys.prefix) / "Library" / "lib" / "tk8.6"
+        if (tk_library / "pkgIndex.tcl").is_file():
+            window.tk.call("lappend", "auto_path", tk_library.as_posix())
+        window.loadtk()
+        return window
+    except tk.TclError:
+        try:
+            window.destroy()
+        except tk.TclError:
+            pass
+        raise
+
+
+def create_case_study_provider():
+    """Create the application's dedicated strict Groq provider."""
+    try:
+        settings = replace(
+            ProviderSettings.from_environment("external_llm"),
+            allow_mock_fallback=False,
+            allow_safe_fallback=False,
+        )
+        return create_explanation_provider(
+            settings
+        )
+    except RuntimeError:
+        return None
+
+
 class IntegratedModelApp(ExplanationPanelMixin):
     def __init__(
         self,
@@ -79,6 +129,9 @@ class IntegratedModelApp(ExplanationPanelMixin):
         curve_predictor: FinalCurvePredictor,
         field_predictor: FieldMapPredictor,
         geo_template: Path,
+        *,
+        enable_learning_persistence: bool = True,
+        auto_generate: bool = True,
     ) -> None:
         self.window = window; self.curve_predictor = curve_predictor
         self.field_predictor = field_predictor; self.geo_template = geo_template
@@ -89,17 +142,32 @@ class IntegratedModelApp(ExplanationPanelMixin):
         self.active_curve_index = 0
         self.field_outputs: dict[int, GeneratedFieldMap] = {}
         self.field_selected_indices: set[int] = {0}
+        self.analysis_baseline_indices: dict[str, int | None] = {
+            "curve": 0, "field": 0,
+        }
+        self.analysis_baseline_vars: dict[str, tk.StringVar] = {}
+        self.analysis_baseline_widgets: dict[str, ttk.Combobox] = {}
+        self.analysis_context_vars: dict[str, tk.StringVar] = {}
         self.combined_curves = True
-        # Mock is the deterministic analysis authority. External LLM use is an
-        # explicit user choice and only polishes the verified Mock draft.
-        initial_provider = create_explanation_provider(ProviderSettings.from_environment("mock"))
-        self.explanation_service = ExplanationService(initial_provider)
-        self.explanation_provider_var = tk.StringVar(value="mock")
-        self.explanation_provider_help_var = tk.StringVar(value="Python/Mock creates the complete explanation; no API call is made.")
+        interactive_provider = create_case_study_provider()
+        self.explanation_llm_available = interactive_provider is not None
+        # Mock remains the deterministic analysis authority. Provider details
+        # stay internal while the UI reports only whether AI help is available.
+        service_provider = interactive_provider or MockExplanationProvider()
+        self.explanation_service = ExplanationService(service_provider)
+        self.explanation_provider_help_var = tk.StringVar(
+            value=(
+                "I-V / Field AI 해설: 사용 가능"
+                if self.explanation_llm_available
+                else "I-V / Field AI 해설: 현재 사용 불가"
+            )
+        )
         self.explanation_texts: dict[str, ScrolledText] = {}
         self.explanation_buttons: dict[str, ttk.Button] = {}
         self.explanation_status: dict[str, tk.StringVar] = {}
         self.explanation_history: dict[str, dict[tuple, tuple[str, bool]]] = {"curve": {}, "field": {}}
+        self.iv_chat_service = IVChatService(interactive_provider)
+        self.field_chat_service = FieldChatService(interactive_provider)
         self.side_panel_width = 360
         window.title("Integrated AI Device Model Visualization")
         screen_width, screen_height = window.winfo_screenwidth(), window.winfo_screenheight()
@@ -109,19 +177,7 @@ class IntegratedModelApp(ExplanationPanelMixin):
 
         top = ttk.Frame(window, padding=(10, 8)); top.pack(side=tk.TOP, fill=tk.X)
         provider_row = ttk.Frame(window, padding=(10, 0, 10, 8)); provider_row.pack(side=tk.TOP, fill=tk.X)
-        provider_controls = ttk.Frame(provider_row)
-        provider_controls.pack(side=tk.RIGHT)
         ttk.Label(provider_row, textvariable=self.explanation_provider_help_var, foreground="#4b5563").pack(side=tk.LEFT, fill=tk.X, expand=True)
-        ttk.Label(provider_controls, text="Explanation Provider").pack(side=tk.LEFT, padx=(0, 3))
-        self.provider_box = ttk.Combobox(
-            provider_controls,
-            textvariable=self.explanation_provider_var,
-            values=EXPLANATION_PROVIDERS,
-            state="readonly",
-            width=12,
-        )
-        self.provider_box.pack(side=tk.LEFT)
-        self.provider_box.bind("<<ComboboxSelected>>", self._provider_changed)
 
         ttk.Label(top, text="Common device parameters", font=("TkDefaultFont", 10, "bold")).pack(side=tk.LEFT, padx=(0, 10))
         self.parameter_vars = {name: tk.StringVar(value=DEFAULT_PARAMETERS[name]) for name in PARAMETERS}
@@ -140,38 +196,33 @@ class IntegratedModelApp(ExplanationPanelMixin):
         self.notebook = ttk.Notebook(window, style="Main.TNotebook"); self.notebook.pack(fill=tk.BOTH, expand=True, padx=8, pady=(0, 8))
         self.curve_tab = ttk.Frame(self.notebook); self.field_tab = ttk.Frame(self.notebook)
         self.guide_tab = ttk.Frame(self.notebook); self.theory_tab = ttk.Frame(self.notebook)
+        self.case_study_tab = ttk.Frame(self.notebook)
         self.notebook.add(self.guide_tab, text="1. Guide")
         self.notebook.add(self.theory_tab, text="2. Theory")
+        self.notebook.add(self.case_study_tab, text="3. Case Study")
         self.notebook.add(self.curve_tab, text="I–V Curve"); self.notebook.add(self.field_tab, text="Structure / Field Map")
         self._build_curve_tab(); self._build_field_tab(); self._build_guide_tabs()
-        window.after(60, self.generate_all)
-
-    def _provider_changed(self, _event=None) -> None:
-        requested = self.explanation_provider_var.get()
-        try:
-            settings = ProviderSettings.from_environment(requested)
-            provider = create_explanation_provider(settings)
-        except RuntimeError:
-            self.explanation_provider_var.set("mock")
-            provider = MockExplanationProvider()
-            messagebox.showinfo(
-                "Groq LLM unavailable",
-                "GROQ_API_KEY 환경변수를 설정한 뒤 프로그램을 다시 실행하세요. "
-                "기본 모델은 openai/gpt-oss-120b입니다.",
-                parent=self.window,
-            )
-        self.explanation_service = ExplanationService(provider)
-        self.explanation_history = {"curve": {}, "field": {}}
-        for kind, status in self.explanation_status.items(): status.set(f"Ready ({provider.name})")
-        self._update_explanation_provider_help()
-
-    def _update_explanation_provider_help(self) -> None:
-        provider = self.explanation_provider_var.get()
-        if provider == "external_llm":
-            text = "Mock draft → LLM language polish only → local meaning-preservation check."
-        else:
-            text = "Python/Mock creates the complete explanation; no API call is made."
-        self.explanation_provider_help_var.set(text)
+        learning_repository = (
+            JsonSessionRepository(REPO_ROOT / "runtime" / "learning_sessions")
+            if enable_learning_persistence
+            else InMemorySessionRepository()
+        )
+        learning_runner = LearningExperimentRunner(
+            curve_predictor=self.curve_predictor,
+            field_predictor=self.field_predictor,
+            geo_template=self.geo_template,
+        )
+        self.case_study_panel = CaseStudyPanel(
+            self.case_study_tab,
+            window=self.window,
+            runner=learning_runner,
+            repository=learning_repository,
+            provider=interactive_provider,
+            on_open_theory=lambda: self.notebook.select(self.theory_tab),
+        )
+        self.case_study_panel.pack(fill=tk.BOTH, expand=True)
+        if auto_generate:
+            window.after(60, self.generate_all)
 
     def _build_curve_tab(self) -> None:
         panel = ttk.LabelFrame(self.curve_tab, text="I–V curve settings", padding=(10, 8), width=self.side_panel_width)
@@ -231,7 +282,11 @@ class IntegratedModelApp(ExplanationPanelMixin):
         ttk.Separator(panel).pack(fill=tk.X, pady=8)
         ttk.Label(panel, text="Fixed bias: Vg=3 V, Vd=3 V").pack(anchor="w", pady=(0, 7))
         selection_header = ttk.Frame(panel); selection_header.pack(fill=tk.X, pady=(0, 8))
-        ttk.Label(selection_header, text="Compare curves (maximum 2)", font=("TkDefaultFont", 9, "bold")).pack(side=tk.LEFT)
+        ttk.Label(
+            selection_header,
+            text="Select up to 2 curves",
+            font=("TkDefaultFont", 9, "bold"),
+        ).pack(side=tk.LEFT)
         ttk.Button(selection_header, text="Generate All", command=self.generate_all).pack(side=tk.RIGHT, padx=(6, 0))
         self.field_curve_frame = ttk.Frame(panel); self.field_curve_frame.pack(fill=tk.X, pady=(0, 8))
         ttk.Label(panel, text="Parameters", font=("TkDefaultFont", 9, "bold")).pack(anchor="w")
@@ -275,6 +330,9 @@ class IntegratedModelApp(ExplanationPanelMixin):
             self.curve_scrollbar.grid_remove(); self.more_curves_label.grid_remove()
         if hasattr(self, "field_curve_frame"):
             self._refresh_field_curve_controls()
+        if hasattr(self, "analysis_context_vars"):
+            self._refresh_analysis_context("curve")
+            self._refresh_analysis_context("field")
 
     def _refresh_field_curve_controls(self) -> None:
         for frame in (self.field_curve_frame, self.field_parameter_frame):
@@ -301,9 +359,14 @@ class IntegratedModelApp(ExplanationPanelMixin):
 
     def _field_curve_toggled(self, index: int) -> None:
         if self.field_curve_vars[index].get():
-            if len(self.field_selected_indices) >= 2:
+            if (
+                index not in self.field_selected_indices
+                and len(self.field_selected_indices) >= MAX_FIELD_SELECTIONS
+            ):
                 self.field_curve_vars[index].set(False)
-                self.status.set("Field comparison supports at most two curves.")
+                self.status.set(
+                    "Field Map은 최대 2개 Curve만 선택할 수 있습니다."
+                )
                 return
             self.field_selected_indices.add(index)
         else:
@@ -341,12 +404,17 @@ class IntegratedModelApp(ExplanationPanelMixin):
             self._refresh_curve_tree(); self.render_curves(); self._restore_explanation("curve")
             self.status.set(f"Curve {self.active_curve_index + 1} added and generated.")
         except Exception as exc:
+            LOGGER.exception("Curve generation failed", exc_info=exc)
             failed_index = self.active_curve_index
             self.curve_configs.pop()
             self.visible_curve_indices.discard(failed_index)
             self.active_curve_index = len(self.curve_configs) - 1
             self._refresh_curve_tree()
-            messagebox.showerror("Curve generation failed", str(exc), parent=self.window); self.status.set("Curve generation failed")
+            messagebox.showerror(
+                "Curve 생성 실패",
+                "Curve를 생성하지 못했습니다. 입력 조건을 확인하고 다시 시도해 주세요.",
+                parent=self.window,
+            ); self.status.set("Curve generation failed")
 
     def update_selected_curve(self) -> None:
         self.curve_configs[self.active_curve_index] = dict(self._values())
@@ -355,7 +423,12 @@ class IntegratedModelApp(ExplanationPanelMixin):
             self._refresh_curve_tree(); self.render_curves(); self._restore_explanation("curve")
             self.status.set(f"Curve {self.active_curve_index + 1} updated and generated.")
         except Exception as exc:
-            messagebox.showerror("Curve generation failed", str(exc), parent=self.window); self.status.set("Curve generation failed")
+            LOGGER.exception("Curve update failed", exc_info=exc)
+            messagebox.showerror(
+                "Curve 생성 실패",
+                "Curve를 갱신하지 못했습니다. 입력 조건을 확인하고 다시 시도해 주세요.",
+                parent=self.window,
+            ); self.status.set("Curve generation failed")
 
     def remove_selected_curve(self) -> None:
         if len(self.curve_configs) == 1:
@@ -365,6 +438,14 @@ class IntegratedModelApp(ExplanationPanelMixin):
         self.visible_curve_indices = {index - 1 if index > removed else index for index in self.visible_curve_indices if index != removed}
         self.field_selected_indices = {index - 1 if index > removed else index for index in self.field_selected_indices if index != removed}
         self.field_outputs = {index - 1 if index > removed else index: output for index, output in self.field_outputs.items() if index != removed}
+        for kind, baseline in tuple(self.analysis_baseline_indices.items()):
+            if baseline is None:
+                continue
+            self.analysis_baseline_indices[kind] = (
+                None if baseline == removed
+                else baseline - 1 if baseline > removed
+                else baseline
+            )
         if removed < len(self.curve_results):
             self.curve_results.pop(removed)
         self.active_curve_index = min(removed, len(self.curve_configs) - 1)
@@ -382,7 +463,11 @@ class IntegratedModelApp(ExplanationPanelMixin):
             self.status.set("Generating selected I–V curve..."); self.window.update_idletasks()
             self._generate_curve(self.active_curve_index)
             if not self.field_selected_indices:
-                raise ValueError("Select one or two curves in the Field comparison panel.")
+                raise ValueError("Select at least one curve in the Field comparison panel.")
+            if len(self.field_selected_indices) > MAX_FIELD_SELECTIONS:
+                raise ValueError(
+                    "Field Map supports at most two selected curves."
+                )
             self.field_outputs = {}
             for index in sorted(self.field_selected_indices):
                 config = self.curve_configs[index]
@@ -396,9 +481,16 @@ class IntegratedModelApp(ExplanationPanelMixin):
             self.render_curves(); self.render_field()
             self._mark_explanation_stale("curve"); self._mark_explanation_stale("field")
             warnings = [f"Curve {index + 1}: {warning}" for index, config in enumerate(self.curve_configs) for warning in [range_warning(config)] if warning]
-            self.status.set(" | ".join(warnings) or f"{len(self.field_outputs)} field map(s) generated with a shared comparison scale")
+            count = len(self.field_outputs)
+            status = f"{count} field map(s) analyzed with a shared scale"
+            self.status.set(" | ".join(warnings) or status)
         except Exception as exc:
-            messagebox.showerror("Integrated model generation failed", str(exc), parent=self.window); self.status.set("Generation failed")
+            LOGGER.exception("Integrated field generation failed", exc_info=exc)
+            messagebox.showerror(
+                "Field Map 생성 실패",
+                "Field Map을 생성하지 못했습니다. 조건을 확인하고 다시 시도해 주세요.",
+                parent=self.window,
+            ); self.status.set("Generation failed")
 
     def _generate_curve(self, index: int) -> None:
         config = self.curve_configs[index]
@@ -442,10 +534,48 @@ class IntegratedModelApp(ExplanationPanelMixin):
                 self.electrical_value_widgets.append(value)
 
     def render_field(self) -> None:
-        outputs = [(f"Curve {index + 1}", self.field_outputs[index]) for index in sorted(self.field_selected_indices) if index in self.field_outputs]
+        ordered_indices = self._ordered_analysis_indices("field")
+        outputs = [(f"Curve {index + 1}", self.field_outputs[index]) for index in ordered_indices if index in self.field_outputs]
         if not outputs:
             return
-        render_model_field_comparison(self.field_figure, outputs, self.field_var.get(), self.scale_var.get(), self.range_var.get()); self.field_canvas.draw_idle()
+        representative = outputs
+        if len(outputs) > 2:
+            selected_indices = [
+                index for index in ordered_indices
+                if index in self.field_outputs
+            ]
+            subjects = []
+            for position, index in enumerate(selected_indices, start=1):
+                config = self.curve_configs[index]
+                subjects.append({
+                    "subject_id": f"curve_{position}",
+                    "display_name": f"Curve {index + 1}",
+                    "device_parameters": {
+                        "channel_length_nm": float(config["L"]),
+                        "oxide_thickness_nm": float(config["T"]),
+                        "bulk_doping_cm3": float(config["B"]),
+                        "source_drain_doping_cm3": float(config["SD"]),
+                        "ldd_doping_cm3": float(config["LDD"]),
+                    },
+                })
+            plan = build_comparison_plan(subjects)
+            positions = {
+                f"curve_{position}": position - 1
+                for position in range(1, len(outputs) + 1)
+            }
+            representative = [
+                outputs[positions[subject_id]]
+                for subject_id in plan.representative_subject_ids
+            ]
+        render_model_field_comparison(
+            self.field_figure,
+            representative,
+            self.field_var.get(),
+            self.scale_var.get(),
+            self.range_var.get(),
+            normalization_outputs=outputs,
+        )
+        self.field_canvas.draw_idle()
 
 
 def _parse_args() -> argparse.Namespace:
@@ -464,15 +594,179 @@ def _parse_args() -> argparse.Namespace:
 def main() -> int:
     args = _parse_args(); curve_predictor = FinalCurvePredictor(args.curve_model_dir.resolve()); field_predictor = FieldMapPredictor(args.field_model_dir.resolve())
     if args.ui_smoke_test:
-        window = tk.Tk(); window.withdraw()
-        app = IntegratedModelApp(window, curve_predictor, field_predictor, args.geo_template.resolve())
+        window = _create_tk_window(); window.withdraw()
+
+        def descendants(widget):
+            for child in widget.winfo_children():
+                yield child
+                yield from descendants(child)
+
+        app = IntegratedModelApp(
+            window,
+            curve_predictor,
+            field_predictor,
+            args.geo_template.resolve(),
+            enable_learning_persistence=False,
+            auto_generate=False,
+        )
         window.update_idletasks()
+        original_session_id = app.case_study_panel.session.session_id
+        app.case_study_panel._new_session()
+        new_session_id = app.case_study_panel.session.session_id
+        original_label = next(
+            label
+            for label, session_id in app.case_study_panel._session_choice_ids.items()
+            if session_id == original_session_id
+        )
+        app.case_study_panel.session_choice_var.set(original_label)
+        app.case_study_panel._resume_selected_session()
+        session_switch_ok = (
+            new_session_id != original_session_id
+            and app.case_study_panel.session.session_id == original_session_id
+            and len(app.case_study_panel.session_choice_box.cget("values")) == 2
+        )
+        app.case_study_panel.session.current_step = LearningStep.RESULT_READY
+        app.case_study_panel.render()
+        window.update_idletasks()
+        result_notebook = next(
+            (
+                widget
+                for widget in descendants(app.case_study_panel.body)
+                if isinstance(widget, ttk.Notebook)
+                and tuple(
+                    widget.tab(tab_id, "text") for tab_id in widget.tabs()
+                ) == ("I–V Curve", "Field Map", "AI 자유 질문")
+            ),
+            None,
+        )
+        fixed_parameters = any(
+            isinstance(widget, ttk.LabelFrame)
+            and str(widget.cget("text")).startswith("전기적 파라미터")
+            for widget in descendants(app.case_study_panel.body)
+        )
+        if result_notebook is not None:
+            result_notebook.select(result_notebook.tabs()[-1])
+            window.update()
+        app.case_study_panel.render()
+        window.update_idletasks()
+        restored_result_notebook = next(
+            (
+                widget
+                for widget in descendants(app.case_study_panel.body)
+                if isinstance(widget, ttk.Notebook)
+                and tuple(
+                    widget.tab(tab_id, "text") for tab_id in widget.tabs()
+                ) == ("I–V Curve", "Field Map", "AI 자유 질문")
+            ),
+            None,
+        )
+        result_tab_preserved = (
+            restored_result_notebook is not None
+            and restored_result_notebook.tab(
+                restored_result_notebook.select(),
+                "text",
+            ) == "AI 자유 질문"
+        )
+        app.case_study_panel.session.current_step = LearningStep.SESSION_COMPLETE
+        app.case_study_panel.render()
+        window.update_idletasks()
+        completion_notebook = next(
+            (
+                widget
+                for widget in app.case_study_panel.body.winfo_children()
+                if isinstance(widget, ttk.Notebook)
+            ),
+            None,
+        )
+        completion_tabs = (
+            tuple(
+                completion_notebook.tab(tab_id, "text")
+                for tab_id in completion_notebook.tabs()
+            )
+            if completion_notebook is not None
+            else ()
+        )
+        result_tab_persisted = (
+            app.case_study_panel.session.ui_state.get("result_view_tab")
+            == "AI 자유 질문"
+        )
+        oxide_label = app.case_study_panel._topic_label(
+            "oxide_gate_control"
+        )
+        app.case_study_panel.topic_choice_var.set(oxide_label)
+        app.case_study_panel._switch_topic()
+        multi_case_switch_ok = (
+            app.case_study_panel.topic.topic_id == "oxide_gate_control"
+            and app.case_study_panel.session.topic_id == "oxide_gate_control"
+            and app.case_study_panel.topic.baseline_conditions["T"] == 20.0
+            and app.case_study_panel.topic.comparison_conditions["T"] == 10.0
+        )
+        sce_label = app.case_study_panel._topic_label("sce_channel_length")
+        app.case_study_panel.topic_choice_var.set(sce_label)
+        app.case_study_panel._switch_topic()
+        app.case_study_panel._show_learning_portfolio()
+        window.update_idletasks()
+        portfolio_dialogs = [
+            child
+            for child in window.winfo_children()
+            if isinstance(child, tk.Toplevel)
+            and child.title() == "전체 Case 학습 현황"
+        ]
+        portfolio_dialog_ok = bool(portfolio_dialogs)
+        for dialog in portfolio_dialogs:
+            dialog.destroy()
         checks = {
-            "provider_visible": app.provider_box.winfo_reqwidth() > 0,
-            "provider_choices": tuple(app.provider_box.cget("values")) == EXPLANATION_PROVIDERS,
+            "provider_selector_removed": not hasattr(app, "provider_box"),
+            "automatic_llm_fixed": (
+                not hasattr(app, "explanation_provider_var")
+                and "AI 해설" in app.explanation_provider_help_var.get()
+            ),
             "curve_horizontal_scroll": app.electrical_hscroll.winfo_manager() == "pack",
-            "curve_prompt_button": any(widget.cget("text") == "Preview LLM Prompt" for widget in app.explanation_buttons["curve"].master.winfo_children()),
-            "field_prompt_button": any(widget.cget("text") == "Preview LLM Prompt" for widget in app.explanation_buttons["field"].master.winfo_children()),
+            "curve_prompt_hidden": not any(widget.cget("text") == "Preview LLM Prompt" for widget in app.explanation_buttons["curve"].master.winfo_children()),
+            "field_prompt_hidden": not any(widget.cget("text") == "Preview LLM Prompt" for widget in app.explanation_buttons["field"].master.winfo_children()),
+            "case_study_tab": "3. Case Study" in tuple(app.notebook.tab(tab_id, "text") for tab_id in app.notebook.tabs()),
+            "case_study_panel": app.case_study_panel.winfo_reqwidth() > 0,
+            "case_study_topic": app.case_study_panel.topic.topic_id == "sce_channel_length",
+            "case_study_conditions": (
+                app.case_study_panel.topic.baseline_conditions["L"] == 700.0
+                and app.case_study_panel.topic.comparison_conditions["L"] == 300.0
+            ),
+            "case_study_session_selector": app.case_study_panel.session_choice_box.winfo_reqwidth() > 0,
+            "case_study_tutor_mode": (
+                "Case Study" in app.case_study_panel.tutor_mode_var.get()
+                and (
+                    "AI 튜터 사용 가능" in app.case_study_panel.tutor_mode_var.get()
+                    or "로컬 보조 해설" in app.case_study_panel.tutor_mode_var.get()
+                )
+            ),
+            "case_study_session_switch": session_switch_ok,
+            "case_study_multi_case_switch": multi_case_switch_ok,
+            "case_study_portfolio": (
+                app.case_study_panel.portfolio_button.winfo_reqwidth() > 0
+                and "전체 Case" in app.case_study_panel.portfolio_var.get()
+                and portfolio_dialog_ok
+            ),
+            "case_study_fixed_parameters": fixed_parameters,
+            "case_study_result_tab_preserved": result_tab_preserved,
+            "case_study_result_tab_persisted": result_tab_persisted,
+            "case_study_session_delete": app.case_study_panel.delete_session_button.winfo_reqwidth() > 0,
+            "case_study_session_rename": app.case_study_panel.rename_session_button.winfo_reqwidth() > 0,
+            "case_study_session_clone": app.case_study_panel.clone_session_button.winfo_reqwidth() > 0,
+            "curve_chat_retry": app.iv_chat_retry_button.winfo_reqwidth() > 0,
+            "field_chat_retry": app.field_chat_retry_button.winfo_reqwidth() > 0,
+            "curve_analysis_context": (
+                "SINGLE" in app.analysis_context_vars["curve"].get()
+                and app.analysis_baseline_vars["curve"].get() == "Curve 1"
+            ),
+            "field_analysis_context": (
+                "SINGLE" in app.analysis_context_vars["field"].get()
+                and app.analysis_baseline_vars["field"].get() == "Curve 1"
+            ),
+            "case_study_completion_tabs": completion_tabs == (
+                "학습 요약",
+                "결과 다시 보기",
+                "AI 자유 질문",
+            ),
         }
         window.destroy()
         print(", ".join(f"{name}={value}" for name, value in checks.items()))
@@ -489,7 +783,7 @@ def main() -> int:
         print(f"curve_finite={bool(np.isfinite(idvd.currents).all() and np.isfinite(idvg.currents).all())}")
         print(f"field_nodes={len(mesh.node_xy_nm)}, field_elements={len(mesh.triangles)}, field_finite={all(np.isfinite(v).all() for v in [*prediction.node_fields.values(), *prediction.element_fields.values()])}")
         return 0
-    window = tk.Tk(); IntegratedModelApp(window, curve_predictor, field_predictor, args.geo_template.resolve()); window.mainloop(); return 0
+    window = _create_tk_window(); IntegratedModelApp(window, curve_predictor, field_predictor, args.geo_template.resolve()); window.mainloop(); return 0
 
 
 if __name__ == "__main__":

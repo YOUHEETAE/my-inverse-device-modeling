@@ -1,8 +1,8 @@
 # Inverse Device Modeling
 
 MOSFET device parameters로 I-V Curve와 Field Map을 예측하고, Python Analyzer와
-Mock renderer가 근거 기반 해설을 생성하는 데스크톱 애플리케이션입니다. Groq LLM은
-선택 사항이며 Mock 해설의 의미를 바꾸지 않는 범위에서 문장만 다듬습니다.
+Mock renderer가 검증 가능한 분석 초안을 만들고 Groq LLM이 그 의미를 보존하며
+학습용 자연어로 다듬는 데스크톱 애플리케이션입니다.
 
 ## Repository layout
 
@@ -31,15 +31,16 @@ python frontend/app.py --smoke-test
 python frontend/app.py
 ```
 
-The app starts with the local `mock` explanation provider. Therefore Curve,
-Field Map, extracted parameters, and deterministic explanations work without an
-API key or network connection.
+Curve와 Field Map 예측 및 전기적 파라미터 추출은 API key 없이 동작합니다.
+I-V·Field 자동 설명과 AI 질문, Case Study 자유 질문은 전용 Groq LLM을
+기본 경로로 사용합니다.
 
-## Optional Groq LLM
+## Groq LLM
 
 Copy the variable names from `.env.example`, but set the real key in the Conda
 environment or operating-system environment. Do not commit a `.env` file or API
-key. If the key is absent, keep `mock` selected in the GUI.
+key. 키가 없거나 요청이 실패하면 설명 영역에 연결 또는 실제 provider 오류가
+표시되며, 사용자에게 Mock 답변을 LLM 답변처럼 대체해 보여주지 않습니다.
 
 ## Runtime and data policy
 
@@ -55,3 +56,17 @@ tcad/data_extraction/dataset/
 ```
 
 See `ai/DEPLOYMENT.md` and `tcad/data_extraction/README.md` for details.
+
+## Release handoff
+
+Before handing a source revision to a deployment owner, run:
+
+```powershell
+python tools/deployment_readiness.py
+```
+
+The complete qualification sequence and the boundary between this desktop
+application and deployment infrastructure are documented in
+`docs/deployment_handoff.md`. Learner-visible information, private session
+state, provider credentials, and remote-deployment responsibilities are defined
+in `docs/security_privacy_handoff.md`.

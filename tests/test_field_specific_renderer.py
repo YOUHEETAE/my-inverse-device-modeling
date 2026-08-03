@@ -133,6 +133,9 @@ def test_specific_no_difference_and_policy_fallback():
     conclusion = {"conclusion_type": "no_meaningful_difference", "comparison_id": "cmp_1_2"}
     for display, phrase in (("potential", "Potential drop"), ("electric_field", "Electric field hotspot"), ("total_current_density", "Total current path"), ("energy_band", "Channel barrier")):
         assert phrase in text(render_field_explanation(payload(display=display, conclusions=[conclusion])))
+    energy = text(render_field_explanation(payload(display="energy_band", conclusions=[conclusion])))
+    assert "Horizontal Source-to-Channel cut" in energy
+    assert "모든 I-V 지표가 변하지 않았다는 의미는 아닙니다" in energy
     assert set(FIELD_POLICY_REGISTRY) == {"potential", "electric_field", "electron_density", "hole_density", "electron_current_density", "hole_current_density", "total_current_density", "srh_recombination", "energy_band"}
 
 

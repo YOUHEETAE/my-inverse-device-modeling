@@ -13,17 +13,10 @@ from ai.curve_model.models.pca_xgboost import (
     load_curve_regressor,
 )
 from ai.curve_model.training.target_transforms import TargetTransformer
+from ai.shared.device_parameters import DEFAULT_PARAMETERS, PARAMETER_OPTIONS
 from tcad.data_extraction.parameter_extraction_core import extract_parameters
 
 
-PARAMETER_OPTIONS = {
-    "L": ("100", "120", "150", "170", "200", "250", "300", "400", "500", "700", "1000", "1300", "1600"),
-    "T": ("5", "7", "10", "12", "15", "20", "27", "35", "50"),
-    "B": ("5e15", "1e16", "5e16"),
-    "SD": ("1e19", "5e19", "1e20", "5e20"),
-    "LDD": ("1e17", "5e17", "1e18", "5e18"),
-}
-DEFAULT_PARAMETERS = {"L": "200", "T": "20", "B": "1e16", "SD": "1e20", "LDD": "1e18"}
 IDVG_FIXED_BIASES = (0.05, 1.5)
 
 

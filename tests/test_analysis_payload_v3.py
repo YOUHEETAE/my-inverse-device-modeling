@@ -17,6 +17,7 @@ def test_single_curve_payload_is_strict_json():
     assert data["analysis_type"] == "iv_curve_single"
     assert data["subjects"][0]["role"] == "single_subject"
     assert data["comparisons"] == []
+    assert data["comparison_plan"]["analysis_mode"] == "single_characterization"
     json.dumps(data, allow_nan=False)
 
 
@@ -28,6 +29,8 @@ def test_one_parameter_comparison_is_controlled():
     assert comparison["declared_claim_level"] == "controlled_association"
     assert comparison["effective_claim_level"] == "descriptive_only"
     assert comparison["changed_parameters"][0]["percent_difference"] == 100.0
+    assert payload.comparison_plan["analysis_mode"] == "controlled_pair"
+    assert payload.comparison_plan["allowed_claim_level"] == "controlled_association"
 
 
 def test_three_curves_use_selected_pair_order():
@@ -36,6 +39,7 @@ def test_three_curves_use_selected_pair_order():
     assert [c["comparison_order"] for c in payload.comparisons] == [1, 2, 3]
     assert payload.comparisons[-1]["comparison_role"] == "variant_to_variant"
     assert payload.comparisons[0]["subject_ids"] == ["curve_1", "curve_2"]
+    assert payload.comparison_plan["analysis_mode"] == "mixed_group"
 
 
 def test_multi_parameter_change_adds_warning():
@@ -43,6 +47,7 @@ def test_multi_parameter_change_adds_warning():
     assert payload.analysis_type == "field_comparison"
     assert payload.comparisons[0]["causal_claim_level"] == "multi_parameter_association"
     assert any(w["warning_type"] == "multiple_parameter_change" for w in payload.warnings)
+    assert payload.comparison_plan["analysis_mode"] == "compound_pair"
 
 
 def test_single_field_context_and_policy():

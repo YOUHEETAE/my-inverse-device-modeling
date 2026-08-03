@@ -5,6 +5,7 @@ from itertools import combinations
 from typing import Any
 
 from .interpretation_contract import CURVE_ASSESSMENTS, INTERACTION_TYPES, SUPPORT_LEVELS, build_interpretation_scaffold
+from .iv_mechanisms import build_iv_mechanism_chains
 from .physical_principles import PHYSICAL_PRINCIPLES
 
 
@@ -340,6 +341,7 @@ def build_curve_interpretation(comparisons: list[dict[str, Any]], evidence: list
         return result
     summaries = build_performance_summaries(comparisons, evidence)
     effects = build_parameter_effects(comparisons, evidence)
+    mechanisms = build_iv_mechanism_chains(comparisons, evidence)
     interactions = build_parameter_interactions(comparisons, evidence)
     tradeoffs = build_observed_tradeoffs(summaries, conclusions)
     overall = build_overall_assessment(summaries, tradeoffs)
@@ -348,6 +350,7 @@ def build_curve_interpretation(comparisons: list[dict[str, Any]], evidence: list
         "status": "complete" if summaries else "insufficient",
         "performance_summaries": summaries,
         "parameter_effects": effects,
+        "mechanism_chains": mechanisms,
         "parameter_interactions": interactions,
         "observed_tradeoffs": tradeoffs,
         "variant_rankings": rankings,
@@ -372,6 +375,23 @@ def validate_curve_interpretation(value: dict[str, Any], comparisons: list[dict[
         ids = set(effect.get("supporting_evidence_ids", [])) | set(effect.get("conflicting_evidence_ids", []))
         if not ids.issubset(evidence_ids):
             raise ValueError("Parameter effect references unknown evidence.")
+    for mechanism in value.get("mechanism_chains", []):
+        if mechanism.get("comparison_id") not in comparison_ids:
+            raise ValueError("Mechanism chain references an unknown comparison.")
+        ids = (
+            set(mechanism.get("supporting_evidence_ids", []))
+            | set(mechanism.get("conflicting_evidence_ids", []))
+        )
+        link_ids = {
+            item.get("evidence_id")
+            for item in mechanism.get("observed_metric_links", [])
+        }
+        if (
+            not ids.issubset(evidence_ids)
+            or not link_ids.issubset(evidence_ids)
+            or mechanism.get("support_level") not in SUPPORT_LEVELS
+        ):
+            raise ValueError("Invalid mechanism chain evidence.")
     for interaction in value.get("parameter_interactions", []):
         if interaction.get("comparison_id") not in comparison_ids or interaction.get("interaction_type") not in INTERACTION_TYPES:
             raise ValueError("Invalid parameter interaction.")

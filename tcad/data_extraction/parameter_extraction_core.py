@@ -20,6 +20,118 @@ PARAMETER_NAMES = (
     "lambda_per_v",
 )
 
+# Authoritative, user-facing extraction contract. Learning and explanation
+# layers import this instead of maintaining a second set of bias definitions.
+PARAMETER_EXTRACTION_DEFINITIONS = {
+    "vth_low_v": {
+        "label": "Vth (low Vd)",
+        "unit": "V",
+        "source_curve": "Id–Vg at Vd=0.05 V",
+        "method": "maximum-gm tangent intercept with the Vd/2 correction",
+        "learning_explanation": (
+            "이 프로젝트의 low-Vd Vth는 Vd=0.05 V Id–Vg 곡선에서 "
+            "최대 gm 접선 절편을 구한 뒤 Vd/2 보정을 적용한 값이다."
+        ),
+    },
+    "vth_high_v": {
+        "label": "Vth (high Vd)",
+        "unit": "V",
+        "source_curve": "Id–Vg at Vd=1.5 V",
+        "method": "maximum-gm tangent intercept",
+        "learning_explanation": (
+            "이 프로젝트의 high-Vd Vth는 Vd=1.5 V Id–Vg 곡선에서 "
+            "최대 gm 접선 절편으로 추출한 값이다."
+        ),
+    },
+    "ion_ma_per_um": {
+        "label": "Ion",
+        "unit": "mA/µm",
+        "source_curve": "Id–Vd at Vg=3.0 V",
+        "method": "absolute Drain current at Vd=3.0 V",
+        "learning_explanation": (
+            "이 프로젝트의 Ion은 Vg=3.0 V로 켠 Id–Vd 곡선에서 "
+            "Vd=3.0 V일 때의 |Id|이다."
+        ),
+    },
+    "ioff_ma_per_um": {
+        "label": "Ioff",
+        "unit": "mA/µm",
+        "source_curve": "Id–Vg at Vd=1.5 V",
+        "method": "absolute Drain current at Vg=0 V",
+        "learning_explanation": (
+            "이 프로젝트의 Ioff는 Vd=1.5 V Id–Vg 곡선에서 "
+            "Vg=0 V일 때의 |Id|이다."
+        ),
+    },
+    "ss_mv_per_dec": {
+        "label": "SS",
+        "unit": "mV/dec",
+        "source_curve": "Id–Vg at Vd=0.05 V",
+        "method": (
+            "minimum valid 9-point semilog slope within Vth-0.4 V to Vth "
+            "(at least 0.2 decade and R²≥0.95)"
+        ),
+        "learning_explanation": (
+            "이 프로젝트의 SS는 Vd=0.05 V Id–Vg 곡선에서 Vth 아래 "
+            "0.4 V 범위의 유효한 9점 semilog 구간 중 가장 작은 기울기 값으로 추출한다."
+        ),
+    },
+    "dibl_gm_v_per_v": {
+        "label": "DIBL",
+        "unit": "V/V",
+        "source_curve": "Id–Vg at Vd=0.05 V and 1.5 V",
+        "method": (
+            "absolute constant-current Vth difference at 1e-4 mA/µm, "
+            "divided by 1.45 V"
+        ),
+        "learning_explanation": (
+            "이 프로젝트의 DIBL은 Vd=0.05 V와 1.5 V에서 "
+            "|Id|=1e-4 mA/µm가 되는 constant-current Vth 차이를 "
+            "Drain bias 차이 1.45 V로 나눈 값이다."
+        ),
+    },
+    "gm_max_ms_per_um": {
+        "label": "gm max",
+        "unit": "mS/µm",
+        "source_curve": "Id–Vg at Vd=0.05 V",
+        "method": "maximum numerical dId/dVg",
+        "learning_explanation": (
+            "이 프로젝트의 gm max는 Vd=0.05 V Id–Vg 곡선에서 "
+            "수치 미분한 dId/dVg의 최댓값이다."
+        ),
+    },
+    "gds_ms_per_um": {
+        "label": "gds",
+        "unit": "mS/µm",
+        "source_curve": "Id–Vd at Vg=1.5 V",
+        "method": "linear-fit slope over Vd=2.5–3.0 V",
+        "learning_explanation": (
+            "이 프로젝트의 gds는 Vg=1.5 V Id–Vd 곡선의 "
+            "Vd=2.5–3.0 V 구간을 선형 적합한 기울기이다."
+        ),
+    },
+    "ron_kohm_um": {
+        "label": "Ron",
+        "unit": "kΩ·µm",
+        "source_curve": "Id–Vd at Vg=3.0 V",
+        "method": "inverse linear-fit conductance over Vd=0–0.3 V",
+        "learning_explanation": (
+            "이 프로젝트의 Ron은 Vg=3.0 V Id–Vd 곡선의 "
+            "Vd=0–0.3 V 선형 적합 conductance의 역수이다."
+        ),
+    },
+    "lambda_per_v": {
+        "label": "λ",
+        "unit": "1/V",
+        "source_curve": "Id–Vd at Vg=1.5 V",
+        "method": "gds divided by fitted saturation current at Vd=2.75 V",
+        "learning_explanation": (
+            "이 프로젝트의 λ는 추출된 gds를 Vd=2.75 V에서의 "
+            "선형 적합 saturation current로 나눈 값이다."
+        ),
+    },
+}
+
 
 def extract_parameters(
     idvd: dict[str, tuple[np.ndarray, np.ndarray]],

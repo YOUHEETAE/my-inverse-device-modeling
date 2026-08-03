@@ -18,6 +18,7 @@ from .schemas import AnalysisPayload
 from .field_geometry import build_field_geometry_interpretation, validate_field_geometry_interpretation
 from .field_interpretation import build_common_field_interpretation, validate_common_field_interpretation
 from .field_conclusions import build_field_specific_conclusions, validate_field_specific_conclusions
+from .field_links import build_cross_domain_links, validate_cross_domain_links
 from .payload_builders import validate_analysis_payload
 
 
@@ -104,6 +105,7 @@ def _weighted_fraction(mask: np.ndarray, selected: np.ndarray, weights: np.ndarr
 
 def _energy_band_metrics(output: GeneratedFieldMap) -> dict[str, object]:
     mesh = output.mesh; bulk = mesh.node_region == 0
+    marker = geometry_markers(output)
     x_min, x_max = float(mesh.node_xy_nm[bulk, 0].min()), float(mesh.node_xy_nm[bulk, 0].max())
     positive_y = mesh.node_xy_nm[bulk & (mesh.node_xy_nm[:, 1] > 1e-8), 1]
     y_channel = float(positive_y.min()) if len(positive_y) else 0.0
@@ -114,12 +116,53 @@ def _energy_band_metrics(output: GeneratedFieldMap) -> dict[str, object]:
         return {"channel_cut": {"finite": False}}
     first = int(np.flatnonzero(finite)[0]); reference_potential = float(potential[first])
     ec = reference_potential - potential
-    finite_indices = np.flatnonzero(np.isfinite(ec)); peak_index = int(finite_indices[np.argmax(ec[finite_indices])])
+    finite_indices = np.flatnonzero(np.isfinite(ec))
+    channel = finite & (x_line >= marker["gate_left"]) & (x_line <= marker["gate_right"])
+    source_plateau = finite & (x_line <= marker["source_contact_right"])
+    if not np.any(source_plateau):
+        source_plateau = finite & (x_line < marker["gate_left"])
+    source_reference = float(np.median(ec[source_plateau])) if np.any(source_plateau) else float(ec[first])
+    channel_center_x = (marker["gate_left"] + marker["gate_right"]) / 2.0
+    injection_path = finite & (x_line >= marker["source_contact_right"]) & (x_line <= channel_center_x)
+    if not np.any(injection_path):
+        injection_path = channel
+    injection_indices = np.flatnonzero(injection_path)
+    peak_index = int(injection_indices[np.argmax(ec[injection_indices])])
+    raw_barrier_height = float(ec[peak_index] - source_reference)
+    channel_indices = np.flatnonzero(channel)
+    channel_length = max(marker["gate_right"] - marker["gate_left"], 1e-12)
+    u = (x_line - marker["gate_left"]) / channel_length
+
+    def _segment_value(lower: float, upper: float) -> float | None:
+        selected = channel & (u >= lower) & (u <= upper)
+        return float(np.median(ec[selected])) if np.any(selected) else None
+
+    source_edge = _segment_value(0.0, 0.1)
+    center = _segment_value(0.45, 0.55)
+    drain_edge = _segment_value(0.9, 1.0)
+    channel_tilt = (
+        None if source_edge is None or drain_edge is None
+        else float(drain_edge - source_edge)
+    )
     channel_cut = {
         "finite": True, "y_nm": y_channel,
-        "source_relative_Ec_eV": float(ec[first]), "drain_relative_Ec_eV": float(ec[finite_indices[-1]]),
+        "source_relative_Ec_eV": source_reference, "drain_relative_Ec_eV": float(ec[finite_indices[-1]]),
         "maximum_relative_Ec_eV": float(ec[peak_index]), "minimum_relative_Ec_eV": float(np.nanmin(ec)),
-        "barrier_height_from_source_eV": float(ec[peak_index] - ec[first]), "barrier_position_x_nm": float(x_line[peak_index]),
+        "barrier_height_from_source_eV": max(0.0, raw_barrier_height),
+        "positive_barrier_resolved": raw_barrier_height > 1e-6,
+        "barrier_position_x_nm": float(x_line[peak_index]),
+        "barrier_position_channel_u": float(u[peak_index]),
+        "channel_source_edge_Ec_eV": source_edge,
+        "channel_center_Ec_eV": center,
+        "channel_drain_edge_Ec_eV": drain_edge,
+        "channel_tilt_eV": channel_tilt,
+        "channel_slope_magnitude_eV_per_nm": (
+            None if channel_tilt is None else abs(channel_tilt) / channel_length
+        ),
+        "channel_band_span_eV": (
+            float(np.max(ec[channel_indices]) - np.min(ec[channel_indices]))
+            if len(channel_indices) else None
+        ),
     }
     x_center = (x_min + x_max) / 2.0
     region_specs = {0: (0.0, 1.12, "Bulk"), 1: (3.1, 9.0, "Oxide"), 2: (0.0, 1.12, "Gate")}
@@ -136,6 +179,8 @@ def _energy_band_metrics(output: GeneratedFieldMap) -> dict[str, object]:
         vertical[name] = {
             "Ec_start_eV": float(finite_region[0]), "Ec_end_eV": float(finite_region[-1]),
             "Ec_change_eV": float(finite_region[-1] - finite_region[0]),
+            "surface_minus_deep_Ec_eV": float(finite_region[0] - finite_region[-1]),
+            "band_bending_magnitude_eV": float(abs(finite_region[0] - finite_region[-1])),
             "Ec_min_eV": float(np.min(finite_region)), "Ec_max_eV": float(np.max(finite_region)),
             "band_gap_eV": gap,
         }
@@ -194,6 +239,120 @@ def _percent_change(before: float | None, after: float | None) -> float | None:
     return (after - before) / abs(before) * 100.0
 
 
+def _trend_direction(values: list[float]) -> str:
+    if len(values) < 2:
+        return "insufficient"
+    scale = max(max(abs(value) for value in values), 1e-30)
+    tolerance = scale * 0.01
+    differences = [
+        after - before for before, after in zip(values, values[1:])
+    ]
+    significant = [
+        value for value in differences if abs(value) > tolerance
+    ]
+    if not significant:
+        return "stable"
+    if all(value > 0 for value in significant):
+        return "monotonic_increase"
+    if all(value < 0 for value in significant):
+        return "monotonic_decrease"
+    return "non_monotonic"
+
+
+def _build_multi_condition_trends(payload: AnalysisPayload) -> list[dict[str, object]]:
+    plan = payload.comparison_plan or {}
+    if (
+        len(payload.subjects) < 3
+        or plan.get("analysis_mode") != "controlled_sweep"
+    ):
+        return []
+    ordered_ids = list(plan.get("sweep_subject_ids") or [])
+    if len(ordered_ids) != len(payload.subjects):
+        return []
+    display = payload.context.get("display")
+    trends: list[dict[str, object]] = []
+    if display == "energy_band":
+        profiles = {
+            item.get("subject_id"): item
+            for item in payload.interpretation.get("energy_band_profiles", [])
+        }
+        quantities = (
+            (
+                "channel_entry_barrier",
+                lambda item: item.get("channel_cut", {}).get(
+                    "barrier_height_from_source_eV"
+                ),
+            ),
+            (
+                "channel_band_slope",
+                lambda item: item.get("channel_cut", {}).get(
+                    "channel_slope_magnitude_eV_per_nm"
+                ),
+            ),
+            (
+                "vertical_band_bending",
+                lambda item: item.get(
+                    "vertical_gate_oxide_bulk_cut", {}
+                ).get("Bulk", {}).get("band_bending_magnitude_eV"),
+            ),
+        )
+        for quantity, getter in quantities:
+            values = [
+                getter(profiles.get(subject_id, {}))
+                for subject_id in ordered_ids
+            ]
+            if any(value is None for value in values):
+                continue
+            numeric = [float(value) for value in values]
+            trends.append({
+                "trend_id": f"field_trend_{len(trends) + 1}",
+                "quantity": quantity,
+                "region": "channel_near_surface",
+                "ordered_subject_ids": ordered_ids,
+                "ordered_sweep_values": list(
+                    plan.get("sweep_values") or []
+                ),
+                "direction": _trend_direction(numeric),
+                "internal_values": numeric,
+                "claim_limit": "spatial_prediction_only",
+            })
+        return trends
+
+    summaries: dict[str, dict[str, float]] = {}
+    for item in payload.interpretation.get("regional_summaries", []):
+        subject_id = item.get("subject_id")
+        region = item.get("region")
+        value = item.get("magnitude_p95")
+        if (
+            subject_id in ordered_ids
+            and region
+            and isinstance(value, (int, float))
+        ):
+            summaries.setdefault(str(region), {})[str(subject_id)] = float(value)
+    ranked: list[tuple[float, dict[str, object]]] = []
+    for region, by_subject in summaries.items():
+        if not all(subject_id in by_subject for subject_id in ordered_ids):
+            continue
+        values = [by_subject[subject_id] for subject_id in ordered_ids]
+        scale = max(max(abs(value) for value in values), 1e-30)
+        score = (max(values) - min(values)) / scale
+        ranked.append((score, {
+            "quantity": "regional_magnitude_p95",
+            "region": region,
+            "ordered_subject_ids": ordered_ids,
+            "ordered_sweep_values": list(plan.get("sweep_values") or []),
+            "direction": _trend_direction(values),
+            "internal_values": values,
+            "claim_limit": "spatial_prediction_only",
+        }))
+    for _score, trend in sorted(
+        ranked, key=lambda item: (-item[0], str(item[1]["region"]))
+    )[:5]:
+        trend["trend_id"] = f"field_trend_{len(trends) + 1}"
+        trends.append(trend)
+    return trends
+
+
 def _visual_evidence(baseline: dict[str, object], candidate: dict[str, object], display: str) -> list[dict[str, object]]:
     if display == "Mesh":
         return []
@@ -203,7 +362,43 @@ def _visual_evidence(baseline: dict[str, object], candidate: dict[str, object], 
         before, after = base_cut.get("barrier_height_from_source_eV"), candidate_cut.get("barrier_height_from_source_eV")
         if before is None or after is None:
             return []
-        return [{"visual_cue": "channel_barrier_changed", "baseline_barrier_eV": before, "candidate_barrier_eV": after, "absolute_change_eV": after - before, "percent_change": _percent_change(before, after), "interpretation": "horizontal Energy band plot의 barrier 높이 변화로 확인 가능"}]
+        evidence = [{
+            "visual_cue": "channel_barrier_changed",
+            "baseline_barrier_eV": before,
+            "candidate_barrier_eV": after,
+            "absolute_change_eV": after - before,
+            "percent_change": _percent_change(before, after),
+            "interpretation": "Horizontal Source-to-Channel cut에서 Source plateau 대비 국부 Ec maximum으로 확인",
+        }]
+        before_slope = base_cut.get("channel_slope_magnitude_eV_per_nm")
+        after_slope = candidate_cut.get("channel_slope_magnitude_eV_per_nm")
+        if before_slope is not None and after_slope is not None:
+            evidence.append({
+                "visual_cue": "channel_band_slope_changed",
+                "baseline_slope": before_slope,
+                "candidate_slope": after_slope,
+                "absolute_change": after_slope - before_slope,
+                "interpretation": "Horizontal channel cut에서 Source-side와 Drain-side Ec의 기울기 차이로 확인",
+            })
+        base_vertical = baseline.get("specialized_metrics", {}).get(
+            "vertical_gate_oxide_bulk_cut", {}
+        ).get("Bulk", {})
+        candidate_vertical = candidate.get("specialized_metrics", {}).get(
+            "vertical_gate_oxide_bulk_cut", {}
+        ).get("Bulk", {})
+        before_bending = base_vertical.get("band_bending_magnitude_eV")
+        after_bending = candidate_vertical.get("band_bending_magnitude_eV")
+        if before_bending is not None and after_bending is not None:
+            evidence.append({
+                "visual_cue": "vertical_band_bending_changed",
+                "baseline_bending_eV": before_bending,
+                "candidate_bending_eV": after_bending,
+                "absolute_change_eV": after_bending - before_bending,
+                "baseline_signed_bending_eV": base_vertical.get("surface_minus_deep_Ec_eV"),
+                "candidate_signed_bending_eV": candidate_vertical.get("surface_minus_deep_Ec_eV"),
+                "interpretation": "Vertical Gate-Oxide-Bulk cut에서 channel surface와 Deep bulk의 Ec separation으로 확인",
+            })
+        return evidence
     evidence = []
     base_regions = baseline.get("specialized_metrics", {}).get("regions", {})
     candidate_regions = candidate.get("specialized_metrics", {}).get("regions", {})
@@ -283,7 +478,7 @@ def build_field_payload(outputs: list[tuple[str, GeneratedFieldMap]], display: s
     range_map = {"Robust 1–99%": "robust_1_99", "Robust 1-99%": "robust_1_99", "Full range": "full_range"}
     context = {"display": display_map.get(display, display.lower().replace(" ", "_")), "scale": scale_map.get(scale_mode, scale_mode.lower()),
                "range_mode": range_map.get(range_mode, range_mode.lower().replace(" ", "_")), "fixed_bias": {"vg_v": 3.0, "vd_v": 3.0},
-               "shared_color_scale": len(outputs) == 2, "region_definition_version": "1.0", "visual_evidence_policy": "supplied_evidence_only"}
+               "shared_color_scale": len(outputs) >= 2, "region_definition_version": "1.0", "visual_evidence_policy": "supplied_evidence_only"}
     payload = build_payload(kind="field", context=context, items=scalar_data, legacy_comparisons=comparisons, warnings=warnings)
     geometry_context, analysis_quality = build_field_geometry_interpretation(outputs)
     regional_summaries, spatial_features, feature_quality = build_common_field_interpretation(outputs, display)
@@ -295,11 +490,35 @@ def build_field_payload(outputs: list[tuple[str, GeneratedFieldMap]], display: s
         "regional_summaries": regional_summaries,
         "spatial_features": spatial_features,
     })
+    if display == "Energy band (1D)":
+        payload.interpretation["energy_band_profiles"] = [
+            {
+                "subject_id": f"curve_{index + 1}",
+                **item.get("specialized_metrics", {}),
+            }
+            for index, item in enumerate(scalar_data)
+        ]
+    payload.interpretation["multi_condition_trends"] = (
+        _build_multi_condition_trends(payload)
+    )
     field_specific_conclusions = build_field_specific_conclusions(payload)
     payload.interpretation["field_specific_conclusions"] = field_specific_conclusions
+    cross_domain_links = build_cross_domain_links(field_specific_conclusions)
+    payload.interpretation["cross_domain_links"] = cross_domain_links
     subject_ids = {item["subject_id"] for item in payload.subjects}
     validate_field_geometry_interpretation(geometry_context, analysis_quality, subject_ids)
     validate_common_field_interpretation(regional_summaries, spatial_features, subject_ids)
+    for trend in payload.interpretation["multi_condition_trends"]:
+        if not set(trend.get("ordered_subject_ids", [])).issubset(subject_ids):
+            raise ValueError("Field trend references an unknown subject.")
+        if trend.get("direction") not in {
+            "stable", "monotonic_increase", "monotonic_decrease",
+            "non_monotonic",
+        }:
+            raise ValueError("Field trend direction is invalid.")
+        if trend.get("claim_limit") != "spatial_prediction_only":
+            raise ValueError("Field trend claim limit is missing.")
     validate_field_specific_conclusions(field_specific_conclusions, payload)
+    validate_cross_domain_links(cross_domain_links, payload)
     validate_analysis_payload(payload)
     return payload
