@@ -18,6 +18,14 @@ Files under `evaluation/`, `metrics.json`, and the Markdown/JSON reports are not
 required for prediction, but are retained as final evidence.
 `final_model_manifest.json` records reproducibility and model identity.
 
+## Final model summary
+
+- Selected model: `PCA + XGBoost`
+- Seed: 42
+- Validation selection: best combined score, best IdVd/IdVg scores, and 386/386 electrical parameter extraction success
+- Final test: locked model evaluated once on 386 test devices without retraining
+- Final test result: Combined score 0.048049, IdVd score 0.023838, IdVg score 0.072259, electrical success 386/386
+
 Interactive curve generation from structure and doping parameters:
 
 ```powershell
