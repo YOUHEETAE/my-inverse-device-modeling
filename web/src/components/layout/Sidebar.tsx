@@ -36,9 +36,9 @@ export function Sidebar() {
           <BarChart3 className="h-3.5 w-3.5 text-primary" />
         </div>
         <div>
-          <h1 className="text-xs font-bold leading-snug">Inverse Device</h1>
+          <h1 className="text-xs font-bold leading-snug">SemiScope</h1>
           <p className="font-mono text-[9px] uppercase tracking-wide text-on-surface-variant">
-            Modeling
+            AI
           </p>
         </div>
       </div>

@@ -11,14 +11,14 @@ import { ViewStoreProvider } from "./features/shared/viewStore";
 import { PredictionCacheProvider } from "./features/shared/predictionCache";
 
 const PAGE_META: Record<string, { title: string; breadcrumb: string[] }> = {
-  "/": { title: "Home", breadcrumb: ["Inverse Device Modeling", "Home"] },
-  "/guide": { title: "Guide", breadcrumb: ["Inverse Device Modeling", "Guide"] },
-  "/case-study": { title: "Case Study", breadcrumb: ["Inverse Device Modeling", "Case Study"] },
-  "/theory": { title: "Theory", breadcrumb: ["Inverse Device Modeling", "Theory"] },
-  "/curves": { title: "I-V Curve Analysis", breadcrumb: ["Inverse Device Modeling", "I-V Curve"] },
-  "/fields": { title: "Structure / Field Map", breadcrumb: ["Inverse Device Modeling", "Field Map"] },
+  "/": { title: "Home", breadcrumb: ["SemiScope AI", "Home"] },
+  "/guide": { title: "Guide", breadcrumb: ["SemiScope AI", "Guide"] },
+  "/case-study": { title: "Case Study", breadcrumb: ["SemiScope AI", "Case Study"] },
+  "/theory": { title: "Theory", breadcrumb: ["SemiScope AI", "Theory"] },
+  "/curves": { title: "I-V Curve Analysis", breadcrumb: ["SemiScope AI", "I-V Curve"] },
+  "/fields": { title: "Structure / Field Map", breadcrumb: ["SemiScope AI", "Field Map"] },
 };
-const DEFAULT_META = { title: "Inverse Device Modeling", breadcrumb: ["Inverse Device Modeling"] };
+const DEFAULT_META = { title: "SemiScope AI", breadcrumb: ["SemiScope AI"] };
 
 function App() {
   const location = useLocation();
