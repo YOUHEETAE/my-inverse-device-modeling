@@ -1,14 +1,23 @@
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from fastapi import APIRouter, HTTPException, Request
+from pydantic import BaseModel, Field
 
 from ai.curve_model.inference import device_features
+from app.limiter import limiter
 from app.services import curve_predictor, explanation_service
 
 from app.services import build_field_map
 
+# Bounds the label field sent into the LLM prompt (see payload_builders.py /
+# iv_renderer.py / field_renderer.py — it's interpolated into rendered
+# sentences verbatim). The shipped frontend auto-generates labels like
+# "Curve 1" and never exposes a text input for this, but the API schema
+# itself didn't previously constrain it, so a direct API call could put
+# arbitrary long/adversarial text here.
+LABEL_MAX_LENGTH = 60
+
 
 class CurveConfig(BaseModel):
-    label: str
+    label: str = Field(max_length=LABEL_MAX_LENGTH)
     L: str
     T: str
     B: str
@@ -21,7 +30,7 @@ class ExplainCurveRequest(BaseModel):
 
 
 class FieldConfig(BaseModel):
-    label: str
+    label: str = Field(max_length=LABEL_MAX_LENGTH)
     L: str
     T: str
     B: str
@@ -67,8 +76,10 @@ def _predict_curve_results(curves: list[CurveConfig]):
 
 
 @router.post("/explain/curves")
-def explain_curves(request: ExplainCurveRequest) -> ExplainResponse:
-    results, configs = _predict_curve_results(request.curves)
+@limiter.limit("10/minute")
+@limiter.limit("15/day")
+def explain_curves(request: Request, payload: ExplainCurveRequest) -> ExplainResponse:
+    results, configs = _predict_curve_results(payload.curves)
 
     result = explanation_service.explain_curves(results=results, configs=configs)
 
@@ -84,8 +95,9 @@ def explain_curves(request: ExplainCurveRequest) -> ExplainResponse:
 
 
 @router.post("/explain/curves/prompt")
-def explain_curves_prompt(request: ExplainCurveRequest) -> PromptResponse:
-    results, configs = _predict_curve_results(request.curves)
+@limiter.limit("10/minute")
+def explain_curves_prompt(request: Request, payload: ExplainCurveRequest) -> PromptResponse:
+    results, configs = _predict_curve_results(payload.curves)
 
     prompt = explanation_service.build_curves_prompt(results=results, configs=configs)
     return PromptResponse(prompt=prompt)
@@ -101,15 +113,17 @@ def _build_field_outputs(fields: list[FieldConfig]):
 
 
 @router.post("/explain/fields")
-async def explain_fields_endpoint(request: ExplainFieldRequest) -> ExplainResponse:
-    outputs = _build_field_outputs(request.fields)
+@limiter.limit("10/minute")
+@limiter.limit("15/day")
+async def explain_fields_endpoint(request: Request, payload: ExplainFieldRequest) -> ExplainResponse:
+    outputs = _build_field_outputs(payload.fields)
 
     try:
         result = explanation_service.explain_fields(
             outputs=outputs,
-            display=request.display,
-            scale_mode=request.scale_mode,
-            range_mode=request.range_mode,
+            display=payload.display,
+            scale_mode=payload.scale_mode,
+            range_mode=payload.range_mode,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -126,15 +140,16 @@ async def explain_fields_endpoint(request: ExplainFieldRequest) -> ExplainRespon
 
 
 @router.post("/explain/fields/prompt")
-async def explain_fields_prompt(request: ExplainFieldRequest) -> PromptResponse:
-    outputs = _build_field_outputs(request.fields)
+@limiter.limit("10/minute")
+async def explain_fields_prompt(request: Request, payload: ExplainFieldRequest) -> PromptResponse:
+    outputs = _build_field_outputs(payload.fields)
 
     try:
         prompt = explanation_service.build_fields_prompt(
             outputs=outputs,
-            display=request.display,
-            scale_mode=request.scale_mode,
-            range_mode=request.range_mode,
+            display=payload.display,
+            scale_mode=payload.scale_mode,
+            range_mode=payload.range_mode,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

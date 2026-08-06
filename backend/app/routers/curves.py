@@ -1,6 +1,7 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from typing import Literal
+from app.limiter import limiter
 from app.services import curve_predictor
 from ai.curve_model.inference import (
     device_features,
@@ -35,8 +36,9 @@ router = APIRouter()
 
 
 @router.post("/curves/predict")
-def predict_curves(request: CurveRequest) -> CurveResponse:
-    values = request.model_dump()
+@limiter.limit("30/minute")
+def predict_curves(request: Request, payload: CurveRequest) -> CurveResponse:
+    values = payload.model_dump()
 
     try:
         features = device_features(values)

@@ -1,8 +1,9 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
 from ai.curve_model.inference import device_features, range_warning
 from ai.shared.field_data import compute_display_payload, compute_display_payload_multi
+from app.limiter import limiter
 from app.services import build_field_map
 
 
@@ -93,8 +94,9 @@ router = APIRouter()
 
 
 @router.post("/fields/predict")
-async def predict_fields(request: FieldRequest) -> FieldResponse:
-    values = request.model_dump()
+@limiter.limit("30/minute")
+async def predict_fields(request: Request, body: FieldRequest) -> FieldResponse:
+    values = body.model_dump()
 
     try:
         device_features(values)
@@ -122,8 +124,9 @@ async def predict_fields(request: FieldRequest) -> FieldResponse:
 
 
 @router.post("/fields/display")
-async def field_display(request: FieldDisplayRequest) -> FieldDisplayResponse:
-    values = {k: getattr(request, k) for k in ("L", "T", "B", "SD", "LDD")}
+@limiter.limit("30/minute")
+async def field_display(request: Request, body: FieldDisplayRequest) -> FieldDisplayResponse:
+    values = {k: getattr(body, k) for k in ("L", "T", "B", "SD", "LDD")}
 
     try:
         device_features(values)
@@ -133,7 +136,7 @@ async def field_display(request: FieldDisplayRequest) -> FieldDisplayResponse:
     field_map = build_field_map(values)
 
     try:
-        payload = compute_display_payload(field_map, request.display, request.scale_mode, request.range_mode)
+        payload = compute_display_payload(field_map, body.display, body.scale_mode, body.range_mode)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -141,12 +144,13 @@ async def field_display(request: FieldDisplayRequest) -> FieldDisplayResponse:
 
 
 @router.post("/fields/display/compare")
-async def field_display_compare(request: FieldCompareRequest) -> FieldCompareResponse:
-    if not request.devices:
+@limiter.limit("30/minute")
+async def field_display_compare(request: Request, body: FieldCompareRequest) -> FieldCompareResponse:
+    if not body.devices:
         raise HTTPException(status_code=400, detail="At least one device is required.")
 
     outputs = []
-    for device in request.devices:
+    for device in body.devices:
         values = device.model_dump(exclude={"label"})
         try:
             device_features(values)
@@ -155,7 +159,7 @@ async def field_display_compare(request: FieldCompareRequest) -> FieldCompareRes
         outputs.append((device.label, build_field_map(values)))
 
     try:
-        payload = compute_display_payload_multi(outputs, request.display, request.scale_mode, request.range_mode)
+        payload = compute_display_payload_multi(outputs, body.display, body.scale_mode, body.range_mode)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
