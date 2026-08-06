@@ -1,7 +1,7 @@
 import { AlertTriangle, BarChart3, FlaskConical, Layers } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FlowSteps } from "@/components/FlowSteps";
-import { ScreenshotSlot } from "@/components/ScreenshotSlot";
+import { AnnotatedScreenshot } from "@/components/AnnotatedScreenshot";
 
 const CASE_STUDY_TOPICS = [
   "Channel Length와 Short Channel Effect",
@@ -110,7 +110,17 @@ export default function GuidePage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <ScreenshotSlot src="/guide/iv-curve.png" alt="I-V Curve 페이지 화면" />
+              <AnnotatedScreenshot
+                src="/guide/iv-curve.png"
+                alt="I-V Curve 페이지 화면"
+                callouts={[
+                  { xPct: 21.4, yPct: 15.5, label: "디바이스 파라미터(L, T, B, SD, LDD)를 입력합니다." },
+                  { xPct: 97.2, yPct: 7.9, label: "Add를 눌러 입력한 조건을 커브 목록에 추가합니다." },
+                  { xPct: 82.5, yPct: 17.2, label: "체크박스로 비교할 커브를 선택·해제합니다." },
+                  { xPct: 90, yPct: 61.1, label: "선택한 커브에서 추출된 Vth, Ion, Ioff 등 물리 파라미터를 확인합니다." },
+                  { xPct: 75.2, yPct: 67, label: "Analyze를 누르면 AI가 그래프 변화의 원인을 해석해 줍니다." },
+                ]}
+              />
             </CardContent>
           </Card>
         </section>
@@ -126,7 +136,16 @@ export default function GuidePage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <ScreenshotSlot src="/guide/field-map.png" alt="Field Map 페이지 화면" />
+              <AnnotatedScreenshot
+                src="/guide/field-map.png"
+                alt="Field Map 페이지 화면"
+                callouts={[
+                  { xPct: 21.3, yPct: 16.7, label: "동일하게 디바이스 파라미터를 입력합니다." },
+                  { xPct: 63.3, yPct: 8.5, label: "표시할 필드 종류와 컬러 스케일을 선택합니다." },
+                  { xPct: 47.5, yPct: 47, label: "선택한 조건으로 생성된 디바이스 단면과 필드 분포를 확인합니다." },
+                  { xPct: 97.2, yPct: 8.2, label: "Add로 다른 조건의 디바이스를 추가해 비교합니다." },
+                ]}
+              />
             </CardContent>
           </Card>
         </section>
