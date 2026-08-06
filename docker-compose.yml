@@ -6,7 +6,7 @@ services:
     env_file:
       - .env
     # Bound to loopback only, not 0.0.0.0 — the backend is reached through
-    # web's nginx proxy (see web/nginx.conf's /api/ location), not directly.
+    # web's Caddy proxy (see web/Caddyfile's /api/* handler), not directly.
     # This keeps it reachable for local debugging (curl localhost:8000 on the
     # host) while guaranteeing it's never exposed externally, independent of
     # whatever the EC2 security group happens to allow.
@@ -18,11 +18,31 @@ services:
       context: .
       dockerfile: web/Dockerfile
       args:
-        # Relative path: the browser calls the page's own origin, and nginx's
-        # /api/ location proxies it to the backend over the internal Docker
+        # Relative path: the browser calls the page's own origin, and Caddy's
+        # /api/* handler proxies it to the backend over the internal Docker
         # network — so the browser never talks to the backend directly.
         VITE_API_BASE_URL: /api
+    environment:
+      # Real deploy: set SITE_DOMAIN in .env to the real domain (once bought
+      # — see web/Caddyfile) so Caddy requests a real Let's Encrypt cert.
+      # Left unset (defaults to "localhost" in the Caddyfile), Caddy issues
+      # its own locally-trusted cert instead of calling Let's Encrypt at all
+      # — which is what local `docker compose up` testing should do, to
+      # avoid tripping Let's Encrypt's production rate limits.
+      - SITE_DOMAIN=${SITE_DOMAIN:-localhost}
     ports:
-      - "5174:80"
+      - "80:80"
+      - "443:443"
+    volumes:
+      # Persists issued certificates (and Caddy's other state) across
+      # container recreation — without this, every `docker compose up
+      # --build` would re-request a cert from Let's Encrypt, and repeated
+      # requests for the same domain get rate-limited.
+      - caddy_data:/data
+      - caddy_config:/config
     depends_on:
       - backend
+
+volumes:
+  caddy_data:
+  caddy_config:

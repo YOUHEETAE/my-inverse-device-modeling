@@ -1,0 +1,26 @@
+{$SITE_DOMAIN:localhost} {
+	# Top-level try_files/file_server directives run in Caddy's fixed
+	# directive order regardless of where they're written in the file, which
+	# put them ahead of the /api/* handle block below and swallowed every
+	# /api/* request as a SPA route — hence both routes need to be inside
+	# explicit handle blocks, matched top-to-bottom, first match wins.
+
+	# Proxies to the backend over the internal Docker network (service name
+	# "backend", see docker-compose.yml) instead of the backend's port being
+	# published to the host — the FastAPI process is never reachable directly
+	# from outside. strip_prefix drops /api, since the backend's own routes
+	# aren't prefixed with it.
+	handle /api/* {
+		uri strip_prefix /api
+		reverse_proxy backend:8000
+	}
+
+	# Serves the Vite build directly and handles client-side routing
+	# (react-router-dom's BrowserRouter) — a hard refresh on e.g. /fields has
+	# no matching file on disk, so fall back to index.html.
+	handle {
+		root * /usr/share/caddy
+		try_files {path} /index.html
+		file_server
+	}
+}
