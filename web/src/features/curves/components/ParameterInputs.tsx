@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { DEFAULT_PARAMETERS, PARAMETER_OPTIONS, type DeviceParameters } from "../types";
 
@@ -15,8 +16,22 @@ interface ParameterInputsProps {
 }
 
 export function ParameterInputs({ values, onChange }: ParameterInputsProps) {
+  const [openField, setOpenField] = useState<keyof DeviceParameters | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!openField) return;
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setOpenField(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [openField]);
+
   return (
-    <div className="flex flex-wrap gap-2">
+    <div ref={containerRef} className="flex flex-wrap gap-2">
       {(Object.keys(DEFAULT_PARAMETERS) as (keyof DeviceParameters)[]).map((name) => (
         <div
           key={name}
@@ -30,17 +45,35 @@ export function ParameterInputs({ values, onChange }: ParameterInputsProps) {
           </label>
           <input
             id={`param-${name}`}
-            list={`param-${name}-options`}
             value={values[name]}
             onChange={(event) => onChange({ ...values, [name]: event.target.value })}
             className="bg-transparent pr-4 font-mono text-xs text-accent-green outline-none"
           />
-          <ChevronDown className="pointer-events-none absolute right-2 bottom-1.5 h-3 w-3 text-on-surface-variant/60" />
-          <datalist id={`param-${name}-options`}>
-            {PARAMETER_OPTIONS[name].map((option) => (
-              <option key={option} value={option} />
-            ))}
-          </datalist>
+          <button
+            type="button"
+            onClick={() => setOpenField(openField === name ? null : name)}
+            className="absolute right-1.5 bottom-1.5 flex h-3.5 w-3.5 items-center justify-center text-on-surface-variant/60 hover:text-on-surface-variant"
+          >
+            <ChevronDown className="h-3 w-3" />
+          </button>
+          {openField === name && (
+            <ul className="absolute left-0 top-full z-10 mt-1 max-h-40 w-full min-w-24 overflow-y-auto rounded-sm border border-outline-variant bg-surface-container-low shadow-md">
+              {PARAMETER_OPTIONS[name].map((option) => (
+                <li key={option}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onChange({ ...values, [name]: option });
+                      setOpenField(null);
+                    }}
+                    className="block w-full px-2 py-1 text-left font-mono text-xs text-accent-green hover:bg-surface-container-high"
+                  >
+                    {option}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       ))}
     </div>
