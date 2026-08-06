@@ -51,6 +51,16 @@ export interface GridField {
   z: (number | null)[][];
 }
 
+// Narrow shape interpolateToGrid()/buildHeatmapTrace() actually need — PNResult
+// and (for Chapter 2) LongChannelRegion both structurally satisfy this, so a
+// single grid/heatmap implementation serves both without either result type
+// depending on the other.
+export interface MeshRegion {
+  x_um: number[];
+  y_um: number[];
+  triangles: [number, number, number][];
+}
+
 // Port of the desktop app's axis.tripcolor(..., shading="gouraud"): rather
 // than plotting discrete point markers, interpolate the scattered
 // (triangulated) mesh values onto a regular grid — same linear barycentric
@@ -60,11 +70,11 @@ export interface GridField {
 // first (matching Field Map's approach) but Plotly 3D scenes don't stretch
 // to fill a wide, non-square container the way the desktop app's
 // set_aspect("auto") does; a 2D trace does this naturally.
-export function interpolateToGrid(result: PNResult, values: number[], gridSize = 90): GridField {
-  const xMin = Math.min(...result.x_um);
-  const xMax = Math.max(...result.x_um);
-  const yMin = Math.min(...result.y_um);
-  const yMax = Math.max(...result.y_um);
+export function interpolateToGrid(mesh: MeshRegion, values: number[], gridSize = 90): GridField {
+  const xMin = Math.min(...mesh.x_um);
+  const xMax = Math.max(...mesh.x_um);
+  const yMin = Math.min(...mesh.y_um);
+  const yMax = Math.max(...mesh.y_um);
   const gridX = linspace(xMin, xMax, gridSize);
   const gridY = linspace(yMin, yMax, gridSize);
 
@@ -73,13 +83,13 @@ export function interpolateToGrid(result: PNResult, values: number[], gridSize =
     const py = gridY[row];
     for (let col = 0; col < gridSize; col++) {
       const px = gridX[col];
-      for (const [a, b, c] of result.triangles) {
-        const ax = result.x_um[a];
-        const ay = result.y_um[a];
-        const bx = result.x_um[b];
-        const by = result.y_um[b];
-        const cx = result.x_um[c];
-        const cy = result.y_um[c];
+      for (const [a, b, c] of mesh.triangles) {
+        const ax = mesh.x_um[a];
+        const ay = mesh.y_um[a];
+        const bx = mesh.x_um[b];
+        const by = mesh.y_um[b];
+        const cx = mesh.x_um[c];
+        const cy = mesh.y_um[c];
         // Cheap bounding-box reject before the exact (and pricier)
         // point-in-triangle test — most triangles are nowhere near a given
         // grid point.
@@ -96,7 +106,7 @@ export function interpolateToGrid(result: PNResult, values: number[], gridSize =
   return { x: gridX, y: gridY, z };
 }
 
-function transformValue(v: number, normType: "linear" | "symlog" | "log", linthresh: number | null): number {
+export function transformValue(v: number, normType: "linear" | "symlog" | "log", linthresh: number | null): number {
   if (normType === "log") return Math.log10(Math.max(Math.abs(v), 1e-300));
   if (normType === "symlog") {
     const t = linthresh ?? 1;
@@ -105,7 +115,7 @@ function transformValue(v: number, normType: "linear" | "symlog" | "log", linthr
   return v;
 }
 
-function normBounds(
+export function normBounds(
   normType: "linear" | "symlog" | "log",
   vmin: number,
   vmax: number,
@@ -126,9 +136,11 @@ function normBounds(
 // below): grids the scattered values, applies the same log/symlog/linear
 // transform applyNorm() (features/fields/components/colormap.ts) uses —
 // reimplemented here null-safely since applyNorm operates on a flat array
-// with no concept of "outside the mesh".
-export function buildPNHeatmapTrace(result: PNResult, selection: FieldSelection, gridSize = 90): Data {
-  const grid = interpolateToGrid(result, selection.values, gridSize);
+// with no concept of "outside the mesh". Shared by the PN junction tool and
+// (for per-region field maps, e.g. Chapter 2's gate/oxide/bulk) any other
+// MeshRegion-shaped result.
+export function buildHeatmapTrace(mesh: MeshRegion, selection: FieldSelection, gridSize = 90): Data {
+  const grid = interpolateToGrid(mesh, selection.values, gridSize);
   const z = grid.z.map((row) => row.map((v) => (v == null ? null : transformValue(v, selection.normType, selection.linthresh))));
   const { cmin, cmax } = normBounds(selection.normType, selection.vmin, selection.vmax, selection.linthresh);
 
@@ -145,6 +157,10 @@ export function buildPNHeatmapTrace(result: PNResult, selection: FieldSelection,
     colorbar: { title: { text: selection.label }, thickness: 14, tickfont: { size: 9 } },
     hoverinfo: "skip",
   } as unknown as Data;
+}
+
+export function buildPNHeatmapTrace(result: PNResult, selection: FieldSelection, gridSize = 90): Data {
+  return buildHeatmapTrace(result, selection, gridSize);
 }
 
 // Port of the desktop app's PNJunctionApp._field_values()

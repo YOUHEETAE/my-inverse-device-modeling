@@ -9,6 +9,7 @@ from app.routers.curves import router as curves_router
 from app.routers.fields import router as fields_router
 from app.routers.explain import router as explain_router
 from app.routers.theory import router as theory_router
+from app.routers.case_study import router as case_study_router
 
 DEFAULT_ORIGINS = "http://localhost:5174,http://127.0.0.1:5174"
 allow_origins = [
@@ -29,6 +30,7 @@ app.include_router(curves_router)
 app.include_router(fields_router)
 app.include_router(explain_router)
 app.include_router(theory_router)
+app.include_router(case_study_router)
 
 
 @app.get("/health")

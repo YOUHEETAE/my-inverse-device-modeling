@@ -1,6 +1,9 @@
+import { useState } from "react";
 import { FlaskConical } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionPanel } from "@/components/ui/accordion";
+import { CaseStudyFlow } from "@/features/caseStudy/CaseStudyFlow";
 
 const TEMPLATE_STEPS = [
   "비교 목적",
@@ -95,6 +98,68 @@ const CASE_STUDIES: CaseStudy[] = [
   },
 ];
 
+function ChannelLengthCasePanel({ study }: { study: CaseStudy }) {
+  const [showInteractive, setShowInteractive] = useState(false);
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex justify-end">
+        <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={() => setShowInteractive((v) => !v)}>
+          <FlaskConical className="h-3.5 w-3.5" />
+          {showInteractive ? "설명 보기" : "직접 예측하고 확인하기"}
+        </Button>
+      </div>
+      {showInteractive ? (
+        <CaseStudyFlow topicId="sce_channel_length" />
+      ) : (
+        <div className="flex flex-col gap-3 text-[13px] leading-relaxed text-on-surface-variant">
+          <div>
+            <p className="mb-0.5 text-[11px] font-bold uppercase tracking-wide text-on-surface-variant/70">비교 목적</p>
+            <p>{study.purpose}</p>
+          </div>
+
+          <div>
+            <p className="mb-1 text-[11px] font-bold uppercase tracking-wide text-on-surface-variant/70">조건 설정</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-sm border border-outline-variant bg-surface-container px-2.5 py-1 font-mono text-[11px] font-medium">
+                Case A — {study.caseA}
+              </span>
+              <span className="rounded-sm border border-outline-variant bg-surface-container px-2.5 py-1 font-mono text-[11px] font-medium">
+                Case B — {study.caseB}
+              </span>
+            </div>
+            <ul className="mt-1.5 list-inside list-disc space-y-0.5 pl-1">
+              {study.shared.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </div>
+
+          <div>
+            <p className="mb-1 text-[11px] font-bold uppercase tracking-wide text-on-surface-variant/70">확인 항목</p>
+            <ul className="grid grid-cols-1 gap-x-4 gap-y-0.5 sm:grid-cols-2">
+              {study.checkItems.map((item) => (
+                <li key={item} className="list-inside list-disc">
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div>
+            <p className="mb-1 text-[11px] font-bold uppercase tracking-wide text-on-surface-variant/70">예상 해석 방향</p>
+            <div className="flex flex-col gap-1">
+              {study.interpretation.map((line) => (
+                <p key={line}>{line}</p>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function CaseStudyPage() {
   return (
     <div className="h-full overflow-y-auto">
@@ -132,49 +197,53 @@ export default function CaseStudyPage() {
                     </span>
                   </AccordionTrigger>
                   <AccordionPanel>
-                    <div className="flex flex-col gap-3 text-[13px] leading-relaxed text-on-surface-variant">
-                      <div>
-                        <p className="mb-0.5 text-[11px] font-bold uppercase tracking-wide text-on-surface-variant/70">비교 목적</p>
-                        <p>{study.purpose}</p>
-                      </div>
-
-                      <div>
-                        <p className="mb-1 text-[11px] font-bold uppercase tracking-wide text-on-surface-variant/70">조건 설정</p>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="rounded-sm border border-outline-variant bg-surface-container px-2.5 py-1 font-mono text-[11px] font-medium">
-                            Case A — {study.caseA}
-                          </span>
-                          <span className="rounded-sm border border-outline-variant bg-surface-container px-2.5 py-1 font-mono text-[11px] font-medium">
-                            Case B — {study.caseB}
-                          </span>
+                    {study.id === "channel-length" ? (
+                      <ChannelLengthCasePanel study={study} />
+                    ) : (
+                      <div className="flex flex-col gap-3 text-[13px] leading-relaxed text-on-surface-variant">
+                        <div>
+                          <p className="mb-0.5 text-[11px] font-bold uppercase tracking-wide text-on-surface-variant/70">비교 목적</p>
+                          <p>{study.purpose}</p>
                         </div>
-                        <ul className="mt-1.5 list-inside list-disc space-y-0.5 pl-1">
-                          {study.shared.map((item) => (
-                            <li key={item}>{item}</li>
-                          ))}
-                        </ul>
-                      </div>
 
-                      <div>
-                        <p className="mb-1 text-[11px] font-bold uppercase tracking-wide text-on-surface-variant/70">확인 항목</p>
-                        <ul className="grid grid-cols-1 gap-x-4 gap-y-0.5 sm:grid-cols-2">
-                          {study.checkItems.map((item) => (
-                            <li key={item} className="list-inside list-disc">
-                              {item}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
+                        <div>
+                          <p className="mb-1 text-[11px] font-bold uppercase tracking-wide text-on-surface-variant/70">조건 설정</p>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="rounded-sm border border-outline-variant bg-surface-container px-2.5 py-1 font-mono text-[11px] font-medium">
+                              Case A — {study.caseA}
+                            </span>
+                            <span className="rounded-sm border border-outline-variant bg-surface-container px-2.5 py-1 font-mono text-[11px] font-medium">
+                              Case B — {study.caseB}
+                            </span>
+                          </div>
+                          <ul className="mt-1.5 list-inside list-disc space-y-0.5 pl-1">
+                            {study.shared.map((item) => (
+                              <li key={item}>{item}</li>
+                            ))}
+                          </ul>
+                        </div>
 
-                      <div>
-                        <p className="mb-1 text-[11px] font-bold uppercase tracking-wide text-on-surface-variant/70">예상 해석 방향</p>
-                        <div className="flex flex-col gap-1">
-                          {study.interpretation.map((line) => (
-                            <p key={line}>{line}</p>
-                          ))}
+                        <div>
+                          <p className="mb-1 text-[11px] font-bold uppercase tracking-wide text-on-surface-variant/70">확인 항목</p>
+                          <ul className="grid grid-cols-1 gap-x-4 gap-y-0.5 sm:grid-cols-2">
+                            {study.checkItems.map((item) => (
+                              <li key={item} className="list-inside list-disc">
+                                {item}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+
+                        <div>
+                          <p className="mb-1 text-[11px] font-bold uppercase tracking-wide text-on-surface-variant/70">예상 해석 방향</p>
+                          <div className="flex flex-col gap-1">
+                            {study.interpretation.map((line) => (
+                              <p key={line}>{line}</p>
+                            ))}
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    )}
                   </AccordionPanel>
                 </AccordionItem>
               ))}

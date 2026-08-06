@@ -33,6 +33,10 @@ COPY ai/model_artifacts/curve_model/final ai/model_artifacts/curve_model/final
 COPY ai/model_artifacts/field_map_model/final ai/model_artifacts/field_map_model/final
 COPY tcad/data_extraction/base_case tcad/data_extraction/base_case
 COPY tcad/data_extraction/parameter_extraction_core.py tcad/data_extraction/parameter_extraction_core.py
+# Precomputed Theory chapter data (backend/app/routers/theory.py reads these
+# directly — no live DEVSIM/gmsh run needed to serve them).
+COPY tcad/theory/chapter1_pn_junction/precomputed_data tcad/theory/chapter1_pn_junction/precomputed_data
+COPY tcad/theory/chapter2_long_channel_mosfet/simulations/long_channel_mosfet/precomputed_data tcad/theory/chapter2_long_channel_mosfet/simulations/long_channel_mosfet/precomputed_data
 COPY backend backend
 
 # Secrets (GROQ_API_KEY, etc.) are injected at `docker run`/compose time via
