@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useState } from "react";
 import type { Data } from "plotly.js";
 import { Plot } from "@/lib/plot";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,15 +25,21 @@ interface FieldCompareChartProps {
 }
 
 export function FieldCompareChart({ devices, display, compareData }: FieldCompareChartProps) {
-  const gridRef = useRef<HTMLDivElement | null>(null);
+  // A plain useRef here would not re-trigger the measurement effect when the
+  // grid div mounts under an unchanged panelCount (e.g. switching from the
+  // "Mesh" branch, which doesn't render this div at all, to the compare-data
+  // branch, which does) — effects only re-run on dependency change, not when
+  // a ref's target element changes. A state-backed callback ref makes the
+  // element itself a dependency, so the observer always attaches to whichever
+  // grid div is actually mounted.
+  const [gridEl, setGridEl] = useState<HTMLDivElement | null>(null);
   const [cellAspect, setCellAspect] = useState<number | null>(null);
   const panelCount = compareData?.items.length ?? devices.length;
 
   useLayoutEffect(() => {
-    const el = gridRef.current;
-    if (!el || panelCount === 0) return;
+    if (!gridEl || panelCount === 0) return;
     const measure = () => {
-      const { width, height } = el.getBoundingClientRect();
+      const { width, height } = gridEl.getBoundingClientRect();
       if (width > 0 && height > 0) {
         const cellWidth = (width - GRID_GAP_PX * (panelCount - 1)) / panelCount;
         setCellAspect(cellWidth / height);
@@ -41,9 +47,9 @@ export function FieldCompareChart({ devices, display, compareData }: FieldCompar
     };
     measure();
     const observer = new ResizeObserver(measure);
-    observer.observe(el);
+    observer.observe(gridEl);
     return () => observer.disconnect();
-  }, [panelCount]);
+  }, [gridEl, panelCount]);
 
   if (devices.length === 0) {
     return (
@@ -126,7 +132,7 @@ export function FieldCompareChart({ devices, display, compareData }: FieldCompar
   // ColorbarLegend instead of taking width from a device panel.
   return (
     <div
-      ref={gridRef}
+      ref={setGridEl}
       className="grid h-full gap-3"
       style={{ gridTemplateColumns: `repeat(${compareData.items.length}, 1fr)` }}
     >
