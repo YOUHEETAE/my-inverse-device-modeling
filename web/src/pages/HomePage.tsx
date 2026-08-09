@@ -116,22 +116,22 @@ export default function HomePage() {
       <div className="mx-auto flex max-w-4xl flex-col gap-8 px-6 py-8">
         {/* Hero */}
         <div>
-          <h1 className="text-xl font-bold leading-snug">AI-Based MOSFET Prediction and Learning Platform</h1>
-          <p className="mt-3 text-sm leading-relaxed text-on-surface-variant">
+          <h1 className="text-2xl font-bold leading-snug">AI-Based MOSFET Prediction and Learning Platform</h1>
+          <p className="mt-3 text-base leading-[1.8] text-foreground">
             본 플랫폼은 MOSFET의 채널 길이, 산화막 두께, 소스·드레인 도핑, 바디 도핑, LDD 도핑을 입력하여 I–V Curve와 Field Map을 예측하는
             반도체 소자 학습 플랫폼입니다.
           </p>
-          <p className="mt-2 text-sm leading-relaxed text-on-surface-variant">
+          <p className="mt-2 text-base leading-[1.8] text-foreground">
             예측된 I–V Curve에서는 Threshold Voltage, On Current, Off Current, Subthreshold Swing, DIBL, Transconductance, Output
             Conductance, On-resistance, Channel Length Modulation 등의 전기적 파라미터를 자동으로 추출합니다. Field Map에서는
             Potential, Electric Field, Electron Density, Hole Density, Current Density의 공간 분포를 확인할 수 있습니다.
           </p>
-          <p className="mt-2 text-sm leading-relaxed text-on-surface-variant">
+          <p className="mt-2 text-base leading-[1.8] text-foreground">
             입력한 구조 조건과 예측 결과는 분석 과정을 거쳐 주요 변화와 물리적 의미로 정리됩니다. 이를 통해 사용자는 구조 및 도핑 조건의
             변화가 소자 내부의 전위와 전계, 캐리어 분포에 어떤 영향을 주며, 이러한 변화가 최종적인 전류 특성으로 어떻게 나타나는지 연결하여
             학습할 수 있습니다.
           </p>
-          <p className="mt-2 text-sm leading-relaxed text-on-surface-variant">
+          <p className="mt-2 text-base leading-[1.8] text-foreground">
             Case Study에서는 결과를 단순히 확인하는 데 그치지 않고, 주요 구조 변수가 전기적 특성에 미치는 영향을 단계적으로 탐구합니다.
             사용자는 결과를 보기 전에 변화를 예상하고, 실제 I–V Curve와 Field Map을 관찰한 뒤 AI 피드백을 통해 자신의 이해를 점검할 수
             있습니다.
@@ -140,9 +140,9 @@ export default function HomePage() {
 
         {/* 목표 */}
         <section>
-          <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-on-surface-variant">목표</h2>
+          <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-primary">목표</h2>
           <Card>
-            <CardContent className="flex flex-col gap-2 text-sm leading-relaxed text-on-surface-variant">
+            <CardContent className="flex flex-col gap-2 text-base leading-[1.8] text-foreground">
               <p>
                 MOSFET의 구조 변화와 전기적 특성의 관계를 직접 확인하기 위해서는 일반적으로 TCAD 시뮬레이션이 활용됩니다. 그러나 TCAD를
                 사용하려면 소자 구조 생성, Mesh 설정, 물리 모델 적용, 전압 조건 설정, 수렴 조정과 결과 후처리에 대한 이해가 필요합니다.
@@ -170,7 +170,7 @@ export default function HomePage() {
 
         {/* 기능 */}
         <section>
-          <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-on-surface-variant">기능</h2>
+          <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-primary">기능</h2>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             {FEATURES.map((feature) => (
               <Card key={feature.title}>
@@ -180,7 +180,7 @@ export default function HomePage() {
                     {feature.title}
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="flex flex-col gap-2 text-[13px] leading-relaxed text-on-surface-variant">
+                <CardContent className="flex flex-col gap-2 text-sm leading-[1.8] text-foreground">
                   {feature.body.map((paragraph) => (
                     <p key={paragraph}>{paragraph}</p>
                   ))}
@@ -216,7 +216,7 @@ export default function HomePage() {
 
         {/* AI 활용 */}
         <section>
-          <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-on-surface-variant">AI 활용</h2>
+          <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-primary">AI 활용</h2>
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -224,7 +224,7 @@ export default function HomePage() {
                 예측 · 분석 · 학습
               </CardTitle>
             </CardHeader>
-            <CardContent className="flex flex-col gap-3 text-sm leading-relaxed text-on-surface-variant">
+            <CardContent className="flex flex-col gap-3 text-base leading-[1.8] text-foreground">
               <p>
                 본 플랫폼은 AI를 단순히 TCAD 결과를 빠르게 출력하는 수단으로만 활용하지 않습니다. 예측, 분석, 학습의 세 단계에서 서로 다른
                 역할을 수행하도록 구성합니다.
@@ -250,7 +250,7 @@ export default function HomePage() {
 
         {/* 주의사항 */}
         <section>
-          <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-on-surface-variant">주의사항</h2>
+          <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-primary">주의사항</h2>
           <Card className="border-accent-orange/40 bg-accent-orange/5">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-accent-orange">
@@ -258,7 +258,7 @@ export default function HomePage() {
                 교육용 도구 안내
               </CardTitle>
             </CardHeader>
-            <CardContent className="flex flex-col gap-2 text-[13px] leading-relaxed text-on-surface-variant">
+            <CardContent className="flex flex-col gap-2 text-sm leading-[1.8] text-foreground">
               <p>
                 본 플랫폼은 MOSFET의 구조와 전기적 특성 사이의 관계를 학습하기 위한 교육용 도구입니다. 정밀한 소자 설계나 실제 공정 조건
                 결정을 위한 상용 TCAD 대체 도구를 목적으로 하지 않습니다.

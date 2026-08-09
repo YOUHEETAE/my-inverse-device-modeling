@@ -112,7 +112,7 @@ function ChannelLengthCasePanel({ study }: { study: CaseStudy }) {
       {showInteractive ? (
         <CaseStudyFlow topicId="sce_channel_length" />
       ) : (
-        <div className="flex flex-col gap-3 text-[13px] leading-relaxed text-on-surface-variant">
+        <div className="flex flex-col gap-3 text-sm leading-[1.8] text-foreground">
           <div>
             <p className="mb-0.5 text-[11px] font-bold uppercase tracking-wide text-on-surface-variant/70">비교 목적</p>
             <p>{study.purpose}</p>
@@ -166,8 +166,8 @@ export default function CaseStudyPage() {
       <div className="mx-auto flex max-w-4xl flex-col gap-8 px-6 py-8">
         {/* Hero */}
         <div>
-          <h1 className="text-xl font-bold leading-snug">Case Study</h1>
-          <p className="mt-3 text-sm leading-relaxed text-on-surface-variant">
+          <h1 className="text-2xl font-bold leading-snug">Case Study</h1>
+          <p className="mt-3 text-base leading-[1.8] text-foreground">
             Case Study 탭에서는 특정 입력 조건을 예시로 설정하고, 조건 변화에 따라 I–V Curve, 전기적 파라미터, Field Map이 어떻게
             달라지는지 비교합니다. 각 사례는 다음 순서로 구성합니다.
           </p>
@@ -178,7 +178,7 @@ export default function CaseStudyPage() {
               </li>
             ))}
           </ol>
-          <p className="mt-3 text-sm leading-relaxed text-on-surface-variant">
+          <p className="mt-3 text-base leading-[1.8] text-foreground">
             각 Case Study는 모든 조건을 한 번에 변경하지 않고 한 가지 변수만 변경하여 결과의 원인을 명확하게 확인할 수 있도록
             구성합니다.
           </p>
@@ -200,7 +200,7 @@ export default function CaseStudyPage() {
                     {study.id === "channel-length" ? (
                       <ChannelLengthCasePanel study={study} />
                     ) : (
-                      <div className="flex flex-col gap-3 text-[13px] leading-relaxed text-on-surface-variant">
+                      <div className="flex flex-col gap-3 text-sm leading-[1.8] text-foreground">
                         <div>
                           <p className="mb-0.5 text-[11px] font-bold uppercase tracking-wide text-on-surface-variant/70">비교 목적</p>
                           <p>{study.purpose}</p>

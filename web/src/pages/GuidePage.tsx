@@ -34,22 +34,22 @@ export default function GuidePage() {
       <div className="mx-auto flex max-w-4xl flex-col gap-8 px-6 py-8">
         {/* Hero */}
         <div>
-          <h1 className="text-xl font-bold leading-snug">Guide</h1>
-          <p className="mt-3 text-sm leading-relaxed text-on-surface-variant">
+          <h1 className="text-2xl font-bold leading-snug">Guide</h1>
+          <p className="mt-3 text-base leading-[1.8] text-foreground">
             본 Guide에서는 MOSFET AI Prediction and Learning Platform의 기본 이용 방법과 각 페이지의 주요 기능을 설명합니다.
           </p>
-          <p className="mt-2 text-sm leading-relaxed text-on-surface-variant">
+          <p className="mt-2 text-base leading-[1.8] text-foreground">
             플랫폼은 Theory, I–V Curve, Field Map, Case Study로 구성되며, 사용자는 학습 목적에 따라 원하는 기능을 선택하여 이용할 수
             있습니다.
           </p>
-          <p className="mt-3 text-sm leading-relaxed text-on-surface-variant">MOSFET을 처음 학습하는 경우 다음 순서를 권장합니다.</p>
+          <p className="mt-3 text-base leading-[1.8] text-foreground">MOSFET을 처음 학습하는 경우 다음 순서를 권장합니다.</p>
           <FlowSteps steps={["Theory", "Case Study", "I–V Curve", "Field Map"]} className="my-2" />
-          <p className="mt-2 text-sm leading-relaxed text-on-surface-variant">
+          <p className="mt-2 text-base leading-[1.8] text-foreground">
             Theory에서는 MOSFET의 기본 구조와 동작 원리를 학습합니다. 이후 Case Study에서는 주요 구조 변수를 중심으로 결과를 예상하고
             실제 예측값과 비교하며 학습 내용을 점검합니다. I–V Curve에서는 구조 변화에 따른 외부 전기적 특성을 확인하고, Field Map에서는
             소자 내부의 Potential, Electric Field와 Carrier Distribution을 관찰할 수 있습니다.
           </p>
-          <p className="mt-2 text-sm leading-relaxed text-on-surface-variant">
+          <p className="mt-2 text-base leading-[1.8] text-foreground">
             이미 MOSFET의 기본 개념을 알고 있는 경우 I–V Curve 또는 Field Map에서 원하는 조건을 직접 입력하여 자유롭게 결과를 확인할 수
             있습니다.
           </p>
@@ -57,7 +57,7 @@ export default function GuidePage() {
 
         {/* Case Study */}
         <section>
-          <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-on-surface-variant">Case Study</h2>
+          <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-primary">Case Study</h2>
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -65,7 +65,7 @@ export default function GuidePage() {
                 비교 실험으로 학습하기
               </CardTitle>
             </CardHeader>
-            <CardContent className="flex flex-col gap-3 text-[13px] leading-relaxed text-on-surface-variant">
+            <CardContent className="flex flex-col gap-3 text-sm leading-[1.8] text-foreground">
               <p>Case Study는 주요 MOSFET 현상을 비교 실험을 통해 학습하는 기능입니다.</p>
               <div>
                 <p className="mb-1">다음과 같은 학습 주제를 선택할 수 있습니다.</p>
@@ -101,7 +101,7 @@ export default function GuidePage() {
 
         {/* I-V Curve */}
         <section>
-          <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-on-surface-variant">I-V Curve</h2>
+          <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-primary">I-V Curve</h2>
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -127,7 +127,7 @@ export default function GuidePage() {
 
         {/* Field Map */}
         <section>
-          <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-on-surface-variant">Field Map</h2>
+          <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-primary">Field Map</h2>
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -151,7 +151,7 @@ export default function GuidePage() {
         </section>
 
         {/* Interpretation note (shared by both pages above) */}
-        <div className="text-sm leading-relaxed text-on-surface-variant">
+        <div className="text-base leading-[1.8] text-foreground">
           <p>I–V Curve는 외부 전기적 결과를 나타내고, Field Map은 내부 물리적 원인을 해석하는 데 활용됩니다.</p>
           <p className="mt-2">
             예측값 하나만 확인하기보다 기준 조건과 변경 조건 사이의 변화 방향과 크기를 비교합니다. 특정 파라미터가 개선되더라도 다른
@@ -161,7 +161,7 @@ export default function GuidePage() {
 
         {/* 주의사항 */}
         <section>
-          <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-on-surface-variant">주의사항</h2>
+          <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-primary">주의사항</h2>
           <Card className="border-accent-orange/40 bg-accent-orange/5">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-accent-orange">
@@ -169,7 +169,7 @@ export default function GuidePage() {
                 문제 해결
               </CardTitle>
             </CardHeader>
-            <CardContent className="flex flex-col gap-2 text-[13px] leading-relaxed text-on-surface-variant">
+            <CardContent className="flex flex-col gap-2 text-sm leading-[1.8] text-foreground">
               <p>예측 버튼이 동작하지 않거나 결과가 생성되지 않는 경우 다음 항목을 확인합니다.</p>
               <ul className="list-inside list-disc space-y-0.5 pl-1">
                 {TROUBLESHOOTING.map((item) => (

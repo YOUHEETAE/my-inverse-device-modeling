@@ -8,7 +8,7 @@ import { PNJunctionTool } from "@/features/theory/PNJunctionTool";
 import { LongChannelMOSFETTool } from "@/features/theory/LongChannelMOSFETTool";
 
 function P({ children }: { children: ReactNode }) {
-  return <p className="leading-relaxed">{children}</p>;
+  return <p className="leading-[1.8]">{children}</p>;
 }
 
 function Sub({ heading, children }: { heading: string; children: ReactNode }) {
@@ -22,7 +22,7 @@ function Sub({ heading, children }: { heading: string; children: ReactNode }) {
 
 function Chapter1Content() {
   return (
-    <div className="flex flex-col gap-5 text-[13px] leading-relaxed text-on-surface-variant">
+    <div className="flex flex-col gap-5 text-sm leading-[1.8] text-foreground">
       <P>
         PN 접합은 p형 반도체와 n형 반도체가 맞닿아 형성되는 가장 기본적인 반도체 구조입니다. MOSFET에서도 n형 Source와 Drain이 p형
         Body와 각각 PN 접합을 형성하므로, PN 접합의 전위와 전기장 분포를 이해하는 것은 MOSFET 내부의 동작을 해석하는 출발점이 됩니다.
@@ -237,7 +237,7 @@ function Chapter1Content() {
 
 function Chapter2Content() {
   return (
-    <div className="flex flex-col gap-5 text-[13px] leading-relaxed text-on-surface-variant">
+    <div className="flex flex-col gap-5 text-sm leading-[1.8] text-foreground">
       <P>
         MOSFET는 Gate–Oxide–Body가 만드는 MOS Capacitor 구조를 기반으로 동작합니다. Gate에 전압을 인가하면 Oxide 아래 Body
         표면의 캐리어 분포가 달라지고, 이 표면 상태에 따라 Source와 Drain 사이에 전류가 흐를 수 있는 채널이 형성되거나 차단됩니다.
@@ -301,7 +301,7 @@ function Chapter2Content() {
 
 function Chapter3Content() {
   return (
-    <div className="flex flex-col gap-5 text-[13px] leading-relaxed text-on-surface-variant">
+    <div className="flex flex-col gap-5 text-sm leading-[1.8] text-foreground">
       <P>
         Long-Channel MOSFET에서는 Channel의 Potential과 전하가 주로 Gate voltage에 의해 결정됩니다. Source와 Drain은 Gate에
         비해 멀리 떨어져 있으므로, Drain voltage가 Source 부근의 Energy Barrier에 미치는 영향도 상대적으로 작습니다.
@@ -440,7 +440,7 @@ function Chapter3Content() {
 
 function Chapter4Content() {
   return (
-    <div className="flex flex-col gap-5 text-[13px] leading-relaxed text-on-surface-variant">
+    <div className="flex flex-col gap-5 text-sm leading-[1.8] text-foreground">
       <P>
         Short-Channel MOSFET에서는 Source와 Drain의 공핍영역 및 전기장이 Channel 내부로 침투하면서 Gate의 Electrostatic
         Control이 약해집니다. 그 결과 Threshold-Voltage Roll-off, DIBL, SS 악화와 Off-current 증가가 나타날 수 있습니다.
@@ -685,7 +685,7 @@ function Chapter4Content() {
 
 function Chapter5Content() {
   return (
-    <div className="flex flex-col gap-5 text-[13px] leading-relaxed text-on-surface-variant">
+    <div className="flex flex-col gap-5 text-sm leading-[1.8] text-foreground">
       <P>
         본 프로젝트에서는 Python 기반 오픈소스 TCAD인 <span className="font-semibold text-foreground">DEVSIM</span>을
         이용해 MOSFET을 시뮬레이션합니다.
@@ -1021,22 +1021,22 @@ export default function TheoryPage() {
       <div className="mx-auto flex max-w-4xl flex-col gap-8 px-6 py-8">
         {/* Hero */}
         <div>
-          <h1 className="text-xl font-bold leading-snug">Theory</h1>
-          <p className="mt-3 text-sm leading-relaxed text-on-surface-variant">
+          <h1 className="text-2xl font-bold leading-snug">Theory</h1>
+          <p className="mt-3 text-base leading-[1.8] text-foreground">
             MOSFET의 전기적 특성은 단순히 게이트 전압과 드레인 전압만으로 결정되지 않습니다. 채널 길이, 산화막 두께, Source/Drain
             도핑 농도, Body 도핑 농도와 같은 소자 내부 조건이 함께 작용하여 전류와 전위 분포를 결정합니다.
           </p>
-          <p className="mt-2 text-sm leading-relaxed text-on-surface-variant">
+          <p className="mt-2 text-base leading-[1.8] text-foreground">
             예를 들어 채널 길이를 줄이면 전류가 증가할 수 있지만, Drain의 영향이 Source 부근까지 전달되어 누설전류와 DIBL이 증가할
             수 있습니다. 산화막을 얇게 만들면 Gate의 채널 제어력이 강해지지만, 실제 소자에서는 누설전류와 신뢰성 문제도 함께
             고려해야 합니다. 또한 도핑 농도를 변경하면 캐리어 농도뿐 아니라 공핍층, 전위 장벽, 전기장 분포와 문턱전압도 달라집니다.
           </p>
-          <p className="mt-2 text-sm leading-relaxed text-on-surface-variant">
+          <p className="mt-2 text-base leading-[1.8] text-foreground">
             이 Theory 페이지는 반도체공학의 모든 내용을 다루기 위한 것이 아닙니다. 이 웹페이지에서 MOSFET의 파라미터를 변경하고,
             그 결과로 생성되는 <span className="font-semibold text-foreground">I–V Curve와 Field Map을 해석하는 데 필요한 이론</span>
             을 중심으로 구성되어 있습니다.
           </p>
-          <p className="mt-2 text-sm leading-relaxed text-on-surface-variant">
+          <p className="mt-2 text-base leading-[1.8] text-foreground">
             각 장의 이론은 독립된 내용이 아니라 다음 장으로 연결됩니다.
           </p>
         </div>
