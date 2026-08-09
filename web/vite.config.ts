@@ -17,5 +17,6 @@ export default defineConfig({
   },
   optimizeDeps: {
     include: ['react-plotly.js/factory', 'plotly.js-dist-min'],
+    exclude: ['katex'],
   },
 })
