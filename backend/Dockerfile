@@ -37,6 +37,7 @@ COPY tcad/data_extraction/parameter_extraction_core.py tcad/data_extraction/para
 # directly — no live DEVSIM/gmsh run needed to serve them).
 COPY tcad/theory/chapter1_pn_junction/precomputed_data tcad/theory/chapter1_pn_junction/precomputed_data
 COPY tcad/theory/chapter2_long_channel_mosfet/simulations/long_channel_mosfet/precomputed_data tcad/theory/chapter2_long_channel_mosfet/simulations/long_channel_mosfet/precomputed_data
+COPY tcad/theory/chapter2_long_channel_mosfet/simulations/mos_capacitor/precomputed_data tcad/theory/chapter2_long_channel_mosfet/simulations/mos_capacitor/precomputed_data
 COPY backend backend
 
 # Secrets (GROQ_API_KEY, etc.) are injected at `docker run`/compose time via

@@ -91,12 +91,49 @@ class LongChannelResultResponse(BaseModel):
     selected_drain_voltage: float
 
 
+MOSCAP_DATA_DIR = (
+    REPO_ROOT
+    / "tcad/theory/chapter2_long_channel_mosfet/simulations/mos_capacitor/precomputed_data"
+)
+
+
+class MOSCapOptionsResponse(BaseModel):
+    acceptor_dopings: list[float]
+    oxide_thicknesses_nm: list[float]
+    gate_voltages: list[float]
+
+
+class MOSCapResultRequest(BaseModel):
+    acceptor_doping: float
+    oxide_thickness_nm: float
+    gate_voltage: float
+
+
+class MOSCapResultResponse(BaseModel):
+    acceptor_doping: float
+    oxide_thickness_nm: float
+    gate_voltage: float
+    regime: str
+    gate_charge_c_per_cm2: float
+    oxide_x_nm: list[float]
+    oxide_potential: list[float]
+    oxide_field_x_nm: list[float]
+    oxide_field: list[float]
+    silicon_depth_nm: list[float]
+    silicon_potential: list[float]
+    electrons: list[float]
+    holes: list[float]
+    charge_density: list[float]
+
+
 router = APIRouter()
 
 _manifest: dict | None = None
 _cases: dict[tuple[float, float, float], dict] = {}
 _lc_manifest: dict | None = None
 _lc_payload: dict | None = None
+_moscap_manifest: dict | None = None
+_moscap_cases: dict[tuple[float, float, float], dict] = {}
 
 
 def _load_manifest() -> dict:
@@ -231,4 +268,71 @@ def get_long_channel_mosfet_result(request: LongChannelResultRequest) -> LongCha
         idvd_currents=payload["idvd_currents"],
         selected_gate_voltage=float(snapshot["gate_voltage"]),
         selected_drain_voltage=float(snapshot["drain_voltage"]),
+    )
+
+
+def _load_moscap_manifest() -> dict:
+    global _moscap_manifest, _moscap_cases
+    if _moscap_manifest is None:
+        manifest_path = MOSCAP_DATA_DIR / "manifest.json"
+        if not manifest_path.exists():
+            raise HTTPException(status_code=500, detail="MOS capacitor dataset manifest not found")
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        _moscap_cases = {
+            (
+                float(case["acceptor_doping"]),
+                float(case["oxide_thickness_nm"]),
+                float(case["gate_voltage"]),
+            ): case
+            for case in manifest["cases"]
+            if case["status"] == "ok"
+        }
+        _moscap_manifest = manifest
+    return _moscap_manifest
+
+
+def _read_moscap_case(case: dict) -> dict:
+    with gzip.open(MOSCAP_DATA_DIR / case["file"], "rt", encoding="utf-8") as stream:
+        return json.load(stream)
+
+
+@router.get("/theory/mos-capacitor/options")
+def get_mos_capacitor_options() -> MOSCapOptionsResponse:
+    manifest = _load_moscap_manifest()
+    return MOSCapOptionsResponse(
+        acceptor_dopings=[float(v) for v in manifest["acceptor_dopings"]],
+        oxide_thicknesses_nm=[float(v) for v in manifest["oxide_thicknesses_nm"]],
+        gate_voltages=[float(v) for v in manifest["gate_voltages"]],
+    )
+
+
+@router.post("/theory/mos-capacitor/result")
+def get_mos_capacitor_result(request: MOSCapResultRequest) -> MOSCapResultResponse:
+    _load_moscap_manifest()
+    key = (request.acceptor_doping, request.oxide_thickness_nm, request.gate_voltage)
+    case = _moscap_cases.get(key)
+    if case is None:
+        raise HTTPException(
+            status_code=404,
+            detail=(
+                f"No saved result for NA={request.acceptor_doping:g}, "
+                f"tox={request.oxide_thickness_nm:g}nm, VG={request.gate_voltage:g}"
+            ),
+        )
+    payload = _read_moscap_case(case)
+    return MOSCapResultResponse(
+        acceptor_doping=payload["acceptor_doping"],
+        oxide_thickness_nm=payload["oxide_thickness_nm"],
+        gate_voltage=payload["gate_voltage"],
+        regime=payload["regime"],
+        gate_charge_c_per_cm2=payload["gate_charge_c_per_cm2"],
+        oxide_x_nm=payload["oxide_x_nm"],
+        oxide_potential=payload["oxide_potential"],
+        oxide_field_x_nm=payload["oxide_field_x_nm"],
+        oxide_field=payload["oxide_field"],
+        silicon_depth_nm=payload["silicon_depth_nm"],
+        silicon_potential=payload["silicon_potential"],
+        electrons=payload["electrons"],
+        holes=payload["holes"],
+        charge_density=payload["charge_density"],
     )

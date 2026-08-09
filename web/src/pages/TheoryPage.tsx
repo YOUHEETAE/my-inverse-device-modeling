@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionPanel } from "@/components/ui/accordion";
 import { Eq } from "@/components/Eq";
 import { PNJunctionTool } from "@/features/theory/PNJunctionTool";
-import { LongChannelMOSFETTool } from "@/features/theory/LongChannelMOSFETTool";
+import { MOSCapacitorTool } from "@/features/theory/MOSCapacitorTool";
 
 function P({ children }: { children: ReactNode }) {
   return <p className="leading-[1.8]">{children}</p>;
@@ -238,61 +238,252 @@ function Chapter1Content() {
 function Chapter2Content() {
   return (
     <div className="flex flex-col gap-5 text-sm leading-[1.8] text-foreground">
+      <P>MOSFET은 Gate 전압으로 Source와 Drain 사이의 전도 채널을 형성하고, 채널을 통해 흐르는 전류를 제어하는 소자입니다.</P>
       <P>
-        MOSFET는 Gate–Oxide–Body가 만드는 MOS Capacitor 구조를 기반으로 동작합니다. Gate에 전압을 인가하면 Oxide 아래 Body
-        표면의 캐리어 분포가 달라지고, 이 표면 상태에 따라 Source와 Drain 사이에 전류가 흐를 수 있는 채널이 형성되거나 차단됩니다.
+        Long-Channel MOSFET은 채널 길이가 충분히 길어 Drain의 전기적 영향이 Source 부근까지 직접 전달되지 않는 이상적인
+        MOSFET 모델입니다. 이 조건에서는 채널의 전위와 전하가 주로 Gate에 의해 제어되므로 MOSFET의 기본적인 동작을 비교적
+        명확하게 설명할 수 있습니다.
+      </P>
+      <P>
+        해당 페이지에 MOS Capacitance 시뮬레이션은 포함하지만 MOSFET 시뮬레이션은 이후 short-channel MOSFET 학습 후 최종
+        시뮬레이션을 참고하길 바랍니다.
       </P>
 
-      <Sub heading="2.1. MOS 구조와 표면 상태">
-        <P>p형 Body 위에 얇은 Oxide와 Gate를 쌓은 구조에서, Gate 전압 VG에 따라 Body 표면은 세 가지 상태를 거칩니다.</P>
+      <Sub heading="2.1. MOSFET의 구조">
+        <P>
+          기본적인 NMOS는 p형 Body 내부에 두 개의 고농도 n형 영역인 Source와 Drain을 형성하고, 그 사이의 표면 위에 Gate와
+          Gate Oxide를 배치한 구조입니다.
+        </P>
+        <img
+          src="/theory/chapter2-mosfet-structure.png"
+          alt="NMOS 구조 단면도 — Gate, Oxide, Source n+, Drain n+, p-type Bulk"
+          className="w-full rounded-md border border-outline-variant"
+        />
+        <P>
+          Gate는 외부에서 인가한 전압을 통해 반도체 표면의 전위를 제어합니다. Gate와 반도체는 Oxide로 절연되어 있으므로
+          이상적인 경우 Gate에서 반도체로 직접적인 전도전류가 흐르지 않습니다.
+        </P>
+        <P>
+          Gate Oxide는 Gate와 Body를 전기적으로 절연하면서, Gate 전압에 의해 수직 방향의 전기장이 형성되도록 합니다. 단위
+          면적당 산화막 커패시턴스는 다음과 같습니다.
+        </P>
+        <Eq tex="C_{ox} = \frac{\varepsilon_{ox}}{t_{ox}}" />
+        <P>Oxide가 얇아질수록 capacitance가 증가하므로, Gate가 반도체 표면의 전하를 더 강하게 제어할 수 있습니다.</P>
+        <P>Source는 채널에 전자를 공급하고, Drain은 채널을 통과한 전자를 수집합니다.</P>
+        <P>
+          Source와 Drain은 p형 Body와 각각 PN 접합을 형성합니다. 일반적인 NMOS 동작에서 Drain은 양의 전압을 가지므로
+          Drain–Body 접합은 역바이어스 상태가 됩니다.
+        </P>
+        <P>
+          Body는 MOSFET의 기본 반도체 영역입니다. NMOS에서는 일반적으로 p형으로 도핑되어 있으며, Body doping은 공핍층 폭과
+          Threshold Voltage에 영향을 줍니다.
+        </P>
+        <P>
+          Channel은 Source와 Drain처럼 처음부터 n형으로 도핑된 고정 영역이 아닙니다. Gate 전압에 의해 Body 표면에 전자가
+          모이면서 생성되는 반전층입니다.
+        </P>
+      </Sub>
+
+      <Sub heading="2.2. Gate 전압과 채널 형성">
+        <P>
+          MOSFET의 Gate–Oxide–Body 구조는 기본적으로 MOS Capacitor와 같습니다. 따라서 Gate 전압에 따라 Body 표면은
+          Accumulation, Depletion, Inversion 상태로 변화합니다. MOS capacitor 시뮬레이터를 참고하세요.
+        </P>
+
+        <p className="font-semibold">Vgs&lt;0: Accumulation</p>
+        <P>
+          p형 Body를 기준으로 Gate에 음의 전압을 인가하면 정공이 Oxide–Semiconductor 계면에 모입니다. 이 상태에서는 전자
+          채널이 형성되지 않으므로 Source와 Drain 사이에 의미 있는 전류가 흐르지 않습니다.
+        </P>
+
+        <p className="font-semibold">0&lt;Vgs&lt;Vth: Depletion</p>
+        <P>
+          Gate에 양의 전압을 인가하면 표면의 정공이 Body 내부로 밀려납니다. 이동 가능한 정공이 감소한 영역에는 음전하를 띠는
+          이온화 Acceptor가 남아 공핍층을 형성합니다. Gate 전압이 증가하면 표면전위와 공핍층 폭이 증가하지만, 아직 Source와
+          Drain을 연결하는 충분한 전자 채널은 형성되지 않습니다.
+        </P>
+
+        <p className="font-semibold">Vgs=Vth: Inversion</p>
+        <P>
+          Gate 전압이 더 증가하면 반도체 표면의 전도대가 낮아지고 표면 전자 농도가 급격히 증가합니다. 표면에서 전자가
+          정공보다 우세해지면 p형 Body 표면이 n형과 유사한 상태로 반전됩니다. 이를 Inversion이라고 하며, 이때 형성되는
+          전자층이 MOSFET의 채널입니다. Gate overdrive가 증가할수록 반전층의 전자 밀도가 증가합니다. 따라서 Gate voltage가
+          증가하면 채널의 전도도가 커지고 Drain current도 증가합니다.
+        </P>
+      </Sub>
+
+      <Sub heading="2.3. Threshold Voltage">
+        <P>
+          Threshold Voltage (V_TH)는 Gate 아래의 반도체 표면이 강한 반전 상태에 도달하는 Gate 전압입니다. p형 Body를
+          사용하는 이상적인 NMOS에서 Threshold Voltage는 다음과 같이 표현할 수 있습니다.
+        </P>
+        <Eq tex="V_{TH} = V_{FB} + 2\phi_F + \frac{\sqrt{4q\varepsilon_s N_A \phi_F}}{C_{ox}}" />
+        <P>
+          Body doping이 증가하면 공핍영역에 더 많은 고정 Acceptor 전하가 형성됩니다. 이를 제거하고 강한 반전을 만들기 위해
+          더 큰 Gate 전압이 필요합니다.
+        </P>
+        <P>
+          Oxide thickness가 감소하면 oxide capacitance가 증가합니다. 따라서 동일한 표면전하를 형성하는 데 필요한 Oxide
+          voltage가 감소하고, Gate가 채널을 더 강하게 제어할 수 있습니다.
+        </P>
+        <P>실제 MOSFET에서는 Gate 일함수, Oxide charge, 계면 상태와 Body bias도 Threshold Voltage에 영향을 줍니다.</P>
+      </Sub>
+
+      <Sub heading="2.4. Drain 전압과 채널 전류">
+        <P>
+          Gate voltage로 채널을 형성하더라도 Source와 Drain의 전위가 같다면 채널을 따라 전자가 순방향으로 이동할 이유가
+          없습니다. Drain에 양의 전압을 인가하면 Source에서 Drain 방향으로 채널 전위가 증가합니다. 이에 따라 채널 방향의
+          수평 Electric Field가 형성됩니다. 전자는 음전하이므로 전기장의 반대 방향으로 이동합니다. 따라서 전자는 Source에서
+          Drain 방향으로 이동하고, 관습적인 Drain current (Id)는 Drain에서 Source 방향으로 정의됩니다. Long-Channel
+          MOSFET의 낮은 전계 조건에서는 전자 이동속도를 Drift 관계로 나타낼 수 있습니다.
+        </P>
+        <P>따라서 채널 전류는 다음 요소가 클수록 증가합니다.</P>
         <ul className="list-inside list-disc space-y-0.5 pl-1">
-          <li>Accumulation — VG가 충분히 낮으면(음의 방향) 표면에 다수 캐리어(정공)가 모입니다.</li>
-          <li>Depletion — VG가 증가하면 표면 근처의 정공이 밀려나며 공핍층이 형성됩니다.</li>
-          <li>Inversion — VG가 더 증가하면 표면에 소수 캐리어(전자)가 모여 n형처럼 반전된 얇은 층, 즉 채널이 형성됩니다.</li>
+          <li>채널 폭 (W)</li>
+          <li>반전전하</li>
+          <li>전자 이동도</li>
+          <li>채널 방향 Electric Field</li>
+        </ul>
+      </Sub>
+
+      <Sub heading="2.5. MOSFET 동작 영역">
+        <p className="font-semibold">2.5.1 Linear Region (Vgs&gt;Vth, 0&lt;Vds&lt;Vgs-Vth)</p>
+        <P>
+          Gate voltage가 Threshold Voltage보다 높고 Drain voltage가 비교적 작으면 Source와 Drain 사이에 연속적인 반전
+          채널이 유지됩니다. 이 영역을 Linear Region 또는 Triode Region이라고 합니다.
+        </P>
+        <Eq tex="I_D = \mu_n C_{ox}\frac{W}{L}\left[(V_{GS}-V_{TH})V_{DS} - \frac{V_{DS}^2}{2}\right]" />
+        <P>따라서 작은 Vds에서는 MOSFET이 Gate voltage로 저항값을 조절할 수 있는 가변저항처럼 동작합니다.</P>
+
+        <p className="font-semibold">2.5.2 Saturation Region과 Pinch-off (Vgs&gt;Vth, Vds&gt;Vgs-Vth)</p>
+        <P>
+          Drain voltage가 증가하면 Drain 부근의 반전전하가 계속 감소합니다. 다음 조건에 도달하면 Drain 끝에서 반전전하가
+          거의 0이 됩니다. 이때의 Drain voltage를 포화전압이라고 합니다.
+        </P>
+        <ul className="list-inside list-disc space-y-0.5 pl-1">
+          <li>Vds&gt;Vgs-Vth</li>
         </ul>
         <P>
-          Inversion이 시작되는 경계의 Gate 전압을 문턱전압(Threshold Voltage, Vth)이라고 합니다. VG가 Vth를 넘어야 Source와
-          Drain을 연결하는 전자 채널이 만들어집니다.
+          포화전압에 도달한 후 Drain 끝에서 반전 채널이 사라지는 현상을 <strong>Pinch-off</strong>라고 합니다. Pinch-off가
+          발생해도 Drain current가 0이 되는 것은 아닙니다. Source에서 공급된 전자는 반전 채널을 따라 Pinch-off 지점까지
+          이동한 뒤, Drain 부근의 강한 Electric Field에 의해 Drain으로 이동합니다. 이상적인 Long-Channel MOSFET의
+          포화전류는 다음과 같습니다.
         </P>
-      </Sub>
-
-      <Sub heading="2.2. Long-Channel MOSFET의 구조">
+        <Eq tex="I_{D,sat} \approx \frac{1}{2}\mu_n C_{ox}\frac{W}{L}(V_{GS}-V_{TH})^2" />
         <P>
-          이 장의 실습 소자는 p형 Body 위에 n+ Source, n+ Drain을 배치하고 그 사이 표면을 Gate–Oxide가 덮는 전형적인 NMOS
-          구조입니다. Gate 길이(채널 길이)가 충분히 길어 Drain 쪽 공핍층이 Source에 영향을 주지 않는 경우를 Long-channel
-          MOSFET이라고 합니다.
+          즉, 이상적인 Long-Channel MOSFET의 포화전류는 Gate overdrive의 제곱에 비례합니다. 이상적인 모델에서는
+          포화영역에 진입한 뒤 Drain voltage를 더 증가시켜도 Drain current가 거의 일정하다고 가정합니다. 실제 MOSFET에서는
+          Drain voltage 증가에 따라 Pinch-off 지점이 Source 방향으로 이동하여 유효 채널 길이가 감소하므로 전류가 조금
+          증가합니다. 이를 Channel-Length Modulation이라고 하며 뒤에서 별도로 설명합니다.
+        </P>
+
+        <p className="font-semibold">2.5.3 Cutoff Region과 Subthreshold Current</p>
+        <P>
+          이상적인 강한 반전 모델에서는 Vgs&lt;Vth일 때 채널이 형성되지 않고 Drain current가 0이라고 가정합니다. 이 영역을
+          Cutoff Region이라고 합니다. 하지만 실제 MOSFET에서는 Threshold Voltage 이하에서도 완전히 전류가 사라지지
+          않습니다. Gate 아래에 약한 반전 상태가 존재하며, Source에서 Drain 방향으로 전자가 확산하여 Subthreshold
+          Current를 형성합니다. Subthreshold current는 Gate voltage에 대해 대략 지수적으로 변합니다.
+        </P>
+        <Eq tex="I_D \approx I_0 \exp\!\left(\frac{qV_{GS}}{nkT}\right)" />
+        <P>여기서 n은 subthreshold slope factor, kT는 Thermal voltage입니다.</P>
+        <P>
+          따라서 MOSFET의 ON/OFF 동작을 평가할 때는 Threshold Voltage뿐 아니라 Subthreshold 영역의 전류 변화도 함께
+          확인해야 합니다. Long-Channel MOSFET 장에서는 Subthreshold current의 존재만 소개하고, Short-Channel 장에서
+          Ioff와 DIBL 변화와 함께 더 자세히 다룹니다.
         </P>
       </Sub>
 
-      <Sub heading="2.3. 선형 영역과 포화 영역">
-        <P>VG가 Vth를 넘어 채널이 형성된 상태에서, Drain 전압 VD를 증가시키면 전류-전압 관계는 두 영역으로 나뉩니다.</P>
+      <Sub heading="2.6. Id-Vg Curve">
+        <P>
+          Id–Vg Curve는 Drain voltage를 고정하고 Gate voltage를 변화시키며 Drain current를 측정한 결과입니다. Id–Vg
+          Curve에서는 Gate가 채널을 형성하고 전류를 증가시키는 과정을 확인할 수 있습니다.
+        </P>
+        <P>
+          낮은 Vgs에서는 강한 반전 채널이 없으며 Subthreshold current가 흐릅니다. Threshold 부근에서는 Vg가 증가하면서
+          표면 전자 농도가 빠르게 증가하고 채널이 형성됩니다. Strong Inversion에서는 반전전하가 증가하면서 Drain current가
+          크게 증가합니다.
+        </P>
+        <P>Id–Vg Curve에서는 주로 다음 파라미터를 확인합니다.</P>
         <ul className="list-inside list-disc space-y-0.5 pl-1">
-          <li>선형(Linear/Triode) 영역 — VD가 작을 때(VD &lt; VG − Vth), Drain 전류는 VD에 거의 비례해 증가합니다.</li>
-          <li>
-            포화(Saturation) 영역 — VD가 VG − Vth에 도달하면 Drain 쪽 채널이 좁아지는 Pinch-off가 일어나고, 이후 VD를 더
-            높여도 전류는 거의 일정하게 유지됩니다.
-          </li>
+          <li>Threshold Voltage (Vth)</li>
+          <li>Off Current (Ioff)</li>
+          <li>On Current (Ion)</li>
+          <li>Subthreshold Swing (SS)</li>
+          <li>Transconductance (gm)</li>
         </ul>
-        <P>이 경계 조건 VD = VG − Vth를 Pinch-off 지점이라고 부르며, ID–VD 곡선에서 선형 구간이 꺾이는 지점으로 나타납니다.</P>
+        <P>Subthreshold Swing, SS는 Id가 10배 변화할 때의 게이트 전압의 변화량을 의미합니다.</P>
+        <Eq tex="SS = \frac{dV_{GS}}{d(\log_{10}I_D)}" />
+        <P>Transconductance, gm은 Gate voltage 변화에 따른 Drain current의 변화율입니다.</P>
+        <Eq tex="g_m = \left.\frac{\partial I_D}{\partial V_{GS}}\right|_{V_{DS}}" />
       </Sub>
 
-      <Sub heading="2.4. ID–VG와 ID–VD 특성곡선으로 읽는 법">
+      <Sub heading="2.7. Id-Vd Curve">
         <P>
-          ID–VG 곡선(Transfer characteristic)은 고정된 VD에서 VG를 쓸어가며 얻은 전류 곡선으로, Vth 부근에서 전류가 급격히
-          증가하기 시작하는 지점을 통해 문턱전압을 확인할 수 있습니다.
+          Id–Vd Curve는 Gate voltage를 고정하고 Drain voltage를 변화시키며 Drain current를 측정한 결과입니다. 각 Gate
+          voltage에서 다음 동작을 확인할 수 있습니다.
         </P>
         <P>
-          ID–VD 곡선(Output characteristic)은 여러 VG 값에 대해 VD를 쓸어가며 얻은 전류 곡선 family로, 각 곡선은 낮은 VD에서
-          선형으로 증가하다가 Pinch-off 이후 평평해지는 모양을 보입니다. VG가 클수록 채널의 전자 농도가 많아 전류 곡선 전체가
-          위로 이동합니다.
+          작은 Vds에서는 Drain current가 거의 선형적으로 증가하며 MOSFET은 저항처럼 동작합니다. Vds=Vgs-Vth에서는 Drain
+          끝에서 Pinch-off가 시작됩니다. 큰 Vds에서는 Drain current가 포화됩니다.
+        </P>
+        <P>Id–Vd Curve에서는 주로 다음 특성을 확인합니다.</P>
+        <ul className="list-inside list-disc space-y-0.5 pl-1">
+          <li>Linear Region</li>
+          <li>Saturation Region</li>
+          <li>On-resistance (Ron)</li>
+          <li>Output Conductance (gds)</li>
+          <li>Channel-Length Modulation</li>
+        </ul>
+        <P>
+          Output conductance는 Drain voltage 변화에 따른 Drain current의 변화율입니다. 이상적인 포화영역에서는 gds=0이지만
+          실제 소자에서는 Channel-Length Modulation 때문에 0보다 큰 값을 가집니다.
+        </P>
+        <P>
+          실제 MOSFET에서는 Drain voltage가 증가하면 Drain 쪽 공핍영역이 채널 방향으로 확장됩니다. 이에 따라 Pinch-off
+          지점이 Source 방향으로 이동하고 유효 채널 길이가 감소합니다. Drain current는 대략 (1/L)에 비례하므로 유효 채널
+          길이가 감소하면 포화영역에서도 전류가 증가합니다. 이를 Channel-Length Modulation이라고 합니다. 포화전류는 다음과
+          같이 보정할 수 있습니다.
+        </P>
+        <Eq tex="I_{D,sat} = \frac{1}{2}\mu_n C_{ox}\frac{W}{L}(V_{GS}-V_{TH})^2(1+\lambda V_{DS})" />
+        <P>
+          여기서 lambda는 Channel-Length Modulation 계수입니다. Long-Channel MOSFET에서는 lambda가 비교적 작지만, 채널이
+          짧아질수록 Drain 전압의 영향이 커져 포화 특성이 더 나빠질 수 있습니다.
         </P>
       </Sub>
 
-      <Sub heading="2.5. 실습에서 확인할 것">
-        <ul className="list-inside list-disc space-y-1 pl-1">
-          <li>VG를 바꿔가며 Oxide 아래 Electron 농도(채널)가 어떻게 나타나고 사라지는지 관찰합니다.</li>
-          <li>ID–VG 곡선에서 선택한 VG 지점의 마커가 채널 형성 여부와 어떻게 연결되는지 확인합니다.</li>
-          <li>VD를 바꿔가며 ID–VD 곡선에서 선형 구간과 포화 구간이 어디서 나뉘는지 관찰합니다.</li>
+      <Sub heading="2.8. Curve와 Field Map의 연결">
+        <P>I–V Curve는 MOSFET 단자에서 측정되는 전기적 결과를 보여주고, Field Map은 해당 결과가 발생한 내부 원인을 보여줍니다.</P>
+
+        <p className="font-semibold">2.8.1 Electron Concentration</p>
+        <ul className="list-inside list-disc space-y-0.5 pl-1">
+          <li>Gate 아래의 반전 채널 확인</li>
+          <li>Gate voltage 증가에 따른 채널 전자 밀도 증가</li>
+          <li>Drain 방향으로 채널 전하가 감소하는 현상</li>
+          <li>Pinch-off 위치 확인</li>
+        </ul>
+
+        <p className="font-semibold">2.8.2 Electric Potential</p>
+        <ul className="list-inside list-disc space-y-0.5 pl-1">
+          <li>Source에서 Drain 방향의 채널 전위 변화</li>
+          <li>Gate가 Body 표면전위를 제어하는 정도</li>
+          <li>Source–Channel 사이의 전위 장벽</li>
+          <li>Drain voltage의 공간적 분포</li>
+        </ul>
+
+        <p className="font-semibold">2.8.3 Electric Field</p>
+        <ul className="list-inside list-disc space-y-0.5 pl-1">
+          <li>Oxide 방향의 수직 Electric Field</li>
+          <li>채널 방향의 수평 Electric Field</li>
+          <li>Drain 부근의 Electric Field 집중</li>
+          <li>포화영역의 Pinch-off 부근 고전계</li>
+        </ul>
+
+        <p className="font-semibold">2.8.4 Current Density</p>
+        <ul className="list-inside list-disc space-y-0.5 pl-1">
+          <li>Source에서 Drain으로 이어지는 전류 경로</li>
+          <li>채널 내부의 전류 집중</li>
+          <li>Drain 부근의 전류 이동</li>
+          <li>구조 변화에 따른 전류 경로 변화</li>
         </ul>
       </Sub>
     </div>
@@ -1065,7 +1256,7 @@ export default function TheoryPage() {
                   </span>
                 </AccordionTrigger>
                 <AccordionPanel>
-                  <ChapterPanel content={<Chapter2Content />} tool={<LongChannelMOSFETTool />} />
+                  <ChapterPanel content={<Chapter2Content />} tool={<MOSCapacitorTool />} />
                 </AccordionPanel>
               </AccordionItem>
 

@@ -1,6 +1,6 @@
 import { apiClient } from "@/lib/apiClient";
 import { getErrorMessage } from "@/features/curves/api";
-import type { LongChannelOptions, LongChannelResult, PNOptions, PNResult } from "./types";
+import type { LongChannelOptions, LongChannelResult, MOSCapOptions, MOSCapResult, PNOptions, PNResult } from "./types";
 
 export { getErrorMessage };
 
@@ -23,6 +23,20 @@ export async function fetchLongChannelResult(gateVoltage: number, drainVoltage: 
   const response = await apiClient.post<LongChannelResult>("/theory/long-channel-mosfet/result", {
     gate_voltage: gateVoltage,
     drain_voltage: drainVoltage,
+  });
+  return response.data;
+}
+
+export async function fetchMOSCapOptions() {
+  const response = await apiClient.get<MOSCapOptions>("/theory/mos-capacitor/options");
+  return response.data;
+}
+
+export async function fetchMOSCapResult(acceptorDoping: number, oxideThicknessNm: number, gateVoltage: number) {
+  const response = await apiClient.post<MOSCapResult>("/theory/mos-capacitor/result", {
+    acceptor_doping: acceptorDoping,
+    oxide_thickness_nm: oxideThicknessNm,
+    gate_voltage: gateVoltage,
   });
   return response.data;
 }

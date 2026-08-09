@@ -1,13 +1,12 @@
-import { useEffect, useRef } from "react";
 import type { Data } from "plotly.js";
-import Plotly from "plotly.js-dist-min";
 import { Plot } from "@/lib/plot";
 import { Card, CardContent } from "@/components/ui/card";
 import type { FieldDisplay, FieldDisplayResponse, MeshData } from "../types";
 import { applyNorm, formatFieldLabel, mapColormap } from "./colormap";
 import { computeContourSegments, contourLevels } from "./contours";
 import { buildOverlayShapes2D, buildOverlayTraces3D, geometryMarkers } from "./structureOverlay";
-import { SCENE_LAYOUT, buildMeshEdges, buildMeshTrace, elementToNode } from "./fieldChartUtils";
+import { buildMeshEdges, buildMeshTrace, elementToNode } from "./fieldChartUtils";
+import { MeshScenePlot } from "./MeshScenePlot";
 
 interface FieldChartProps {
   mesh: MeshData | null;
@@ -17,20 +16,6 @@ interface FieldChartProps {
 }
 
 export function FieldChart({ mesh, toxNm, display, displayData }: FieldChartProps) {
-  // mesh3d scenes sometimes compute their initial camera/aspect fit before the
-  // container has settled to its final size, leaving the view stuck zoomed in
-  // on a corner until the user drags. Forcing a resize shortly after mount (and
-  // whenever the data driving a fresh trace changes) makes Plotly recompute the
-  // fit against the real container size.
-  const graphDivRef = useRef<HTMLElement | null>(null);
-  useEffect(() => {
-    if (!graphDivRef.current) return;
-    const timer = setTimeout(() => {
-      if (graphDivRef.current) Plotly.Plots.resize(graphDivRef.current);
-    }, 50);
-    return () => clearTimeout(timer);
-  }, [display, displayData]);
-
   if (!mesh) {
     return (
       <Card className="flex h-full items-center justify-center">
@@ -121,24 +106,10 @@ export function FieldChart({ mesh, toxNm, display, displayData }: FieldChartProp
   return (
     <Card className="flex h-full flex-col">
       <CardContent className="flex-1">
-        <Plot
+        <MeshScenePlot
+          title={formatFieldLabel(displayData.title)}
+          mesh={mesh}
           data={[meshTrace, contourTrace, ...buildOverlayTraces3D(marker)]}
-          layout={{
-            paper_bgcolor: "transparent",
-            margin: { t: 36, b: 10, l: 10, r: 10 },
-            scene: SCENE_LAYOUT,
-            title: { text: formatFieldLabel(displayData.title), font: { size: 12 } },
-            showlegend: false,
-          }}
-          config={{ displaylogo: false, responsive: true }}
-          useResizeHandler
-          style={{ width: "100%", height: "100%" }}
-          onInitialized={(_figure, graphDiv) => {
-            graphDivRef.current = graphDiv;
-          }}
-          onUpdate={(_figure, graphDiv) => {
-            graphDivRef.current = graphDiv;
-          }}
         />
       </CardContent>
     </Card>

@@ -60,3 +60,26 @@ export interface LongChannelResult {
 
 export const LONG_CHANNEL_FIELD_OPTIONS = ["Net Doping", "Potential", "Electrons", "Holes"] as const;
 export type LongChannelFieldOption = (typeof LONG_CHANNEL_FIELD_OPTIONS)[number];
+
+export interface MOSCapOptions {
+  acceptor_dopings: number[];
+  oxide_thicknesses_nm: number[];
+  gate_voltages: number[];
+}
+
+export interface MOSCapResult {
+  acceptor_doping: number;
+  oxide_thickness_nm: number;
+  gate_voltage: number;
+  regime: string;
+  gate_charge_c_per_cm2: number;
+  oxide_x_nm: number[];
+  oxide_potential: number[];
+  oxide_field_x_nm: number[];
+  oxide_field: number[];
+  silicon_depth_nm: number[];
+  silicon_potential: number[];
+  electrons: number[];
+  holes: number[];
+  charge_density: number[];
+}
