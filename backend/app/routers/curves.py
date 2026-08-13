@@ -1,3 +1,5 @@
+import math
+
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from typing import Literal
@@ -48,6 +50,13 @@ def predict_curves(request: Request, payload: CurveRequest) -> CurveResponse:
     idvd = curve_predictor.predict("idvd", features)
     idvg = curve_predictor.predict("idvg", features)
     electrical = extract_electrical_parameters(idvd, idvg)
+    # Not part of the shared extraction contract (ai/curve_model/inference) —
+    # the Tkinter reference (frontend/app.py) computes this the same way,
+    # after calling the shared extractor, rather than inside it.
+    ioff = electrical.get("ioff_ma_per_um", 0.0)
+    electrical["ion_ioff_ratio"] = (
+        electrical.get("ion_ma_per_um", 0.0) / ioff if ioff != 0 else math.inf
+    )
 
     return CurveResponse(
         idvd=CurveData(

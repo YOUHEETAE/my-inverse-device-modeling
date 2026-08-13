@@ -28,17 +28,20 @@ export function ElectricalParametersTable({ curves }: { curves: CurveEntry[] }) 
           </TableRow>
         </TableHeader>
         <TableBody>
-          {ELECTRICAL_PARAMETERS.map(({ key, label, unit }) => (
+          {ELECTRICAL_PARAMETERS.map(({ key, label, unit, scale }) => (
             <TableRow key={key} className="border-outline-variant hover:bg-surface-container">
               <TableCell className="px-1.5 py-1 text-sm text-on-surface-variant">
                 {label}
                 {unit ? ` (${unit})` : ""}
               </TableCell>
-              {withResults.map((curve) => (
-                <TableCell key={curve.id} className="px-1.5 py-1 text-right font-mono text-xs font-bold text-foreground">
-                  {curve.result?.electrical_parameters[key]?.toPrecision(4) ?? "-"}
-                </TableCell>
-              ))}
+              {withResults.map((curve) => {
+                const raw = curve.result?.electrical_parameters[key];
+                return (
+                  <TableCell key={curve.id} className="px-1.5 py-1 text-right font-mono text-xs font-bold text-foreground">
+                    {raw == null ? "-" : (raw * scale).toPrecision(4)}
+                  </TableCell>
+                );
+              })}
             </TableRow>
           ))}
         </TableBody>

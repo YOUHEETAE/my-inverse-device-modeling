@@ -66,16 +66,22 @@ export const ELECTRICAL_PARAMETERS: {
   key: string;
   label: string;
   unit: string;
+  // Multiplier applied before display — matches the Tkinter reference
+  // (frontend/app.py's ELECTRICAL_PARAMETERS tuple), which shows DIBL in
+  // mV/V by scaling the API's raw V/V value by 1000 at display time rather
+  // than converting it in the shared extraction backend. Every other row is
+  // already in its display unit, hence 1.
+  scale: number;
 }[] = [
-    { key: "vth_low_v", label: "Vth (Vd=0.05 V)", unit: "V" },
-    { key: "vth_high_v", label: "Vth (Vd=1.5 V)", unit: "V" },
-    { key: "ion_ma_per_um", label: "Ion", unit: "mA/µm" },
-    { key: "ioff_ma_per_um", label: "Ioff", unit: "mA/µm" },
-    { key: "ion_ioff_ratio", label: "Ion/Ioff", unit: "" },
-    { key: "ss_mv_per_dec", label: "SS", unit: "mV/dec" },
-    { key: "dibl_gm_v_per_v", label: "DIBL", unit: "mV/V" },
-    { key: "gm_max_ms_per_um", label: "gm max", unit: "mS/µm" },
-    { key: "gds_ms_per_um", label: "gds", unit: "mS/µm" },
-    { key: "ron_kohm_um", label: "Ron", unit: "kΩ·µm" },
-    { key: "lambda_per_v", label: "λ (CLM)", unit: "1/V" },
+    { key: "vth_low_v", label: "Vth (Vd=0.05 V)", unit: "V", scale: 1 },
+    { key: "vth_high_v", label: "Vth (Vd=1.5 V)", unit: "V", scale: 1 },
+    { key: "ion_ma_per_um", label: "Ion", unit: "mA/µm", scale: 1 },
+    { key: "ioff_ma_per_um", label: "Ioff", unit: "mA/µm", scale: 1 },
+    { key: "ion_ioff_ratio", label: "Ion/Ioff", unit: "", scale: 1 },
+    { key: "ss_mv_per_dec", label: "SS", unit: "mV/dec", scale: 1 },
+    { key: "dibl_gm_v_per_v", label: "DIBL", unit: "mV/V", scale: 1000 },
+    { key: "gm_max_ms_per_um", label: "gm max", unit: "mS/µm", scale: 1 },
+    { key: "gds_ms_per_um", label: "gds", unit: "mS/µm", scale: 1 },
+    { key: "ron_kohm_um", label: "Ron", unit: "kΩ·µm", scale: 1 },
+    { key: "lambda_per_v", label: "λ (CLM)", unit: "1/V", scale: 1 },
   ];
