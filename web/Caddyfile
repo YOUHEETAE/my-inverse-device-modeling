@@ -1,4 +1,14 @@
 {$SITE_DOMAIN:localhost} {
+	# Access log to stdout (captured by `docker compose logs web`) — Caddy
+	# terminates the real internet-facing connection itself, so it logs the
+	# actual visitor IP directly (no X-Forwarded-For needed), unlike the
+	# backend's own uvicorn access log, which only ever sees Caddy's internal
+	# docker-network IP since Caddy is the one making the proxied request.
+	log {
+		output stdout
+		format console
+	}
+
 	# Top-level try_files/file_server directives run in Caddy's fixed
 	# directive order regardless of where they're written in the file, which
 	# put them ahead of the /api/* handle block below and swallowed every
