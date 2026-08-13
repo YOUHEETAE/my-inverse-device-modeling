@@ -4,9 +4,19 @@
 	# actual visitor IP directly (no X-Forwarded-For needed), unlike the
 	# backend's own uvicorn access log, which only ever sees Caddy's internal
 	# docker-network IP since Caddy is the one making the proxied request.
+	# console format, with the noisy per-request fields (every request/response
+	# header, TLS handshake details) stripped out — what's left per line is
+	# the useful part: remote_ip, method, uri, status, size, duration.
 	log {
 		output stdout
-		format console
+		format filter {
+			wrap console
+			fields {
+				request>headers delete
+				request>tls delete
+				resp_headers delete
+			}
+		}
 	}
 
 	# Top-level try_files/file_server directives run in Caddy's fixed
