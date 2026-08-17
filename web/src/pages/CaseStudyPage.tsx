@@ -1,4 +1,4 @@
-import { type ReactNode } from "react";
+import { useLayoutEffect, useRef, type ReactNode } from "react";
 import { useSearchParams } from "react-router-dom";
 import { ToolPanel } from "@/components/ToolPanel";
 import { CaseStudyFlow } from "@/features/caseStudy/CaseStudyFlow";
@@ -187,8 +187,16 @@ export default function CaseStudyPage() {
   const activeId = searchParams.get("section") ?? "overview";
   const active = SECTION_CONTENT[activeId] ?? SECTION_CONTENT.overview;
 
+  // See TheoryPage's identical effect for why this is needed: the scroll
+  // container never unmounts on a case switch (only ?section= changes), so
+  // nothing resets scroll position on its own.
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    scrollRef.current?.scrollTo({ top: 0 });
+  }, [activeId]);
+
   return (
-    <div className="h-full overflow-y-auto">
+    <div ref={scrollRef} className="h-full overflow-y-auto">
       <div className="mx-auto max-w-3xl px-6 py-8">
         <h1 className="mb-6 text-2xl font-bold leading-snug">Case Study</h1>
         {active.content}

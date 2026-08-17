@@ -1,4 +1,4 @@
-import { type ReactNode } from "react";
+import { useLayoutEffect, useRef, type ReactNode } from "react";
 import { useSearchParams } from "react-router-dom";
 import { ToolPanel } from "@/components/ToolPanel";
 import { Eq } from "@/components/Eq";
@@ -1219,8 +1219,19 @@ export default function TheoryPage() {
   const activeId = searchParams.get("section") ?? "overview";
   const active = CHAPTER_CONTENT[activeId] ?? CHAPTER_CONTENT.overview;
 
+  // This page's scroll container never unmounts when the chapter changes
+  // (only the ?section= param does, so the tool state persistence above
+  // keeps working) — so the browser has no reason to reset scroll on its
+  // own the way a real navigation would. Reset it explicitly instead,
+  // otherwise switching chapters keeps whatever scroll position the last
+  // chapter was left at.
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    scrollRef.current?.scrollTo({ top: 0 });
+  }, [activeId]);
+
   return (
-    <div className="h-full overflow-y-auto">
+    <div ref={scrollRef} className="h-full overflow-y-auto">
       <div className="mx-auto max-w-3xl px-6 py-8">
         <h1 className="mb-6 text-2xl font-bold leading-snug">Theory</h1>
         {active.content}
