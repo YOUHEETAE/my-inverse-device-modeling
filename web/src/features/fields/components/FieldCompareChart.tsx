@@ -4,9 +4,15 @@ import { Plot } from "@/lib/plot";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { FieldCompareResponse, FieldDisplay, MeshData } from "../types";
 import { applyNorm, formatFieldLabel, mapColormap } from "./colormap";
-import { computeContourSegments, contourLevels } from "./contours";
 import { buildOverlayShapes2D, buildOverlayTraces3D, geometryMarkers } from "./structureOverlay";
-import { buildMeshEdges, buildMeshTrace, computeSharedMeshScale, computeMeshAspectRatioForScale, elementToNode } from "./fieldChartUtils";
+import {
+  buildContourTrace,
+  buildMeshEdges,
+  buildMeshTrace,
+  computeSharedMeshScale,
+  computeMeshAspectRatioForScale,
+  elementToNode,
+} from "./fieldChartUtils";
 import { MeshScenePlot } from "./MeshScenePlot";
 
 // gap-3 in Tailwind's default scale (0.75rem at the standard 16px root).
@@ -153,22 +159,7 @@ export function FieldCompareChart({ devices, display, compareData }: FieldCompar
               compareData.linthresh,
             );
             const meshTrace = buildMeshTrace(item.mesh, intensity, cmin, cmax, colorscale, reversescale, null);
-            const { x: contourX, y: contourY } = computeContourSegments(
-              item.mesh,
-              intensity,
-              contourLevels(cmin, cmax),
-            );
-            const contourTrace: Data = {
-              type: "scatter3d",
-              mode: "lines",
-              x: contourX,
-              y: contourY,
-              z: contourX.map((v) => (v == null ? null : 0.02)),
-              line: { color: "black", width: 1 },
-              opacity: 0.28,
-              hoverinfo: "skip",
-              showlegend: false,
-            } as unknown as Data;
+            const contourTrace = buildContourTrace(item.mesh, intensity, cmin, cmax);
             return (
               // See the Mesh branch above for why devices.length is part of the key.
               <Card key={`${item.label}-${compareData.items.length}`} className="flex flex-col">

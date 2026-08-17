@@ -3,9 +3,8 @@ import { Plot } from "@/lib/plot";
 import { Card, CardContent } from "@/components/ui/card";
 import type { FieldDisplay, FieldDisplayResponse, MeshData } from "../types";
 import { applyNorm, formatFieldLabel, mapColormap } from "./colormap";
-import { computeContourSegments, contourLevels } from "./contours";
 import { buildOverlayShapes2D, buildOverlayTraces3D, geometryMarkers } from "./structureOverlay";
-import { buildMeshEdges, buildMeshTrace, elementToNode } from "./fieldChartUtils";
+import { buildContourTrace, buildMeshEdges, buildMeshTrace, elementToNode } from "./fieldChartUtils";
 import { MeshScenePlot } from "./MeshScenePlot";
 
 interface FieldChartProps {
@@ -87,21 +86,7 @@ export function FieldChart({ mesh, toxNm, display, displayData }: FieldChartProp
   // of being embedded in this plot.
   const meshTrace = buildMeshTrace(mesh, intensity, cmin, cmax, colorscale, reversescale, null);
 
-  // Thin, subtle black contour lines over the scalar surface — port of
-  // field_rendering.py's axis.tricontour() overlay. Drawn at a z just above
-  // the flat mesh3d surface (z=0) and below the structure overlay (z=0.05).
-  const { x: contourX, y: contourY } = computeContourSegments(mesh, intensity, contourLevels(cmin, cmax));
-  const contourTrace: Data = {
-    type: "scatter3d",
-    mode: "lines",
-    x: contourX,
-    y: contourY,
-    z: contourX.map((v) => (v == null ? null : 0.02)),
-    line: { color: "black", width: 1 },
-    opacity: 0.28,
-    hoverinfo: "skip",
-    showlegend: false,
-  } as unknown as Data;
+  const contourTrace = buildContourTrace(mesh, intensity, cmin, cmax);
 
   return (
     <Card className="flex h-full flex-col">

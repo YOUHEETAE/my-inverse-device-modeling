@@ -1,5 +1,6 @@
 import type { Data, Layout } from "plotly.js";
 import type { MeshData } from "../types";
+import { computeContourSegments, contourLevels } from "./contours";
 
 // Element-domain values (one per triangle) get averaged onto the triangle's three
 // corner nodes so they can drive mesh3d's per-vertex `intensity` the same way
@@ -152,5 +153,32 @@ export function buildMeshTrace(
     lighting: { ambient: 1, diffuse: 0, specular: 0 },
     // plotly.js's TS types require i/j/k as TypedArray, but the runtime accepts
     // plain number[] fine (as does the rest of this codebase's Plot usage).
+  } as unknown as Data;
+}
+
+// Thin, subtle contour lines over the scalar surface — port of
+// field_rendering.py's axis.tricontour() overlay. Drawn at a z just above
+// the flat mesh3d surface (z=0) and below the structure overlay (z=0.05).
+//
+// This trace was invisible in practice despite computing real segments:
+// plotly.js's gl3d line renderer (used for scatter3d) doesn't blend
+// fractional trace `opacity` (or an rgba() line.color alpha channel) at
+// all — anything below opacity 1 silently vanishes, unlike 2D scatter's
+// SVG renderer where opacity works normally. Confirmed by testing several
+// opacity/width combinations directly against the rendered trace: opacity
+// 1 always rendered, every value below 1 (0.28, 0.6, 0.9) rendered nothing.
+// So "subtle" here has to come from a light, fully-opaque line color
+// instead of transparency.
+export function buildContourTrace(mesh: MeshData, intensity: number[], cmin: number, cmax: number): Data {
+  const { x, y } = computeContourSegments(mesh, intensity, contourLevels(cmin, cmax));
+  return {
+    type: "scatter3d",
+    mode: "lines",
+    x,
+    y,
+    z: x.map((v) => (v == null ? null : 0.02)),
+    line: { color: "#808080", width: 1.2 },
+    hoverinfo: "skip",
+    showlegend: false,
   } as unknown as Data;
 }
