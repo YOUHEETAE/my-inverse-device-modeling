@@ -1,8 +1,6 @@
-import { useState, type ReactNode } from "react";
-import { FlaskConical, Sigma } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Accordion, AccordionItem, AccordionTrigger, AccordionPanel } from "@/components/ui/accordion";
+import { type ReactNode } from "react";
+import { useSearchParams } from "react-router-dom";
+import { ToolPanel } from "@/components/ToolPanel";
 import { Eq } from "@/components/Eq";
 import { PNJunctionTool } from "@/features/theory/PNJunctionTool";
 import { MOSCapacitorTool } from "@/features/theory/MOSCapacitorTool";
@@ -1183,122 +1181,61 @@ function Chapter5Content() {
   );
 }
 
-interface ChapterPanelProps {
-  content: ReactNode;
-  tool?: ReactNode;
-}
-
-function ChapterPanel({ content, tool }: ChapterPanelProps) {
-  const [showTool, setShowTool] = useState(false);
-
+function OverviewContent() {
   return (
-    <div className="relative">
-      {tool && (
-        <div className="mb-3 flex justify-end">
-          <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={() => setShowTool((v) => !v)}>
-            <FlaskConical className="h-3.5 w-3.5" />
-            {showTool ? "이론 보기" : "시뮬레이션 열기"}
-          </Button>
-        </div>
-      )}
-      {showTool && tool ? tool : content}
+    <div>
+      <p className="text-base leading-[1.8] text-foreground">
+        MOSFET의 전기적 특성은 단순히 게이트 전압과 드레인 전압만으로 결정되지 않습니다. 채널 길이, 산화막 두께, Source/Drain
+        도핑 농도, Body 도핑 농도와 같은 소자 내부 조건이 함께 작용하여 전류와 전위 분포를 결정합니다.
+      </p>
+      <p className="mt-2 text-base leading-[1.8] text-foreground">
+        예를 들어 채널 길이를 줄이면 전류가 증가할 수 있지만, Drain의 영향이 Source 부근까지 전달되어 누설전류와 DIBL이 증가할
+        수 있습니다. 산화막을 얇게 만들면 Gate의 채널 제어력이 강해지지만, 실제 소자에서는 누설전류와 신뢰성 문제도 함께
+        고려해야 합니다. 또한 도핑 농도를 변경하면 캐리어 농도뿐 아니라 공핍층, 전위 장벽, 전기장 분포와 문턱전압도 달라집니다.
+      </p>
+      <p className="mt-2 text-base leading-[1.8] text-foreground">
+        이 Theory 페이지는 반도체공학의 모든 내용을 다루기 위한 것이 아닙니다. 이 웹페이지에서 MOSFET의 파라미터를 변경하고,
+        그 결과로 생성되는 <span className="font-semibold text-foreground">I–V Curve와 Field Map을 해석하는 데 필요한 이론</span>
+        을 중심으로 구성되어 있습니다.
+      </p>
+      <p className="mt-2 text-base leading-[1.8] text-foreground">
+        각 장의 이론은 독립된 내용이 아니라 다음 장으로 연결됩니다.
+      </p>
     </div>
   );
 }
 
+const CHAPTER_CONTENT: Record<string, { content: ReactNode; tool?: ReactNode }> = {
+  overview: { content: <OverviewContent /> },
+  chapter1: { content: <Chapter1Content />, tool: <PNJunctionTool /> },
+  chapter2: { content: <Chapter2Content />, tool: <MOSCapacitorTool /> },
+  chapter3: { content: <Chapter3Content /> },
+  chapter4: { content: <Chapter4Content /> },
+  chapter5: { content: <Chapter5Content /> },
+};
+
 export default function TheoryPage() {
+  const [searchParams] = useSearchParams();
+  const activeId = searchParams.get("section") ?? "overview";
+  const active = CHAPTER_CONTENT[activeId] ?? CHAPTER_CONTENT.overview;
+
   return (
     <div className="h-full overflow-y-auto">
-      <div className="mx-auto flex max-w-4xl flex-col gap-8 px-6 py-8">
-        {/* Hero */}
-        <div>
-          <h1 className="text-2xl font-bold leading-snug">Theory</h1>
-          <p className="mt-3 text-base leading-[1.8] text-foreground">
-            MOSFET의 전기적 특성은 단순히 게이트 전압과 드레인 전압만으로 결정되지 않습니다. 채널 길이, 산화막 두께, Source/Drain
-            도핑 농도, Body 도핑 농도와 같은 소자 내부 조건이 함께 작용하여 전류와 전위 분포를 결정합니다.
-          </p>
-          <p className="mt-2 text-base leading-[1.8] text-foreground">
-            예를 들어 채널 길이를 줄이면 전류가 증가할 수 있지만, Drain의 영향이 Source 부근까지 전달되어 누설전류와 DIBL이 증가할
-            수 있습니다. 산화막을 얇게 만들면 Gate의 채널 제어력이 강해지지만, 실제 소자에서는 누설전류와 신뢰성 문제도 함께
-            고려해야 합니다. 또한 도핑 농도를 변경하면 캐리어 농도뿐 아니라 공핍층, 전위 장벽, 전기장 분포와 문턱전압도 달라집니다.
-          </p>
-          <p className="mt-2 text-base leading-[1.8] text-foreground">
-            이 Theory 페이지는 반도체공학의 모든 내용을 다루기 위한 것이 아닙니다. 이 웹페이지에서 MOSFET의 파라미터를 변경하고,
-            그 결과로 생성되는 <span className="font-semibold text-foreground">I–V Curve와 Field Map을 해석하는 데 필요한 이론</span>
-            을 중심으로 구성되어 있습니다.
-          </p>
-          <p className="mt-2 text-base leading-[1.8] text-foreground">
-            각 장의 이론은 독립된 내용이 아니라 다음 장으로 연결됩니다.
-          </p>
-        </div>
-
-        {/* Chapters */}
-        <Card>
-          <CardContent>
-            <Accordion className="flex flex-col">
-              <AccordionItem value="chapter1">
-                <AccordionTrigger>
-                  <span className="flex items-center gap-2">
-                    <Sigma className="h-4 w-4 text-primary" />
-                    1. PN Junction
-                  </span>
-                </AccordionTrigger>
-                <AccordionPanel>
-                  <ChapterPanel content={<Chapter1Content />} tool={<PNJunctionTool />} />
-                </AccordionPanel>
-              </AccordionItem>
-
-              <AccordionItem value="chapter2">
-                <AccordionTrigger>
-                  <span className="flex items-center gap-2">
-                    <Sigma className="h-4 w-4 text-primary" />
-                    2. Long-Channel MOSFET
-                  </span>
-                </AccordionTrigger>
-                <AccordionPanel>
-                  <ChapterPanel content={<Chapter2Content />} tool={<MOSCapacitorTool />} />
-                </AccordionPanel>
-              </AccordionItem>
-
-              <AccordionItem value="chapter3">
-                <AccordionTrigger>
-                  <span className="flex items-center gap-2">
-                    <Sigma className="h-4 w-4 text-primary" />
-                    3. Short-Channel MOSFET
-                  </span>
-                </AccordionTrigger>
-                <AccordionPanel>
-                  <ChapterPanel content={<Chapter3Content />} />
-                </AccordionPanel>
-              </AccordionItem>
-
-              <AccordionItem value="chapter4">
-                <AccordionTrigger>
-                  <span className="flex items-center gap-2">
-                    <Sigma className="h-4 w-4 text-primary" />
-                    4. MOSFET Performance Enhancement
-                  </span>
-                </AccordionTrigger>
-                <AccordionPanel>
-                  <ChapterPanel content={<Chapter4Content />} />
-                </AccordionPanel>
-              </AccordionItem>
-
-              <AccordionItem value="chapter5">
-                <AccordionTrigger>
-                  <span className="flex items-center gap-2">
-                    <Sigma className="h-4 w-4 text-primary" />
-                    5. Python TCAD
-                  </span>
-                </AccordionTrigger>
-                <AccordionPanel>
-                  <ChapterPanel content={<Chapter5Content />} />
-                </AccordionPanel>
-              </AccordionItem>
-            </Accordion>
-          </CardContent>
-        </Card>
+      <div className="mx-auto max-w-3xl px-6 py-8">
+        <h1 className="mb-6 text-2xl font-bold leading-snug">Theory</h1>
+        {active.content}
       </div>
+      {/* Every chapter's panel stays mounted (not just the active chapter's)
+          so a tool's selections/results survive switching chapters and
+          coming back — see ToolPanel's own comment for how `active` gates
+          visibility without unmounting. */}
+      {Object.entries(CHAPTER_CONTENT).map(([id, chapter]) =>
+        chapter.tool ? (
+          <ToolPanel key={id} active={id === activeId}>
+            {chapter.tool}
+          </ToolPanel>
+        ) : null,
+      )}
     </div>
   );
 }

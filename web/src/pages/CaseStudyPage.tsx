@@ -1,8 +1,6 @@
-import { useState } from "react";
-import { FlaskConical } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Accordion, AccordionItem, AccordionTrigger, AccordionPanel } from "@/components/ui/accordion";
+import { type ReactNode } from "react";
+import { useSearchParams } from "react-router-dom";
+import { ToolPanel } from "@/components/ToolPanel";
 import { CaseStudyFlow } from "@/features/caseStudy/CaseStudyFlow";
 
 const TEMPLATE_STEPS = [
@@ -98,171 +96,113 @@ const CASE_STUDIES: CaseStudy[] = [
   },
 ];
 
-function ChannelLengthCasePanel({ study }: { study: CaseStudy }) {
-  const [showInteractive, setShowInteractive] = useState(false);
-
+function OverviewContent() {
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex justify-end">
-        <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={() => setShowInteractive((v) => !v)}>
-          <FlaskConical className="h-3.5 w-3.5" />
-          {showInteractive ? "설명 보기" : "직접 예측하고 확인하기"}
-        </Button>
-      </div>
-      {showInteractive ? (
-        <CaseStudyFlow topicId="sce_channel_length" />
-      ) : (
-        <div className="flex flex-col gap-3 text-sm leading-[1.8] text-foreground">
-          <div>
-            <p className="mb-0.5 text-[11px] font-bold uppercase tracking-wide text-on-surface-variant/70">비교 목적</p>
-            <p>{study.purpose}</p>
-          </div>
-
-          <div>
-            <p className="mb-1 text-[11px] font-bold uppercase tracking-wide text-on-surface-variant/70">조건 설정</p>
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-sm border border-outline-variant bg-surface-container px-2.5 py-1 font-mono text-[11px] font-medium">
-                Case A — {study.caseA}
-              </span>
-              <span className="rounded-sm border border-outline-variant bg-surface-container px-2.5 py-1 font-mono text-[11px] font-medium">
-                Case B — {study.caseB}
-              </span>
-            </div>
-            <ul className="mt-1.5 list-inside list-disc space-y-0.5 pl-1">
-              {study.shared.map((item) => (
-                <li key={item}>{item}</li>
-              ))}
-            </ul>
-          </div>
-
-          <div>
-            <p className="mb-1 text-[11px] font-bold uppercase tracking-wide text-on-surface-variant/70">확인 항목</p>
-            <ul className="grid grid-cols-1 gap-x-4 gap-y-0.5 sm:grid-cols-2">
-              {study.checkItems.map((item) => (
-                <li key={item} className="list-inside list-disc">
-                  {item}
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div>
-            <p className="mb-1 text-[11px] font-bold uppercase tracking-wide text-on-surface-variant/70">예상 해석 방향</p>
-            <div className="flex flex-col gap-1">
-              {study.interpretation.map((line) => (
-                <p key={line}>{line}</p>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
+    <div>
+      <p className="text-base leading-[1.8] text-foreground">
+        Case Study 탭에서는 특정 입력 조건을 예시로 설정하고, 조건 변화에 따라 I–V Curve, 전기적 파라미터, Field Map이 어떻게
+        달라지는지 비교합니다. 각 사례는 다음 순서로 구성합니다.
+      </p>
+      <ol className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 rounded-sm border border-outline-variant bg-surface-container-low p-3 font-mono text-[11px] sm:grid-cols-4">
+        {TEMPLATE_STEPS.map((step, index) => (
+          <li key={step}>
+            <span className="font-semibold text-foreground">{index + 1}.</span> {step}
+          </li>
+        ))}
+      </ol>
+      <p className="mt-3 text-base leading-[1.8] text-foreground">
+        각 Case Study는 모든 조건을 한 번에 변경하지 않고 한 가지 변수만 변경하여 결과의 원인을 명확하게 확인할 수 있도록
+        구성합니다.
+      </p>
     </div>
   );
 }
 
+function CaseStudyContent({ study }: { study: CaseStudy }) {
+  return (
+    <div className="flex flex-col gap-3 text-sm leading-[1.8] text-foreground">
+      <div>
+        <p className="mb-0.5 text-[11px] font-bold uppercase tracking-wide text-on-surface-variant/70">비교 목적</p>
+        <p>{study.purpose}</p>
+      </div>
+
+      <div>
+        <p className="mb-1 text-[11px] font-bold uppercase tracking-wide text-on-surface-variant/70">조건 설정</p>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="rounded-sm border border-outline-variant bg-surface-container px-2.5 py-1 font-mono text-[11px] font-medium">
+            Case A — {study.caseA}
+          </span>
+          <span className="rounded-sm border border-outline-variant bg-surface-container px-2.5 py-1 font-mono text-[11px] font-medium">
+            Case B — {study.caseB}
+          </span>
+        </div>
+        <ul className="mt-1.5 list-inside list-disc space-y-0.5 pl-1">
+          {study.shared.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+      </div>
+
+      <div>
+        <p className="mb-1 text-[11px] font-bold uppercase tracking-wide text-on-surface-variant/70">확인 항목</p>
+        <ul className="grid grid-cols-1 gap-x-4 gap-y-0.5 sm:grid-cols-2">
+          {study.checkItems.map((item) => (
+            <li key={item} className="list-inside list-disc">
+              {item}
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div>
+        <p className="mb-1 text-[11px] font-bold uppercase tracking-wide text-on-surface-variant/70">예상 해석 방향</p>
+        <div className="flex flex-col gap-1">
+          {study.interpretation.map((line) => (
+            <p key={line}>{line}</p>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const SECTION_CONTENT: Record<string, { content: ReactNode; tool?: ReactNode }> = {
+  overview: { content: <OverviewContent /> },
+  ...Object.fromEntries(
+    CASE_STUDIES.map((study) => [
+      study.id,
+      {
+        content: <CaseStudyContent study={study} />,
+        tool: study.id === "channel-length" ? <CaseStudyFlow topicId="sce_channel_length" /> : undefined,
+      },
+    ]),
+  ),
+  "sd-doping": {
+    content: <p className="text-[13px] text-on-surface-variant">준비 중입니다.</p>,
+  },
+};
+
 export default function CaseStudyPage() {
+  const [searchParams] = useSearchParams();
+  const activeId = searchParams.get("section") ?? "overview";
+  const active = SECTION_CONTENT[activeId] ?? SECTION_CONTENT.overview;
+
   return (
     <div className="h-full overflow-y-auto">
-      <div className="mx-auto flex max-w-4xl flex-col gap-8 px-6 py-8">
-        {/* Hero */}
-        <div>
-          <h1 className="text-2xl font-bold leading-snug">Case Study</h1>
-          <p className="mt-3 text-base leading-[1.8] text-foreground">
-            Case Study 탭에서는 특정 입력 조건을 예시로 설정하고, 조건 변화에 따라 I–V Curve, 전기적 파라미터, Field Map이 어떻게
-            달라지는지 비교합니다. 각 사례는 다음 순서로 구성합니다.
-          </p>
-          <ol className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 rounded-sm border border-outline-variant bg-surface-container-low p-3 font-mono text-[11px] sm:grid-cols-4">
-            {TEMPLATE_STEPS.map((step, index) => (
-              <li key={step}>
-                <span className="font-semibold text-foreground">{index + 1}.</span> {step}
-              </li>
-            ))}
-          </ol>
-          <p className="mt-3 text-base leading-[1.8] text-foreground">
-            각 Case Study는 모든 조건을 한 번에 변경하지 않고 한 가지 변수만 변경하여 결과의 원인을 명확하게 확인할 수 있도록
-            구성합니다.
-          </p>
-        </div>
-
-        {/* Case studies */}
-        <Card>
-          <CardContent>
-            <Accordion className="flex flex-col">
-              {CASE_STUDIES.map((study) => (
-                <AccordionItem key={study.id} value={study.id}>
-                  <AccordionTrigger>
-                    <span className="flex items-center gap-2">
-                      <FlaskConical className="h-4 w-4 text-primary" />
-                      {study.title}
-                    </span>
-                  </AccordionTrigger>
-                  <AccordionPanel>
-                    {study.id === "channel-length" ? (
-                      <ChannelLengthCasePanel study={study} />
-                    ) : (
-                      <div className="flex flex-col gap-3 text-sm leading-[1.8] text-foreground">
-                        <div>
-                          <p className="mb-0.5 text-[11px] font-bold uppercase tracking-wide text-on-surface-variant/70">비교 목적</p>
-                          <p>{study.purpose}</p>
-                        </div>
-
-                        <div>
-                          <p className="mb-1 text-[11px] font-bold uppercase tracking-wide text-on-surface-variant/70">조건 설정</p>
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="rounded-sm border border-outline-variant bg-surface-container px-2.5 py-1 font-mono text-[11px] font-medium">
-                              Case A — {study.caseA}
-                            </span>
-                            <span className="rounded-sm border border-outline-variant bg-surface-container px-2.5 py-1 font-mono text-[11px] font-medium">
-                              Case B — {study.caseB}
-                            </span>
-                          </div>
-                          <ul className="mt-1.5 list-inside list-disc space-y-0.5 pl-1">
-                            {study.shared.map((item) => (
-                              <li key={item}>{item}</li>
-                            ))}
-                          </ul>
-                        </div>
-
-                        <div>
-                          <p className="mb-1 text-[11px] font-bold uppercase tracking-wide text-on-surface-variant/70">확인 항목</p>
-                          <ul className="grid grid-cols-1 gap-x-4 gap-y-0.5 sm:grid-cols-2">
-                            {study.checkItems.map((item) => (
-                              <li key={item} className="list-inside list-disc">
-                                {item}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-
-                        <div>
-                          <p className="mb-1 text-[11px] font-bold uppercase tracking-wide text-on-surface-variant/70">예상 해석 방향</p>
-                          <div className="flex flex-col gap-1">
-                            {study.interpretation.map((line) => (
-                              <p key={line}>{line}</p>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </AccordionPanel>
-                </AccordionItem>
-              ))}
-
-              <AccordionItem value="sd-doping">
-                <AccordionTrigger>
-                  <span className="flex items-center gap-2">
-                    <FlaskConical className="h-4 w-4 text-primary" />
-                    Case Study 5. S/D 도핑 변화
-                  </span>
-                </AccordionTrigger>
-                <AccordionPanel>
-                  <p className="text-[13px] text-on-surface-variant">준비 중입니다.</p>
-                </AccordionPanel>
-              </AccordionItem>
-            </Accordion>
-          </CardContent>
-        </Card>
+      <div className="mx-auto max-w-3xl px-6 py-8">
+        <h1 className="mb-6 text-2xl font-bold leading-snug">Case Study</h1>
+        {active.content}
       </div>
+      {/* Every case's panel stays mounted (not just the active one) so a
+          tool's device parameters/predicted results survive switching cases
+          and coming back — see ToolPanel's own comment for details. */}
+      {Object.entries(SECTION_CONTENT).map(([id, section]) =>
+        section.tool ? (
+          <ToolPanel key={id} label="직접 예측하고 확인하기" active={id === activeId}>
+            {section.tool}
+          </ToolPanel>
+        ) : null,
+      )}
     </div>
   );
 }
