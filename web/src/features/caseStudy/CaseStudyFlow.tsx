@@ -311,7 +311,7 @@ export function CaseStudyFlow({ topicId }: { topicId: string }) {
       {step === "results" && (
         <div className="flex flex-col gap-3">
           <div className="h-72">
-            <CurveChart curves={curves} combined logScale />
+            <CurveChart curves={curves} combined />
           </div>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">

@@ -71,12 +71,7 @@ export default function CurvesPage() {
     result: resultsCache[d.id]?.result ?? null,
   }));
 
-  const {
-    curveCombined: combined,
-    setCurveCombined: setCombined,
-    curveLogScale: logScale,
-    setCurveLogScale: setLogScale,
-  } = useViewStore();
+  const { curveCombined: combined, setCurveCombined: setCombined } = useViewStore();
   const [explanationStatus, setExplanationStatus] = useState<ExplanationStatus>("ready");
   const [explanationContent, setExplanationContent] = useState("");
   const [provider, setProvider] = useState<"mock" | "external_llm" | null>(null);
@@ -117,9 +112,6 @@ export default function CurvesPage() {
               </p>
             </div>
             <div className="flex gap-2">
-              <Button size="sm" variant="outline" className="text-xs uppercase" onClick={() => setLogScale(!logScale)}>
-                {logScale ? "Linear Scale" : "Log Scale"}
-              </Button>
               <Button size="sm" variant="outline" className="text-xs uppercase" onClick={() => setCombined(!combined)}>
                 {combined ? "Separate Biases" : "Combine Biases"}
               </Button>
@@ -136,7 +128,7 @@ export default function CurvesPage() {
           )}
         </div>
         <div className="h-[320px] shrink-0">
-          <CurveChart curves={curves} combined={combined} logScale={logScale} />
+          <CurveChart curves={curves} combined={combined} />
         </div>
         <div className="rounded-md border border-outline-variant bg-surface-container-low p-3">
           <ExplanationPanel

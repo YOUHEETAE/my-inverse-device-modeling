@@ -13,8 +13,6 @@ interface ViewStoreValue {
   setFieldRangeMode: (value: RangeMode) => void;
   curveCombined: boolean;
   setCurveCombined: (value: boolean) => void;
-  curveLogScale: boolean;
-  setCurveLogScale: (value: boolean) => void;
 }
 
 const ViewStoreContext = createContext<ViewStoreValue | null>(null);
@@ -24,7 +22,6 @@ export function ViewStoreProvider({ children }: { children: ReactNode }) {
   const [fieldScaleMode, setFieldScaleMode] = useState<ScaleMode>("Auto");
   const [fieldRangeMode, setFieldRangeMode] = useState<RangeMode>("Robust 1-99%");
   const [curveCombined, setCurveCombined] = useState(true);
-  const [curveLogScale, setCurveLogScale] = useState(false);
 
   return (
     <ViewStoreContext.Provider
@@ -37,8 +34,6 @@ export function ViewStoreProvider({ children }: { children: ReactNode }) {
         setFieldRangeMode,
         curveCombined,
         setCurveCombined,
-        curveLogScale,
-        setCurveLogScale,
       }}
     >
       {children}

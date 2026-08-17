@@ -55,8 +55,8 @@ export const PARAMETER_OPTIONS: Record<keyof DeviceParameters, string[]> = {
 };
 
 export const DEFAULT_PARAMETERS: DeviceParameters = {
-  L: "200",
-  T: "20",
+  L: "500",
+  T: "15",
   B: "1e16",
   SD: "1e20",
   LDD: "1e18",
