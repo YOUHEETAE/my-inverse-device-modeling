@@ -6,15 +6,10 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from app import REPO_ROOT
-
-# Reads the same precomputed_data the Tkinter reference app
-# (tcad/theory/chapter1_pn_junction/{app,data_loader}.py) uses. Not importing
-# that module directly: it relies on bare `from result_types import ...`
-# imports that only resolve when chapter1_pn_junction/ itself is on sys.path
-# (i.e. run as a script), which conflicts with importing it as part of the
-# `backend.app` package — so this is a small, from-scratch re-read of the
-# same manifest/gzip files instead.
-PN_DATA_DIR = REPO_ROOT / "tcad/theory/chapter1_pn_junction/precomputed_data"
+from tcad.theory.chapter1_pn_junction.data_loader import Dataset as PNDataset
+from tcad.theory.chapter2_long_channel_mosfet.simulations.mos_capacitor.data_loader import (
+    MOSCapDataset,
+)
 
 
 class PNOptionsResponse(BaseModel):
@@ -91,12 +86,6 @@ class LongChannelResultResponse(BaseModel):
     selected_drain_voltage: float
 
 
-MOSCAP_DATA_DIR = (
-    REPO_ROOT
-    / "tcad/theory/chapter2_long_channel_mosfet/simulations/mos_capacitor/precomputed_data"
-)
-
-
 class MOSCapOptionsResponse(BaseModel):
     acceptor_dopings: list[float]
     oxide_thicknesses_nm: list[float]
@@ -128,76 +117,50 @@ class MOSCapResultResponse(BaseModel):
 
 router = APIRouter()
 
-_manifest: dict | None = None
-_cases: dict[tuple[float, float, float], dict] = {}
 _lc_manifest: dict | None = None
 _lc_payload: dict | None = None
-_moscap_manifest: dict | None = None
-_moscap_cases: dict[tuple[float, float, float], dict] = {}
+
+_pn_dataset: PNDataset | None = None
 
 
-def _load_manifest() -> dict:
-    global _manifest, _cases
-    if _manifest is None:
-        manifest_path = PN_DATA_DIR / "manifest.json"
-        if not manifest_path.exists():
-            raise HTTPException(status_code=500, detail="PN junction dataset manifest not found")
-        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-        _cases = {
-            (float(case["acceptors"]), float(case["donors"]), float(case["bias"])): case
-            for case in manifest["cases"]
-            if case["status"] == "ok"
-        }
-        _manifest = manifest
-    return _manifest
-
-
-def _read_case(case: dict) -> dict:
-    with gzip.open(PN_DATA_DIR / case["file"], "rt", encoding="utf-8") as stream:
-        return json.load(stream)
+def _load_pn_dataset() -> PNDataset:
+    global _pn_dataset
+    if _pn_dataset is None:
+        try:
+            _pn_dataset = PNDataset()
+        except FileNotFoundError as exc:
+            raise HTTPException(status_code=500, detail=str(exc)) from exc
+    return _pn_dataset
 
 
 @router.get("/theory/pn-junction/options")
 def get_pn_junction_options() -> PNOptionsResponse:
-    manifest = _load_manifest()
-    return PNOptionsResponse(
-        dopings=[float(v) for v in manifest["dopings"]],
-        biases=[float(v) for v in manifest["biases"]],
-    )
+    dataset = _load_pn_dataset()
+    return PNOptionsResponse(dopings=list(dataset.dopings), biases=list(dataset.biases))
 
 
 @router.post("/theory/pn-junction/result")
 def get_pn_junction_result(request: PNResultRequest) -> PNResultResponse:
-    manifest = _load_manifest()
-    key = (request.acceptors, request.donors, request.bias)
-    case = _cases.get(key)
-    if case is None:
-        raise HTTPException(
-            status_code=404,
-            detail=f"No saved result for NA={request.acceptors:g}, ND={request.donors:g}, V={request.bias:g}",
-        )
-    payload = _read_case(case)
-    triangulation = mtri.Triangulation(payload["x_um"], payload["y_um"])
+    dataset = _load_pn_dataset()
+    try:
+        result = dataset.load(request.acceptors, request.donors, request.bias)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=exc.args[0]) from exc
 
-    iv_cases = [
-        _cases[(request.acceptors, request.donors, float(voltage))]
-        for voltage in manifest["biases"]
-        if (request.acceptors, request.donors, float(voltage)) in _cases
-    ]
-
+    triangulation = mtri.Triangulation(result.x_um, result.y_um)
     return PNResultResponse(
-        x_um=payload["x_um"],
-        y_um=payload["y_um"],
+        x_um=result.x_um.tolist(),
+        y_um=result.y_um.tolist(),
         triangles=triangulation.triangles.tolist(),
-        net_doping=payload["net_doping"],
-        potential=payload["potential"],
-        electrons=payload["electrons"],
-        holes=payload["holes"],
-        electric_field=payload["electric_field"],
-        electric_field_x=payload["electric_field_x"],
-        voltages=[float(c["bias"]) for c in iv_cases],
-        currents=[float(c["current"]) for c in iv_cases],
-        selected_bias=request.bias,
+        net_doping=result.net_doping.tolist(),
+        potential=result.potential.tolist(),
+        electrons=result.electrons.tolist(),
+        holes=result.holes.tolist(),
+        electric_field=result.electric_field.tolist(),
+        electric_field_x=result.electric_field_x.tolist(),
+        voltages=result.voltages.tolist(),
+        currents=result.currents.tolist(),
+        selected_bias=result.selected_bias,
     )
 
 
@@ -271,68 +234,50 @@ def get_long_channel_mosfet_result(request: LongChannelResultRequest) -> LongCha
     )
 
 
-def _load_moscap_manifest() -> dict:
-    global _moscap_manifest, _moscap_cases
-    if _moscap_manifest is None:
-        manifest_path = MOSCAP_DATA_DIR / "manifest.json"
-        if not manifest_path.exists():
-            raise HTTPException(status_code=500, detail="MOS capacitor dataset manifest not found")
-        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-        _moscap_cases = {
-            (
-                float(case["acceptor_doping"]),
-                float(case["oxide_thickness_nm"]),
-                float(case["gate_voltage"]),
-            ): case
-            for case in manifest["cases"]
-            if case["status"] == "ok"
-        }
-        _moscap_manifest = manifest
-    return _moscap_manifest
+_moscap_dataset: MOSCapDataset | None = None
 
 
-def _read_moscap_case(case: dict) -> dict:
-    with gzip.open(MOSCAP_DATA_DIR / case["file"], "rt", encoding="utf-8") as stream:
-        return json.load(stream)
+def _load_moscap_dataset() -> MOSCapDataset:
+    global _moscap_dataset
+    if _moscap_dataset is None:
+        try:
+            _moscap_dataset = MOSCapDataset()
+        except FileNotFoundError as exc:
+            raise HTTPException(status_code=500, detail=str(exc)) from exc
+    return _moscap_dataset
 
 
 @router.get("/theory/mos-capacitor/options")
 def get_mos_capacitor_options() -> MOSCapOptionsResponse:
-    manifest = _load_moscap_manifest()
+    dataset = _load_moscap_dataset()
     return MOSCapOptionsResponse(
-        acceptor_dopings=[float(v) for v in manifest["acceptor_dopings"]],
-        oxide_thicknesses_nm=[float(v) for v in manifest["oxide_thicknesses_nm"]],
-        gate_voltages=[float(v) for v in manifest["gate_voltages"]],
+        acceptor_dopings=list(dataset.acceptor_dopings),
+        oxide_thicknesses_nm=list(dataset.oxide_thicknesses_nm),
+        gate_voltages=list(dataset.gate_voltages),
     )
 
 
 @router.post("/theory/mos-capacitor/result")
 def get_mos_capacitor_result(request: MOSCapResultRequest) -> MOSCapResultResponse:
-    _load_moscap_manifest()
-    key = (request.acceptor_doping, request.oxide_thickness_nm, request.gate_voltage)
-    case = _moscap_cases.get(key)
-    if case is None:
-        raise HTTPException(
-            status_code=404,
-            detail=(
-                f"No saved result for NA={request.acceptor_doping:g}, "
-                f"tox={request.oxide_thickness_nm:g}nm, VG={request.gate_voltage:g}"
-            ),
-        )
-    payload = _read_moscap_case(case)
+    dataset = _load_moscap_dataset()
+    try:
+        result = dataset.load(request.acceptor_doping, request.oxide_thickness_nm, request.gate_voltage)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=exc.args[0]) from exc
+
     return MOSCapResultResponse(
-        acceptor_doping=payload["acceptor_doping"],
-        oxide_thickness_nm=payload["oxide_thickness_nm"],
-        gate_voltage=payload["gate_voltage"],
-        regime=payload["regime"],
-        gate_charge_c_per_cm2=payload["gate_charge_c_per_cm2"],
-        oxide_x_nm=payload["oxide_x_nm"],
-        oxide_potential=payload["oxide_potential"],
-        oxide_field_x_nm=payload["oxide_field_x_nm"],
-        oxide_field=payload["oxide_field"],
-        silicon_depth_nm=payload["silicon_depth_nm"],
-        silicon_potential=payload["silicon_potential"],
-        electrons=payload["electrons"],
-        holes=payload["holes"],
-        charge_density=payload["charge_density"],
+        acceptor_doping=result.acceptor_doping,
+        oxide_thickness_nm=result.oxide_thickness_nm,
+        gate_voltage=result.gate_voltage,
+        regime=result.regime,
+        gate_charge_c_per_cm2=result.gate_charge_c_per_cm2,
+        oxide_x_nm=result.oxide_x_nm.tolist(),
+        oxide_potential=result.oxide_potential.tolist(),
+        oxide_field_x_nm=result.oxide_field_x_nm.tolist(),
+        oxide_field=result.oxide_field.tolist(),
+        silicon_depth_nm=result.silicon_depth_nm.tolist(),
+        silicon_potential=result.silicon_potential.tolist(),
+        electrons=result.electrons.tolist(),
+        holes=result.holes.tolist(),
+        charge_density=result.charge_density.tolist(),
     )

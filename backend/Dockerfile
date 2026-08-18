@@ -34,10 +34,19 @@ COPY ai/model_artifacts/field_map_model/final ai/model_artifacts/field_map_model
 COPY tcad/data_extraction/base_case tcad/data_extraction/base_case
 COPY tcad/data_extraction/parameter_extraction_core.py tcad/data_extraction/parameter_extraction_core.py
 # Precomputed Theory chapter data (backend/app/routers/theory.py reads these
-# directly — no live DEVSIM/gmsh run needed to serve them).
+# directly — no live DEVSIM/gmsh run needed to serve them). data_loader.py/
+# result_types.py are the same modules the Tkinter reference tool (app.py,
+# not shipped here — needs tkinter/matplotlib-GUI libs this image doesn't
+# install) uses; the router imports them directly rather than re-implementing
+# the same manifest/gzip reading, so they need to ship too. app.py itself
+# is intentionally not copied — it's never imported by the backend.
 COPY tcad/theory/chapter1_pn_junction/precomputed_data tcad/theory/chapter1_pn_junction/precomputed_data
+COPY tcad/theory/chapter1_pn_junction/data_loader.py tcad/theory/chapter1_pn_junction/data_loader.py
+COPY tcad/theory/chapter1_pn_junction/result_types.py tcad/theory/chapter1_pn_junction/result_types.py
 COPY tcad/theory/chapter2_long_channel_mosfet/simulations/long_channel_mosfet/precomputed_data tcad/theory/chapter2_long_channel_mosfet/simulations/long_channel_mosfet/precomputed_data
 COPY tcad/theory/chapter2_long_channel_mosfet/simulations/mos_capacitor/precomputed_data tcad/theory/chapter2_long_channel_mosfet/simulations/mos_capacitor/precomputed_data
+COPY tcad/theory/chapter2_long_channel_mosfet/simulations/mos_capacitor/data_loader.py tcad/theory/chapter2_long_channel_mosfet/simulations/mos_capacitor/data_loader.py
+COPY tcad/theory/chapter2_long_channel_mosfet/simulations/mos_capacitor/result_types.py tcad/theory/chapter2_long_channel_mosfet/simulations/mos_capacitor/result_types.py
 COPY backend backend
 
 # Secrets (GROQ_API_KEY, etc.) are injected at `docker run`/compose time via

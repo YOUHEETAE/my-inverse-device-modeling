@@ -6,7 +6,15 @@ from pathlib import Path
 
 import numpy as np
 
-from result_types import PNResult
+try:
+    # Package import — used when the backend imports this module as
+    # tcad.theory.chapter1_pn_junction.data_loader.
+    from .result_types import PNResult
+except ImportError:
+    # Bare import — used when app.py (the Tkinter reference tool) is run
+    # directly as a script, with this directory on sys.path and no
+    # enclosing package context for a relative import to resolve against.
+    from result_types import PNResult
 
 
 DATA_DIR = Path(__file__).resolve().parent / "precomputed_data"
