@@ -25,14 +25,18 @@
 	# /api/* request as a SPA route — hence both routes need to be inside
 	# explicit handle blocks, matched top-to-bottom, first match wins.
 
-	# Proxies to the backend over the internal Docker network (service name
-	# "backend", see docker-compose.yml) instead of the backend's port being
-	# published to the host — the FastAPI process is never reachable directly
-	# from outside. strip_prefix drops /api, since the backend's own routes
-	# aren't prefixed with it.
+	# Proxies to java_service over the internal Docker network (service name
+	# "java_service", see docker-compose.yml). java_service is the only
+	# public entry point to the API; it forwards to the FastAPI backend
+	# itself, which is never reachable directly from outside. strip_prefix
+	# drops /api, since the service's own routes aren't prefixed with it.
+	#
+	# reverse_proxy sets X-Forwarded-For automatically, which is what
+	# java_service's RateLimitInterceptor reads to see the real visitor IP
+	# instead of Caddy's internal container IP.
 	handle /api/* {
 		uri strip_prefix /api
-		reverse_proxy backend:8000
+		reverse_proxy java_service:8080
 	}
 
 	# Serves the Vite build directly and handles client-side routing

@@ -1,9 +1,8 @@
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from ai.curve_model.inference import device_features, range_warning
 from ai.shared.field_data import compute_display_payload, compute_display_payload_multi
-from app.limiter import limiter
 from app.services import build_field_map
 
 
@@ -94,8 +93,7 @@ router = APIRouter()
 
 
 @router.post("/fields/predict")
-@limiter.limit("30/minute")
-async def predict_fields(request: Request, body: FieldRequest) -> FieldResponse:
+async def predict_fields(body: FieldRequest) -> FieldResponse:
     values = body.model_dump()
 
     try:
@@ -124,8 +122,7 @@ async def predict_fields(request: Request, body: FieldRequest) -> FieldResponse:
 
 
 @router.post("/fields/display")
-@limiter.limit("30/minute")
-async def field_display(request: Request, body: FieldDisplayRequest) -> FieldDisplayResponse:
+async def field_display(body: FieldDisplayRequest) -> FieldDisplayResponse:
     values = {k: getattr(body, k) for k in ("L", "T", "B", "SD", "LDD")}
 
     try:
@@ -144,8 +141,7 @@ async def field_display(request: Request, body: FieldDisplayRequest) -> FieldDis
 
 
 @router.post("/fields/display/compare")
-@limiter.limit("30/minute")
-async def field_display_compare(request: Request, body: FieldCompareRequest) -> FieldCompareResponse:
+async def field_display_compare(body: FieldCompareRequest) -> FieldCompareResponse:
     if not body.devices:
         raise HTTPException(status_code=400, detail="At least one device is required.")
 

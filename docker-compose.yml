@@ -5,13 +5,30 @@ services:
       dockerfile: backend/Dockerfile
     env_file:
       - .env
-    # Bound to loopback only, not 0.0.0.0 — the backend is reached through
-    # web's Caddy proxy (see web/Caddyfile's /api/* handler), not directly.
-    # This keeps it reachable for local debugging (curl localhost:8000 on the
-    # host) while guaranteeing it's never exposed externally, independent of
+    # Bound to loopback only, not 0.0.0.0 — the backend is never reached
+    # directly from outside. Public traffic goes Caddy -> java_service ->
+    # backend, all over the internal Docker network. This publish only keeps
+    # it reachable for local debugging (curl localhost:8000 on the host)
+    # while guaranteeing it's never exposed externally, independent of
     # whatever the EC2 security group happens to allow.
     ports:
       - "127.0.0.1:8000:8000"
+
+  java_service:
+    build:
+      context: .
+      dockerfile: java_service/Dockerfile
+    environment:
+      # The FastAPI app is reachable only on the internal Docker network,
+      # under its service name — this is the whole "Python stays an
+      # internal-only black box" boundary.
+      - PYTHON_SERVICE_BASE_URL=http://backend:8000
+    # Same loopback-only rationale as backend above: Caddy reaches this over
+    # the internal network, the published port is for host-side debugging.
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      - backend
 
   web:
     build:
@@ -41,7 +58,7 @@ services:
       - caddy_data:/data
       - caddy_config:/config
     depends_on:
-      - backend
+      - java_service
 
 volumes:
   caddy_data:

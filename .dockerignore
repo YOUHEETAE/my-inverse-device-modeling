@@ -22,3 +22,6 @@ web/node_modules/
 web/dist/
 web/.env
 .env
+
+# 자바 빌드 산출물 — 이미지 안에서 mvn이 새로 빌드하므로 호스트 것은 불필요.
+java_service/target/

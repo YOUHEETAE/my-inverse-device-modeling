@@ -1,9 +1,8 @@
 import math
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Literal
-from app.limiter import limiter
 from app.services import curve_predictor
 from ai.curve_model.inference import (
     device_features,
@@ -38,8 +37,7 @@ router = APIRouter()
 
 
 @router.post("/curves/predict")
-@limiter.limit("30/minute")
-def predict_curves(request: Request, payload: CurveRequest) -> CurveResponse:
+def predict_curves(payload: CurveRequest) -> CurveResponse:
     values = payload.model_dump()
 
     try:

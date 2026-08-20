@@ -1,8 +1,7 @@
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from ai.curve_model.inference import device_features
-from app.limiter import limiter
 from app.services import curve_predictor, explanation_service
 
 from app.services import build_field_map
@@ -76,9 +75,7 @@ def _predict_curve_results(curves: list[CurveConfig]):
 
 
 @router.post("/explain/curves")
-@limiter.limit("10/minute")
-@limiter.limit("15/day")
-def explain_curves(request: Request, payload: ExplainCurveRequest) -> ExplainResponse:
+def explain_curves(payload: ExplainCurveRequest) -> ExplainResponse:
     results, configs = _predict_curve_results(payload.curves)
 
     result = explanation_service.explain_curves(results=results, configs=configs)
@@ -95,8 +92,7 @@ def explain_curves(request: Request, payload: ExplainCurveRequest) -> ExplainRes
 
 
 @router.post("/explain/curves/prompt")
-@limiter.limit("10/minute")
-def explain_curves_prompt(request: Request, payload: ExplainCurveRequest) -> PromptResponse:
+def explain_curves_prompt(payload: ExplainCurveRequest) -> PromptResponse:
     results, configs = _predict_curve_results(payload.curves)
 
     prompt = explanation_service.build_curves_prompt(results=results, configs=configs)
@@ -113,9 +109,7 @@ def _build_field_outputs(fields: list[FieldConfig]):
 
 
 @router.post("/explain/fields")
-@limiter.limit("10/minute")
-@limiter.limit("15/day")
-async def explain_fields_endpoint(request: Request, payload: ExplainFieldRequest) -> ExplainResponse:
+async def explain_fields_endpoint(payload: ExplainFieldRequest) -> ExplainResponse:
     outputs = _build_field_outputs(payload.fields)
 
     try:
@@ -140,8 +134,7 @@ async def explain_fields_endpoint(request: Request, payload: ExplainFieldRequest
 
 
 @router.post("/explain/fields/prompt")
-@limiter.limit("10/minute")
-async def explain_fields_prompt(request: Request, payload: ExplainFieldRequest) -> PromptResponse:
+async def explain_fields_prompt(payload: ExplainFieldRequest) -> PromptResponse:
     outputs = _build_field_outputs(payload.fields)
 
     try:
