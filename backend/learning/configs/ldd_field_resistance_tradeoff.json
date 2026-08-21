@@ -1,0 +1,245 @@
+{
+  "schema_version": "1.0",
+  "topic_id": "ldd_field_resistance_tradeoff",
+  "catalog_order": 5,
+  "prerequisite_topic_ids": [
+    "source_drain_on_state_conduction"
+  ],
+  "title": "LDD와 Drain Field–Access Resistance Trade-off",
+  "description": "LDD doping 변화가 Drain-side 전계 분포, on-state 전류와 유효 저항에 미치는 영향을 학습한다.",
+  "learning_objectives": [
+    "LDD doping과 Drain-side Potential·Electric Field 분포의 관계를 설명한다.",
+    "Ion·유효 Ron의 conduction 변화와 gds의 출력 특성 변화를 구분해 해석한다.",
+    "Drain 전계 완화와 access resistance 사이의 trade-off를 I–V Curve와 Field Map으로 판단한다."
+  ],
+  "required_outputs": [
+    "idvd",
+    "idvg",
+    "potential",
+    "electric_field"
+  ],
+  "expected_concepts": [
+    "higher_ldd_increases_ion_in_current_result",
+    "higher_ldd_decreases_effective_ron_in_current_result",
+    "higher_ldd_increases_drain_field_in_current_result",
+    "higher_ldd_increases_gds_in_current_result",
+    "ldd_changes_access_conduction",
+    "ldd_field_resistance_tradeoff"
+  ],
+  "common_misconceptions": [
+    "lower_ldd_is_always_better",
+    "higher_ldd_improves_everything",
+    "ron_is_only_ldd_resistance",
+    "field_reduction_proves_reliability",
+    "gds_increase_is_drive_benefit",
+    "field_magnitude_directly_predicts_ion"
+  ],
+  "theory_concepts": [
+    "ldd",
+    "electric_field",
+    "potential",
+    "on_current",
+    "on_resistance",
+    "transconductance",
+    "output_conductance"
+  ],
+  "experiment": {
+    "baseline": {
+      "L": 700,
+      "T": 20,
+      "B": 1e16,
+      "SD": 1e20,
+      "LDD": 5e17
+    },
+    "comparison": {
+      "L": 700,
+      "T": 20,
+      "B": 1e16,
+      "SD": 1e20,
+      "LDD": 5e18
+    }
+  },
+  "prediction_questions": [
+    {
+      "question_id": "ldd_pred_ion",
+      "type": "single_select_with_reason",
+      "prompt": "현재 모델과 고정된 조건에서 LDD doping이 5×10¹⁷ cm⁻³에서 5×10¹⁸ cm⁻³로 증가하면 Ion은 어떻게 변할까요?",
+      "options": [
+        "증가",
+        "감소",
+        "큰 변화 없음"
+      ],
+      "correct_options": [
+        "증가"
+      ],
+      "reason_required": true,
+      "concepts_by_option": {
+        "증가": [
+          "higher_ldd_increases_ion_in_current_result",
+          "ldd_changes_access_conduction"
+        ]
+      },
+      "misconceptions_by_option": {}
+    },
+    {
+      "question_id": "ldd_pred_ron",
+      "type": "single_select_with_reason",
+      "prompt": "현재 모델의 동일한 on-state 추출 조건에서 LDD doping이 증가하면 유효 Ron은 어떻게 변할까요?",
+      "options": [
+        "증가",
+        "감소",
+        "큰 변화 없음"
+      ],
+      "correct_options": [
+        "감소"
+      ],
+      "reason_required": true,
+      "concepts_by_option": {
+        "감소": [
+          "higher_ldd_decreases_effective_ron_in_current_result",
+          "ldd_changes_access_conduction"
+        ]
+      },
+      "misconceptions_by_option": {}
+    },
+    {
+      "question_id": "ldd_pred_drain_field",
+      "type": "single_select_with_reason",
+      "prompt": "현재 모델과 고정된 bias에서 LDD doping이 증가하면 Drain 인접 Electric Field는 어떻게 변할까요?",
+      "options": [
+        "증가",
+        "감소",
+        "큰 변화 없음"
+      ],
+      "correct_options": [
+        "증가"
+      ],
+      "reason_required": true,
+      "concepts_by_option": {
+        "증가": [
+          "higher_ldd_increases_drain_field_in_current_result",
+          "ldd_field_resistance_tradeoff"
+        ]
+      },
+      "misconceptions_by_option": {
+        "감소": [
+          "higher_ldd_improves_everything"
+        ]
+      }
+    }
+  ],
+  "observation_questions": [
+    {
+      "question_id": "ldd_obs_iv_conduction",
+      "type": "multi_select_with_reason",
+      "prompt": "두 I–V Curve와 추출값을 함께 볼 때 5×10¹⁸ cm⁻³ 조건의 access conduction 강화를 가장 직접적으로 보여주는 결과 두 개를 고르고 관계를 설명하세요.",
+      "options": [
+        "Ion 증가",
+        "Ron 감소",
+        "gm 증가",
+        "gds 증가",
+        "Drain 인접 Electric Field 증가"
+      ],
+      "correct_options": [
+        "Ion 증가",
+        "Ron 감소"
+      ],
+      "reason_required": true,
+      "concepts_by_option": {
+        "Ion 증가": [
+          "higher_ldd_increases_ion_in_current_result"
+        ],
+        "Ron 감소": [
+          "higher_ldd_decreases_effective_ron_in_current_result"
+        ]
+      },
+      "misconceptions_by_option": {
+        "Drain 인접 Electric Field 증가": [
+          "field_magnitude_directly_predicts_ion"
+        ]
+      }
+    },
+    {
+      "question_id": "ldd_obs_iv_tradeoff",
+      "type": "single_select_with_reason",
+      "prompt": "5×10¹⁸ cm⁻³ 조건의 Ion·Ron·gm·gds 변화가 각각 어떤 미분 특성과 동작 영역을 나타내는지 올바르게 연결한 것은 무엇인가요?",
+      "options": [
+        "Ion·Ron은 on-state 전달 경로, gm은 Gate 전압에 대한 전류 응답, gds는 포화영역 Drain 전압 민감도를 나타내므로 구동 이득과 출력 저항 비용을 함께 읽는다",
+        "gm은 포화영역 dId/dVd이고 gds는 Gate 응답 dId/dVg이므로 두 증가가 같은 Gate 제어 향상을 보여준다",
+        "Ron과 gds는 모두 Id–Vd 기울기의 역수 관계이므로 Ron 감소가 확인되면 gds 증가는 추가 정보가 아니다",
+        "Ion·gm 증가는 LDD가 Channel mobility를 높였음을, Ron·gds 변화는 LDD 영역 저항만 감소했음을 각각 보여준다"
+      ],
+      "correct_options": [
+        "Ion·Ron은 on-state 전달 경로, gm은 Gate 전압에 대한 전류 응답, gds는 포화영역 Drain 전압 민감도를 나타내므로 구동 이득과 출력 저항 비용을 함께 읽는다"
+      ],
+      "reason_required": true,
+      "concepts_by_option": {
+        "Ion·Ron은 on-state 전달 경로, gm은 Gate 전압에 대한 전류 응답, gds는 포화영역 Drain 전압 민감도를 나타내므로 구동 이득과 출력 저항 비용을 함께 읽는다": [
+          "higher_ldd_increases_ion_in_current_result",
+          "higher_ldd_decreases_effective_ron_in_current_result",
+          "higher_ldd_increases_gds_in_current_result",
+          "ldd_field_resistance_tradeoff"
+        ]
+      },
+      "misconceptions_by_option": {
+        "gm은 포화영역 dId/dVd이고 gds는 Gate 응답 dId/dVg이므로 두 증가가 같은 Gate 제어 향상을 보여준다": [
+          "gds_increase_is_drive_benefit"
+        ],
+        "Ron과 gds는 모두 Id–Vd 기울기의 역수 관계이므로 Ron 감소가 확인되면 gds 증가는 추가 정보가 아니다": [
+          "ron_is_only_ldd_resistance"
+        ],
+        "Ion·gm 증가는 LDD가 Channel mobility를 높였음을, Ron·gds 변화는 LDD 영역 저항만 감소했음을 각각 보여준다": [
+          "ron_is_only_ldd_resistance"
+        ]
+      }
+    },
+    {
+      "question_id": "ldd_obs_field_tradeoff",
+      "type": "single_select_with_reason",
+      "prompt": "Low LDD와 High LDD의 Drain 인접 Field 차이와 Ion·Ron 차이를 하나의 접합–전도 Trade-off로 가장 잘 설명한 것은 무엇인가요?",
+      "options": [
+        "더 낮은 extension 농도는 Drain 쪽 전위 강하를 넓게 분산시키는 대신 access 경로의 유효 저항을 키워 Ion 감소와 Ron 증가를 동반할 수 있다",
+        "낮은 LDD가 Drain 쪽 공핍영역을 넓혀 Channel inversion charge를 줄였고, 이 변화가 Field 완화와 Ion 감소를 함께 주도했다",
+        "높은 LDD가 access 전압 강하를 줄이면서 Drain 인접 Field와 Ion을 함께 높였으므로 두 변화는 같은 전도 이득의 공간·전류 표현이다",
+        "낮은 LDD의 Ron 증가는 extension 저항 증가가 지배하며, Channel과 나머지 access 경로의 기여는 두 조건에서 거의 유지된다"
+      ],
+      "correct_options": [
+        "더 낮은 extension 농도는 Drain 쪽 전위 강하를 넓게 분산시키는 대신 access 경로의 유효 저항을 키워 Ion 감소와 Ron 증가를 동반할 수 있다"
+      ],
+      "reason_required": true,
+      "concepts_by_option": {
+        "더 낮은 extension 농도는 Drain 쪽 전위 강하를 넓게 분산시키는 대신 access 경로의 유효 저항을 키워 Ion 감소와 Ron 증가를 동반할 수 있다": [
+          "higher_ldd_increases_drain_field_in_current_result",
+          "ldd_changes_access_conduction",
+          "ldd_field_resistance_tradeoff"
+        ]
+      },
+      "misconceptions_by_option": {
+        "낮은 LDD가 Drain 쪽 공핍영역을 넓혀 Channel inversion charge를 줄였고, 이 변화가 Field 완화와 Ion 감소를 함께 주도했다": [
+          "field_reduction_proves_reliability"
+        ],
+        "높은 LDD가 access 전압 강하를 줄이면서 Drain 인접 Field와 Ion을 함께 높였으므로 두 변화는 같은 전도 이득의 공간·전류 표현이다": [
+          "field_magnitude_directly_predicts_ion"
+        ],
+        "낮은 LDD의 Ron 증가는 extension 저항 증가가 지배하며, Channel과 나머지 access 경로의 기여는 두 조건에서 거의 유지된다": [
+          "ron_is_only_ldd_resistance"
+        ]
+      }
+    }
+  ],
+  "allowed_next_actions": [
+    {
+      "action_id": "observe_ldd_field_and_resistance",
+      "description": "Drain-side Field와 I–V에서 전계 완화와 access resistance의 trade-off를 확인한다."
+    },
+    {
+      "action_id": "retry_ldd_prediction",
+      "description": "같은 결과를 보고 Ion, 유효 Ron과 Drain 인접 Electric Field 방향을 다시 답한다."
+    },
+    {
+      "action_id": "review_ldd_theory",
+      "description": "Theory의 LDD, Drain 전계와 access resistance 항목을 복습한다."
+    }
+  ],
+  "theory_reference": "Theory > MOSFET Basics > LDD와 Drain Field"
+}

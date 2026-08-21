@@ -26,7 +26,8 @@
   "common_misconceptions": [
     "shorter_channel_improves_everything",
     "shorter_path_always_reduces_off_current",
-    "dibl_is_only_a_curve_shift_without_physical_cause"
+    "dibl_is_only_a_curve_shift_without_physical_cause",
+    "vth_decrease_is_inherently_worse"
   ],
   "theory_concepts": [
     "channel_length",
@@ -58,35 +59,73 @@
   },
   "prediction_questions": [
     {
-      "question_id": "sce_pred_ion_ioff",
-      "type": "multi_select_with_reason",
-      "prompt": "채널 길이가 700 nm에서 300 nm로 감소하면 Ion과 Ioff는 어떻게 변할까요?",
+      "question_id": "sce_pred_ion",
+      "type": "single_select_with_reason",
+      "prompt": "채널 길이가 700 nm에서 300 nm로 감소하면 Ion은 어떻게 변할까요?",
       "options": [
-        "Ion 증가",
-        "Ion 감소",
-        "Ioff 증가",
-        "Ioff 감소",
+        "증가",
+        "감소",
         "큰 변화 없음"
       ],
       "reason_required": true,
       "correct_options": [
-        "Ion 증가",
-        "Ioff 증가"
+        "증가"
       ],
       "concepts_by_option": {
-        "Ion 증가": [
+        "증가": [
           "ion_can_increase"
-        ],
-        "Ioff 증가": [
+        ]
+      }
+    },
+    {
+      "question_id": "sce_pred_ioff",
+      "type": "single_select_with_reason",
+      "prompt": "채널 길이가 700 nm에서 300 nm로 감소하면 Ioff는 어떻게 변할까요?",
+      "options": [
+        "증가",
+        "감소",
+        "큰 변화 없음"
+      ],
+      "reason_required": true,
+      "correct_options": [
+        "증가"
+      ],
+      "concepts_by_option": {
+        "증가": [
           "ioff_increases"
         ]
       },
       "misconceptions_by_option": {
-        "Ioff 감소": [
+        "감소": [
           "shorter_path_always_reduces_off_current"
         ],
         "큰 변화 없음": [
           "shorter_channel_improves_everything"
+        ]
+      }
+    },
+    {
+      "question_id": "sce_pred_dibl",
+      "type": "single_select_with_reason",
+      "prompt": "채널 길이가 700 nm에서 300 nm로 감소하면 DIBL은 어떻게 변할까요? 선택한 뒤 본인이 생각하는 DIBL의 정의를 근거 칸에 적어보세요.",
+      "options": [
+        "DIBL 증가",
+        "DIBL 감소",
+        "큰 변화 없음"
+      ],
+      "correct_options": [
+        "DIBL 증가"
+      ],
+      "reason_required": true,
+      "concepts_by_option": {
+        "DIBL 증가": [
+          "dibl_increases",
+          "drain_field_affects_source_barrier"
+        ]
+      },
+      "misconceptions_by_option": {
+        "큰 변화 없음": [
+          "dibl_is_only_a_curve_shift_without_physical_cause"
         ]
       }
     }
@@ -94,8 +133,8 @@
   "observation_questions": [
     {
       "question_id": "sce_obs_subthreshold",
-      "type": "single_select",
-      "prompt": "두 Id–Vg Curve 중 subthreshold 전류가 더 먼저 증가하는 조건은 무엇인가요?",
+      "type": "single_select_with_reason",
+      "prompt": "두 Id–Vg Curve와 Vth·Ioff·DIBL 변화를 함께 볼 때 subthreshold 전류가 더 이른 Vg에서 증가하는 조건을 고르고, Curve 이동을 만든 물리적 원인을 설명하세요.",
       "options": [
         "700 nm",
         "300 nm",
@@ -104,6 +143,7 @@
       "correct_options": [
         "300 nm"
       ],
+      "reason_required": true,
       "concepts_by_option": {
         "300 nm": [
           "ioff_increases"
@@ -113,35 +153,71 @@
     {
       "question_id": "sce_obs_tradeoff",
       "type": "multi_select_with_reason",
-      "prompt": "Ion 변화와 함께 악화된 전기적 특성을 선택하고 관찰 근거를 적어보세요.",
+      "prompt": "300 nm 조건의 off-state 제어 변화를 지표의 정의와 올바르게 연결한 항목을 모두 고르고, 세 지표가 서로 다른 정보를 주는 이유를 설명하세요.",
       "options": [
-        "Ioff",
-        "DIBL",
-        "SS",
-        "Ron",
-        "악화된 특성 없음"
+        "Ioff 증가 — 고정된 off-bias에서 누설 전류가 커졌다",
+        "DIBL 증가 — Drain bias에 대한 Channel 장벽과 Vth의 민감도가 커졌다",
+        "SS 증가 — subthreshold 전류 한 decade를 조절하는 데 더 큰 Gate 전압이 필요해졌다",
+        "Vth 감소 — 두 Drain bias의 Curve가 같은 폭으로 이동해도 그 자체가 DIBL 증가를 뜻한다",
+        "Ron 감소 — on-state 전압 강하가 줄었으므로 고정 off-bias의 Ioff 증가는 누설 비용으로 보지 않는다"
       ],
       "reason_required": true,
       "correct_options": [
-        "Ioff",
-        "DIBL",
-        "SS"
+        "Ioff 증가 — 고정된 off-bias에서 누설 전류가 커졌다",
+        "DIBL 증가 — Drain bias에 대한 Channel 장벽과 Vth의 민감도가 커졌다",
+        "SS 증가 — subthreshold 전류 한 decade를 조절하는 데 더 큰 Gate 전압이 필요해졌다"
       ],
       "concepts_by_option": {
-        "Ioff": [
+        "Ioff 증가 — 고정된 off-bias에서 누설 전류가 커졌다": [
           "ioff_increases"
         ],
-        "DIBL": [
+        "DIBL 증가 — Drain bias에 대한 Channel 장벽과 Vth의 민감도가 커졌다": [
           "dibl_increases",
           "drain_field_affects_source_barrier"
         ],
-        "SS": [
+        "SS 증가 — subthreshold 전류 한 decade를 조절하는 데 더 큰 Gate 전압이 필요해졌다": [
           "ss_increases"
         ]
       },
       "misconceptions_by_option": {
-        "악화된 특성 없음": [
+        "Vth 감소 — 두 Drain bias의 Curve가 같은 폭으로 이동해도 그 자체가 DIBL 증가를 뜻한다": [
+          "vth_decrease_is_inherently_worse"
+        ],
+        "Ron 감소 — on-state 전압 강하가 줄었으므로 고정 off-bias의 Ioff 증가는 누설 비용으로 보지 않는다": [
           "shorter_channel_improves_everything"
+        ]
+      }
+    },
+    {
+      "question_id": "sce_obs_field_coupling",
+      "type": "single_select_with_reason",
+      "prompt": "Potential·Electric Field Map과 I–V 결과를 함께 볼 때 300 nm 조건의 DIBL·Ioff 증가를 가장 직접적으로 뒷받침하는 공간적 해석은 무엇인가요?",
+      "options": [
+        "Drain 쪽 전위 영향이 Channel을 따라 Source 장벽 방향으로 더 깊게 이어져 낮은 Gate bias의 장벽 제어가 약해졌다",
+        "Drain 인접 Electric Field 증가와 Ron 감소가 하나의 전도 경로 변화를 나타내며 Ion·Ioff 증가를 함께 설명한다",
+        "Channel 전체 Potential contour가 낮아진 것이 평균 Vth를 이동시켰고, 두 Drain bias의 차이도 같은 이동량에서 생겼다",
+        "700 nm 조건의 더 넓은 전위 강하 영역이 Drain 전위를 Source 장벽까지 더 효율적으로 전달한다"
+      ],
+      "correct_options": [
+        "Drain 쪽 전위 영향이 Channel을 따라 Source 장벽 방향으로 더 깊게 이어져 낮은 Gate bias의 장벽 제어가 약해졌다"
+      ],
+      "reason_required": true,
+      "concepts_by_option": {
+        "Drain 쪽 전위 영향이 Channel을 따라 Source 장벽 방향으로 더 깊게 이어져 낮은 Gate bias의 장벽 제어가 약해졌다": [
+          "dibl_increases",
+          "ioff_increases",
+          "drain_field_affects_source_barrier"
+        ]
+      },
+      "misconceptions_by_option": {
+        "Drain 인접 Electric Field 증가와 Ron 감소가 하나의 전도 경로 변화를 나타내며 Ion·Ioff 증가를 함께 설명한다": [
+          "shorter_channel_improves_everything"
+        ],
+        "Channel 전체 Potential contour가 낮아진 것이 평균 Vth를 이동시켰고, 두 Drain bias의 차이도 같은 이동량에서 생겼다": [
+          "dibl_is_only_a_curve_shift_without_physical_cause"
+        ],
+        "700 nm 조건의 더 넓은 전위 강하 영역이 Drain 전위를 Source 장벽까지 더 효율적으로 전달한다": [
+          "shorter_path_always_reduces_off_current"
         ]
       }
     }

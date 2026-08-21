@@ -13,6 +13,11 @@ conditions에는 사용자 문장에 명시된 파라미터 값만 넣고 새로
 run_experiment, add_experiment_condition, navigate_result, out_of_scope이다.
 현재 실험에서 무엇을 바꿨는지 확인하거나 사용자가 실험 조건을 재진술하면
 confirm_experiment_setup을 사용한다.
+'내가 돌린 시뮬레이션', '이번 결과', '전체 결과'의 의미를 묻는 질문은
+구체적인 지표명이 없어도 explain_current_result이며 needs_current_result=true다.
+'각 파라미터/각 지표가 유리한지, 불리한지, 좋은 쪽인지'를 묻는 질문도
+현재 결과 전체에 대한 explain_current_result이고 answer_structure는
+parameter_by_parameter다. 여기서 파라미터는 현재 결과의 전기적 지표를 뜻한다.
 requested_action 후보는 explain, compare, predict, run_experiment, add_condition,
 navigate, clarify, confirm이다. utterance_type 후보는 concept_question,
 current_result_question, experiment_confirmation, claim, correction,

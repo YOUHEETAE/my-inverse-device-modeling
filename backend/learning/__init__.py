@@ -11,6 +11,7 @@ from .schemas import (
     LearningStep,
     NextActionSpec,
     QuestionSpec,
+    ReferenceConditionSpec,
     TopicConfig,
     UnderstandingLevel,
 )
@@ -111,6 +112,7 @@ __all__ = [
     "NextActionDecision",
     "ObservationReview",
     "QuestionSpec",
+    "ReferenceConditionSpec",
     "QuestionIntent",
     "QuestionRoute",
     "PlatformReadinessReport",

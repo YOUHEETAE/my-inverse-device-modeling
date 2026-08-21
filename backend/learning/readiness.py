@@ -281,6 +281,59 @@ def run_platform_readiness_audit(
                         "ioff": "increase",
                     },
                 },
+                "body_doping_design_window": {
+                    "changed": "B",
+                    "directions": {
+                        "vth_low": "increase",
+                        "ion": "decrease",
+                        "ioff": "decrease",
+                    },
+                },
+                "source_drain_on_state_conduction": {
+                    "changed": "SD",
+                    "directions": {
+                        "ion": "increase",
+                        "ron": "decrease",
+                        "dibl": "increase",
+                        "gds": "increase",
+                    },
+                },
+                "ldd_field_resistance_tradeoff": {
+                    "changed": "LDD",
+                    "directions": {
+                        "ion": "increase",
+                        "ron": "decrease",
+                        "gm_max": "increase",
+                        "gds": "increase",
+                    },
+                },
+                "channel_oxide_electrostatic_compensation": {
+                    "changed": "T",
+                    "directions": {
+                        "ss": "decrease",
+                        "dibl": "decrease",
+                        "ioff": "increase",
+                        "ion": "increase",
+                    },
+                },
+                "source_drain_ldd_junction_engineering": {
+                    "changed": "LDD",
+                    "directions": {
+                        "ion": "increase",
+                        "ron": "decrease",
+                        "gm_max": "increase",
+                        "gds": "increase",
+                    },
+                },
+                "integrated_device_design": {
+                    "changed": "L",
+                    "directions": {
+                        "ion": "increase",
+                        "ioff": "increase",
+                        "dibl": "increase",
+                        "ron": "decrease",
+                    },
+                },
             }
             details = {}
             for topic_id, contract in expected.items():
@@ -323,6 +376,30 @@ def run_platform_readiness_audit(
                 "oxide_gate_control": (
                     "이번 결과에서 gm은 증가하고 SS는 감소했는데 왜 그런가요?",
                     {"transconductance", "subthreshold_swing"},
+                ),
+                "body_doping_design_window": (
+                    "이번 결과에서 Body doping을 높였더니 Vth가 왜 증가했나요?",
+                    {"body_doping", "threshold_voltage"},
+                ),
+                "source_drain_on_state_conduction": (
+                    "이번 결과에서 Source/Drain doping을 높였더니 Ion과 DIBL이 왜 함께 증가했나요?",
+                    {"source_drain_doping", "on_current", "dibl"},
+                ),
+                "ldd_field_resistance_tradeoff": (
+                    "이번 결과에서 LDD doping을 높였더니 Drain Field와 Ion이 왜 함께 증가했나요?",
+                    {"ldd", "electric_field", "on_current"},
+                ),
+                "channel_oxide_electrostatic_compensation": (
+                    "이번 결과에서 얇은 Oxide가 짧은 Channel의 DIBL을 얼마나 보상했나요?",
+                    {"oxide_thickness", "dibl", "short_channel_effect"},
+                ),
+                "source_drain_ldd_junction_engineering": (
+                    "이번 결과에서 High SD와 High LDD를 함께 썼을 때 구동 이득과 Drain 제어 비용은 무엇인가요?",
+                    {"source_drain_doping", "ldd", "on_current", "dibl"},
+                ),
+                "integrated_device_design": (
+                    "이번 결과에서 Balanced 후보의 Ion, Ioff, DIBL, SS가 목표 사양을 어떻게 만족했나요?",
+                    {"on_current", "off_current", "dibl", "subthreshold_swing"},
                 ),
             }
             details = {}

@@ -81,6 +81,24 @@ class NextActionSpec:
 
 
 @dataclass(frozen=True)
+class ReferenceConditionSpec:
+    condition_id: str
+    label: str
+    conditions: dict[str, float]
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "ReferenceConditionSpec":
+        return cls(
+            condition_id=str(data["condition_id"]),
+            label=str(data["label"]),
+            conditions={
+                str(key): float(value)
+                for key, value in data["conditions"].items()
+            },
+        )
+
+
+@dataclass(frozen=True)
 class TopicConfig:
     topic_id: str
     title: str
@@ -98,6 +116,13 @@ class TopicConfig:
     theory_reference: str | None = None
     catalog_order: int = 100
     prerequisite_topic_ids: tuple[str, ...] = ()
+    baseline_label: str = "Baseline"
+    comparison_label: str = "Comparison"
+    reference_conditions: tuple[ReferenceConditionSpec, ...] = ()
+    comparison_design: str = "controlled_pair"
+    comparison_caption: str = ""
+    display_parameters: tuple[str, ...] = ()
+    condition_descriptions: dict[str, str] = field(default_factory=dict)
     schema_version: str = "1.0"
 
     @classmethod
@@ -122,6 +147,32 @@ class TopicConfig:
             prerequisite_topic_ids=tuple(
                 str(item) for item in data.get("prerequisite_topic_ids", [])
             ),
+            baseline_label=str(experiment.get("baseline_label", "Baseline")),
+            comparison_label=str(
+                experiment.get("comparison_label", "Comparison")
+            ),
+            reference_conditions=tuple(
+                ReferenceConditionSpec.from_dict(item)
+                for item in experiment.get("references", [])
+            ),
+            comparison_design=str(
+                experiment.get(
+                    "comparison_design",
+                    "two_by_two" if experiment.get("references") else "controlled_pair",
+                )
+            ),
+            comparison_caption=str(experiment.get("comparison_caption", "")),
+            display_parameters=tuple(
+                str(item)
+                for item in experiment.get("display_parameters", [])
+            ),
+            condition_descriptions={
+                str(label): str(description)
+                for label, description in experiment.get(
+                    "condition_descriptions",
+                    {},
+                ).items()
+            },
             schema_version=str(data.get("schema_version", "1.0")),
         )
 

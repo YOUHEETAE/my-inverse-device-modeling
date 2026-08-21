@@ -74,6 +74,23 @@ def combine_evaluations(evaluations: list[AnswerEvaluation]) -> AnswerEvaluation
     )
 
 
+def as_prediction_reflection(
+    evaluation: AnswerEvaluation,
+) -> AnswerEvaluation:
+    """Keep recognized prediction concepts without grading a hypothesis."""
+
+    return AnswerEvaluation(
+        understanding_level="correct",
+        correct_concepts=evaluation.correct_concepts,
+        missing_concepts=(),
+        detected_misconceptions=(),
+        unsupported_claims=(),
+        feedback_strategy="reinforce",
+        recommended_next_action="show_feedback",
+        source=evaluation.source,
+    )
+
+
 def review_observations(
     topic: TopicConfig,
     answers: Mapping[str, Any],
@@ -92,11 +109,13 @@ def review_observations(
         if set(prediction_answers) != prediction_ids:
             raise ValueError("prediction_answer_set_mismatch")
         evaluations.extend(
-            tutor.evaluate_answer(
-                topic,
-                question,
-                prediction_answers[question.question_id],
-                context,
+            as_prediction_reflection(
+                tutor.evaluate_answer(
+                    topic,
+                    question,
+                    prediction_answers[question.question_id],
+                    context,
+                )
             )
             for question in topic.prediction_questions
         )

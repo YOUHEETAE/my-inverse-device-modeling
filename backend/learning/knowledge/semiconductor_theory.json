@@ -13,7 +13,7 @@
         "채널 길이 감소는 Ion 증가와 SCE 악화를 동시에 만들 수 있으므로 성능과 누설을 함께 비교해야 한다."
       ],
       "related_concepts": ["short_channel_effect", "on_current", "off_current"],
-      "case_connection": "현재 Case에서 직접 변경한 변수이다.",
+      "case_connection": "2×2 비교의 Channel 변수이다.",
       "caveats": ["채널 길이만의 영향이라고 말하려면 다른 소자 조건이 고정돼야 한다."]
     },
     {
@@ -27,7 +27,7 @@
         "SCE가 강해지면 Vth 저하, DIBL 증가, SS 악화와 Ioff 증가가 함께 나타날 수 있다."
       ],
       "related_concepts": ["source_barrier", "dibl", "threshold_voltage", "subthreshold_swing"],
-      "case_connection": "700 nm와 300 nm 조건의 차이를 해석하는 중심 개념이다.",
+      "case_connection": "SCE와 Oxide 보상의 회복 수준을 구분한다.",
       "caveats": ["한 지표의 변화만으로 모든 SCE 메커니즘을 단정하지 않는다."]
     },
     {
@@ -55,7 +55,7 @@
         "DIBL 증가는 Gate의 정전기적 제어 약화와 off-state 누설 증가를 시사할 수 있다."
       ],
       "related_concepts": ["source_barrier", "threshold_voltage", "short_channel_effect", "potential"],
-      "case_connection": "현재 Case에서 채널 길이 감소에 따른 SCE 강도를 비교하는 핵심 지표이다.",
+      "case_connection": "Channel Length 변화에 따른 Drain coupling과 얇은 Oxide의 보상 정도를 비교하는 핵심 지표이다.",
       "caveats": ["DIBL은 정해진 두 Drain bias에서 추출된 Vth에 의존한다."]
     },
     {
@@ -69,7 +69,7 @@
         "전기적 제어가 약해지거나 단채널 영향이 커지면 SS가 증가할 수 있다."
       ],
       "related_concepts": ["short_channel_effect", "off_current", "threshold_voltage"],
-      "case_connection": "현재 Case에서 700 nm와 300 nm의 subthreshold 제어력을 비교한다.",
+      "case_connection": "Long·Short Channel과 Thick·Thin Oxide 조건의 subthreshold Gate 제어력을 비교한다.",
       "caveats": ["SS는 온도, 계면 상태, 추출 구간의 영향도 받는다."]
     },
     {
@@ -195,8 +195,24 @@
         "Body 도핑 증가는 DIBL과 punch-through 억제에 유리할 수 있지만 Vth, 이동도, 접합 커패시턴스의 trade-off를 만들 수 있다."
       ],
       "related_concepts": ["depletion_region", "dibl", "threshold_voltage"],
-      "case_connection": "현재 Case에서는 고정된 변수이므로 실제 영향 확인에는 Body doping만 바꾼 추가 실험이 필요하다.",
+      "case_connection": "Body doping만 바꾼 controlled comparison에서는 Vth, Ion, Ioff와 채널 인접 Field 변화를 함께 확인할 수 있다.",
       "caveats": ["영향 방향과 크기는 구조, 도핑 프로파일, 바이어스에 따라 달라진다."]
+    },
+    {
+      "concept_id": "source_drain_doping",
+      "title": "Source/Drain doping",
+      "summary": "Source/Drain doping은 단자에서 채널로 이어지는 전류 경로의 전도성과 접합 주변 정전기 분포에 영향을 준다.",
+      "principles": [
+        "Source/Drain 농도와 프로파일이 달라지면 접근영역 및 접합 부근 저항과 공핍 분포가 함께 변할 수 있다."
+      ],
+      "general_effects": [
+        "높은 Source/Drain doping은 on-state 전도에 유리할 수 있지만 Drain-side 전계와 접합 관련 전기적 제어를 함께 확인해야 한다."
+      ],
+      "related_concepts": ["on_current", "on_resistance", "pn_junction", "dibl", "electric_field"],
+      "case_connection": "Source/Drain doping만 바꾼 controlled comparison에서는 Ion·유효 Ron과 Drain-side Potential·Electric Field를 함께 비교할 수 있다.",
+      "caveats": [
+        "추출된 Ron은 접촉저항만이 아니라 채널과 접근영역을 포함한 유효 on-state 저항이다."
+      ]
     },
     {
       "concept_id": "oxide_thickness",
@@ -223,8 +239,8 @@
         "LDD 설계는 신뢰성과 hot-carrier 억제 대 구동 전류 및 저항의 trade-off를 가진다."
       ],
       "related_concepts": ["electric_field", "on_resistance", "on_current"],
-      "case_connection": "현재 Case에서는 고정된 변수이다.",
-      "caveats": ["현재 결과만으로 LDD 효과를 분리할 수 없다."]
+      "case_connection": "LDD doping만 바꾼 controlled comparison에서는 Drain-side Electric Field와 Ion·유효 Ron의 trade-off를 직접 비교할 수 있다.",
+      "caveats": ["Field 감소만으로 breakdown이나 장기 신뢰성 개선을 확정하지 않는다."]
     },
     {
       "concept_id": "transconductance",
@@ -254,7 +270,7 @@
       "summary": "Ron은 켜진 상태에서 전류 경로가 보이는 유효 저항이다.",
       "principles": ["채널 길이, 이동도, 접촉 및 Source/Drain 직렬 저항이 Ron에 영향을 준다."],
       "general_effects": ["Ron 감소는 같은 전압에서 더 큰 구동 전류와 연결될 수 있다."],
-      "related_concepts": ["channel_length", "on_current", "ldd"],
+      "related_concepts": ["channel_length", "on_current", "ldd", "source_drain_doping"],
       "case_connection": "현재 Case의 Ion 변화와 함께 볼 수 있는 저항 지표이다.",
       "caveats": ["Ron 변화가 채널 저항 하나만의 변화라고 단정하지 않는다."]
     }

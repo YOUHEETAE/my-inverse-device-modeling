@@ -1,0 +1,219 @@
+{
+  "schema_version": 1,
+  "benchmark_scope": {
+    "accepted_conditions": 2574,
+    "representatives": [
+      {
+        "label": "short",
+        "case_id": "L100T5|B5e16SD1e20LDD1e18",
+        "structure_id": "L100T5",
+        "doping_run_id": "B5e16SD1e20LDD1e18",
+        "L": 100.00000000000001,
+        "T": 5.0,
+        "B": 5e+16,
+        "SD": 1e+20,
+        "LDD": 1e+18
+      },
+      {
+        "label": "default",
+        "case_id": "L200T20|B1e16SD1e20LDD1e18",
+        "structure_id": "L200T20",
+        "doping_run_id": "B1e16SD1e20LDD1e18",
+        "L": 200.00000000000003,
+        "T": 20.0,
+        "B": 1e+16,
+        "SD": 1e+20,
+        "LDD": 1e+18
+      },
+      {
+        "label": "long",
+        "case_id": "L1600T50|B1e16SD1e20LDD1e18",
+        "structure_id": "L1600T50",
+        "doping_run_id": "B1e16SD1e20LDD1e18",
+        "L": 1600.0000000000002,
+        "T": 50.00000000000001,
+        "B": 1e+16,
+        "SD": 1e+20,
+        "LDD": 1e+18
+      }
+    ],
+    "warmup": 5,
+    "repeats": 30,
+    "batch_size": 1,
+    "full_domain": false
+  },
+  "model_load_ms": 12038.3838,
+  "timing_method": "time.perf_counter_ns; representative short operations batch-averaged",
+  "hardware_specifications_recorded": false,
+  "llm_included": false,
+  "llm_note": "The local application uses the internet-connected Groq API; LLM latency is separate from surrogate simulation speed.",
+  "validation": {
+    "all_rows_valid": true,
+    "timing_rows": 540,
+    "full_domain_valid_cases": 0
+  },
+  "summaries": {
+    "representative_repeat/default/curve": {
+      "samples": 30,
+      "min_ms": 149.9119,
+      "median_ms": 163.21445,
+      "mean_ms": 179.71455,
+      "p90_ms": 198.4327,
+      "p95_ms": 305.078,
+      "max_ms": 394.6346
+    },
+    "representative_repeat/default/field_prepared_mesh": {
+      "samples": 30,
+      "min_ms": 522.4417,
+      "median_ms": 556.68845,
+      "mean_ms": 597.8474466666667,
+      "p90_ms": 643.8043,
+      "p95_ms": 844.7569,
+      "max_ms": 1053.4969
+    },
+    "representative_repeat/default/mesh_generation": {
+      "samples": 30,
+      "min_ms": 216.3182,
+      "median_ms": 243.90550000000002,
+      "mean_ms": 248.21200666666667,
+      "p90_ms": 271.1209,
+      "p95_ms": 309.2505,
+      "max_ms": 312.6814
+    },
+    "representative_repeat/default/parameter_extraction": {
+      "samples": 30,
+      "min_ms": 1.8635,
+      "median_ms": 2.86195,
+      "mean_ms": 3.36502,
+      "p90_ms": 4.2858,
+      "p95_ms": 8.9104,
+      "max_ms": 9.8547
+    },
+    "representative_repeat/default/simulation_to_result": {
+      "samples": 30,
+      "min_ms": 681.4556,
+      "median_ms": 730.6186,
+      "mean_ms": 774.5039633333333,
+      "p90_ms": 841.9502,
+      "p95_ms": 1070.7114,
+      "max_ms": 1317.4813
+    },
+    "representative_repeat/default/user_end_to_end": {
+      "samples": 30,
+      "min_ms": 851.2319,
+      "median_ms": 949.55935,
+      "mean_ms": 984.98483,
+      "p90_ms": 1075.4526,
+      "p95_ms": 1081.2897,
+      "max_ms": 1807.8007
+    },
+    "representative_repeat/long/curve": {
+      "samples": 30,
+      "min_ms": 147.3341,
+      "median_ms": 159.48385000000002,
+      "mean_ms": 173.71203666666668,
+      "p90_ms": 212.6606,
+      "p95_ms": 217.538,
+      "max_ms": 305.6051
+    },
+    "representative_repeat/long/field_prepared_mesh": {
+      "samples": 30,
+      "min_ms": 1163.1384,
+      "median_ms": 1271.18085,
+      "mean_ms": 1299.2280166666667,
+      "p90_ms": 1446.1151,
+      "p95_ms": 1485.1797,
+      "max_ms": 1752.7839
+    },
+    "representative_repeat/long/mesh_generation": {
+      "samples": 30,
+      "min_ms": 470.9798,
+      "median_ms": 532.98,
+      "mean_ms": 540.9009133333334,
+      "p90_ms": 600.2121,
+      "p95_ms": 684.9724,
+      "max_ms": 688.1815
+    },
+    "representative_repeat/long/parameter_extraction": {
+      "samples": 30,
+      "min_ms": 1.7684,
+      "median_ms": 2.81585,
+      "mean_ms": 2.78722,
+      "p90_ms": 3.7338,
+      "p95_ms": 4.0433,
+      "max_ms": 4.3645
+    },
+    "representative_repeat/long/simulation_to_result": {
+      "samples": 30,
+      "min_ms": 1351.352,
+      "median_ms": 1426.3359,
+      "mean_ms": 1502.6079733333331,
+      "p90_ms": 1742.719,
+      "p95_ms": 1899.3241,
+      "max_ms": 2009.7348
+    },
+    "representative_repeat/long/user_end_to_end": {
+      "samples": 30,
+      "min_ms": 1731.2941,
+      "median_ms": 1808.1302500000002,
+      "mean_ms": 1875.2166833333333,
+      "p90_ms": 2132.8427,
+      "p95_ms": 2156.8224,
+      "max_ms": 2396.1526
+    },
+    "representative_repeat/short/curve": {
+      "samples": 30,
+      "min_ms": 172.785,
+      "median_ms": 268.75829999999996,
+      "mean_ms": 294.04633666666666,
+      "p90_ms": 327.5653,
+      "p95_ms": 383.4169,
+      "max_ms": 1423.2936
+    },
+    "representative_repeat/short/field_prepared_mesh": {
+      "samples": 30,
+      "min_ms": 432.5175,
+      "median_ms": 603.3108500000001,
+      "mean_ms": 621.2202633333333,
+      "p90_ms": 778.097,
+      "p95_ms": 789.103,
+      "max_ms": 1142.1516
+    },
+    "representative_repeat/short/mesh_generation": {
+      "samples": 30,
+      "min_ms": 202.9969,
+      "median_ms": 273.9569,
+      "mean_ms": 280.02898666666664,
+      "p90_ms": 353.9687,
+      "p95_ms": 367.5341,
+      "max_ms": 415.643
+    },
+    "representative_repeat/short/parameter_extraction": {
+      "samples": 30,
+      "min_ms": 1.921,
+      "median_ms": 3.14365,
+      "mean_ms": 4.1613066666666665,
+      "p90_ms": 6.1327,
+      "p95_ms": 11.2986,
+      "max_ms": 13.1504
+    },
+    "representative_repeat/short/simulation_to_result": {
+      "samples": 30,
+      "min_ms": 585.5085,
+      "median_ms": 876.5917,
+      "mean_ms": 883.6594466666667,
+      "p90_ms": 1033.5314,
+      "p95_ms": 1331.0136,
+      "max_ms": 1362.139
+    },
+    "representative_repeat/short/user_end_to_end": {
+      "samples": 30,
+      "min_ms": 745.3575,
+      "median_ms": 1111.43815,
+      "mean_ms": 1118.3421433333335,
+      "p90_ms": 1398.0905,
+      "p95_ms": 1497.7361,
+      "max_ms": 1687.6491
+    }
+  }
+}

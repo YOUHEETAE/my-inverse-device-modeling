@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from typing import Any, Iterable
 
+from backend.explanation.evidence import METRIC_MAP, PREFERENCES
 from tcad.data_extraction.parameter_extraction_core import (
     PARAMETER_EXTRACTION_DEFINITIONS,
 )
@@ -25,6 +26,44 @@ LEARNING_TO_EXTRACTION_METRIC = {
     "ron": "ron_kohm_um",
     "lambda_clm": "lambda_per_v",
 }
+
+METRIC_PERFORMANCE_AREAS = {
+    "vth": "threshold_target",
+    "vth_low": "threshold_target",
+    "vth_high": "threshold_target",
+    "ion": "drive_performance",
+    "ioff": "off_state_leakage",
+    "ion_ioff_ratio": "current_separation",
+    "ss": "subthreshold_control",
+    "dibl": "short_channel_control",
+    "gm_max": "gate_response",
+    "gds": "output_saturation_control",
+    "ron": "conduction_loss",
+    "lambda_clm": "output_saturation_control",
+}
+
+
+def metric_directional_implication(direction: str, preference: str) -> str:
+    """Interpret a direction within one metric, not overall device quality."""
+
+    if preference == "context_dependent":
+        return "design_target_required"
+    if direction == "stable":
+        return "no_clear_gain_or_loss"
+    if direction not in {"increase", "decrease"}:
+        return "indeterminate"
+    favorable = (
+        preference == "higher_is_better" and direction == "increase"
+    ) or (
+        preference == "lower_is_better" and direction == "decrease"
+    )
+    return "favorable_for_metric" if favorable else "unfavorable_for_metric"
+
+
+def metric_preference(name: str) -> str:
+    extraction_name = LEARNING_TO_EXTRACTION_METRIC.get(name, name)
+    canonical_name = METRIC_MAP.get(extraction_name, extraction_name)
+    return PREFERENCES.get(canonical_name, "context_dependent")
 
 
 @dataclass(frozen=True)
@@ -64,9 +103,19 @@ class LearningKnowledgeAssembler:
             "comparison_conditions": dict(topic.comparison_conditions),
             "changed_parameters": changed,
             "fixed_parameters": fixed,
-            "controlled_single_parameter_comparison": len(changed) == 1,
+            "controlled_single_parameter_comparison": (
+                len(changed) == 1
+                and not experiment.get("condition_results")
+            ),
+            "comparison_design": (
+                experiment.get("comparison_design", topic.comparison_design)
+            ),
             "in_training_range": context.in_training_range,
         }
+        if experiment.get("condition_results"):
+            experiment_facts["condition_results"] = list(
+                experiment["condition_results"]
+            )
         selected_results = (
             None
             if result_metrics is None
@@ -78,8 +127,15 @@ class LearningKnowledgeAssembler:
                 "after": change.after,
                 "direction": change.direction,
                 "unit": change.unit,
-                "available": change.available,
                 "evidence_id": change.evidence_id,
+                "performance_area": METRIC_PERFORMANCE_AREAS.get(
+                    name,
+                    "해당 전기적 특성",
+                ),
+                "directional_implication": metric_directional_implication(
+                    change.direction,
+                    metric_preference(name),
+                ),
             }
             for name, change in context.electrical_changes.items()
             if change.available

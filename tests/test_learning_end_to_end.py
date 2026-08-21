@@ -38,16 +38,37 @@ def _result(context: LearningAnalysisContext) -> LearningExperimentResult:
 
 def _correct_answers() -> tuple[dict, dict]:
     predictions = {
-        "sce_pred_ion_ioff": {
-            "selected": ["Ion 증가", "Ioff 증가"],
-            "reason": "채널이 짧아지면 구동 전류와 누설 전류가 함께 증가할 수 있다.",
+        "sce_pred_ion": {
+            "selected": ["증가"],
+            "reason": "채널이 짧아지면 구동 전류가 증가할 수 있다.",
+        },
+        "sce_pred_ioff": {
+            "selected": ["증가"],
+            "reason": "Drain의 장벽 제어 영향으로 누설 전류가 증가할 수 있다.",
+        },
+        "sce_pred_dibl": {
+            "selected": ["DIBL 증가"],
+            "reason": "Drain bias가 Source 장벽과 Vth에 미치는 영향을 나타내는 지표다.",
         },
     }
     observations = {
-        "sce_obs_subthreshold": {"selected": ["300 nm"], "reason": ""},
+        "sce_obs_subthreshold": {
+            "selected": ["300 nm"],
+            "reason": "Drain 전위가 Source 측 장벽까지 영향을 주어 전류가 더 이른 Vg에서 증가한다.",
+        },
         "sce_obs_tradeoff": {
-            "selected": ["Ioff", "DIBL", "SS"],
-            "reason": "300 nm 조건에서 세 지표가 모두 증가했다.",
+            "selected": [
+                "Ioff 증가 — 고정된 off-bias에서 누설 전류가 커졌다",
+                "DIBL 증가 — Drain bias에 대한 Channel 장벽과 Vth의 민감도가 커졌다",
+                "SS 증가 — subthreshold 전류 한 decade를 조절하는 데 더 큰 Gate 전압이 필요해졌다",
+            ],
+            "reason": "세 지표의 정의와 실제 증가 방향을 연결했다.",
+        },
+        "sce_obs_field_coupling": {
+            "selected": [
+                "Drain 쪽 전위 영향이 Channel을 따라 Source 장벽 방향으로 더 깊게 이어져 낮은 Gate bias의 장벽 제어가 약해졌다"
+            ],
+            "reason": "Drain 결합의 공간 분포가 DIBL과 Ioff 증가를 뒷받침한다.",
         },
     }
     return predictions, observations
@@ -131,3 +152,25 @@ def test_review_rejects_incomplete_answer_sets_before_feedback() -> None:
         assert str(error) == "observation_answer_set_mismatch"
     else:
         raise AssertionError("incomplete observation answers were accepted")
+
+
+def test_prediction_difference_does_not_lower_observation_understanding() -> None:
+    topic = load_topic("sce_channel_length")
+    context = _real_model_context()
+    predictions, observations = _correct_answers()
+    predictions["sce_pred_ion"] = {
+        "selected": ["감소"],
+        "reason": "현재 결과를 보기 전에는 저항 외 조건의 영향도 가능하다고 예상했다.",
+    }
+
+    review = review_observations(
+        topic,
+        observations,
+        context,
+        LearningLLMService(),
+        prediction_answers=predictions,
+    )
+
+    assert review.evaluation.understanding_level == "correct"
+    assert "ion_can_increase" not in review.evaluation.missing_concepts
+    assert not review.evaluation.detected_misconceptions

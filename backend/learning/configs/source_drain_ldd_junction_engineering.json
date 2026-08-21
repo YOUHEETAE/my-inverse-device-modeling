@@ -1,0 +1,237 @@
+{
+  "schema_version": "1.0",
+  "topic_id": "source_drain_ldd_junction_engineering",
+  "catalog_order": 7,
+  "prerequisite_topic_ids": [
+    "channel_oxide_electrostatic_compensation"
+  ],
+  "title": "Source/Drain × LDD: Junction Engineering",
+  "description": "Source/Drain과 LDD doping의 2×2 비교를 통해 terminal conduction과 Drain-side electrostatics를 함께 설계한다.",
+  "learning_objectives": [
+    "SD와 LDD 효과를 대응 조건의 차이로 분리하고 결합된 구동 특성을 설명한다.",
+    "Ion·유효 Ron의 이득과 Ioff·DIBL·Drain-side Field 비용을 함께 판단한다.",
+    "최대 구동 조건과 목표에 적합한 접합 조건이 항상 같지는 않음을 설명한다."
+  ],
+  "required_outputs": [
+    "idvd",
+    "idvg",
+    "potential",
+    "electric_field"
+  ],
+  "expected_concepts": [
+    "high_ldd_improves_conduction_at_both_sd_levels",
+    "high_sd_strengthens_high_ldd_drive_gain",
+    "high_high_junction_maximizes_drive_in_current_result",
+    "high_high_junction_has_drain_control_cost",
+    "junction_tradeoff_requires_matched_pairs",
+    "field_and_curve_jointly_support_junction_choice"
+  ],
+  "common_misconceptions": [
+    "sd_and_ldd_effects_are_fully_independent",
+    "maximum_drive_is_universal_optimum",
+    "diagonal_junction_comparison_is_controlled",
+    "effective_ron_is_sum_of_isolated_region_resistances",
+    "field_hotspot_ranks_all_junction_performance",
+    "higher_doping_always_improves_junction"
+  ],
+  "theory_concepts": [
+    "source_drain_doping",
+    "ldd",
+    "on_current",
+    "on_resistance",
+    "dibl",
+    "off_current",
+    "electric_field",
+    "potential",
+    "output_conductance"
+  ],
+  "experiment": {
+    "comparison_design": "two_by_two",
+    "comparison_caption": "전기적 파라미터 (High SD에서 LDD 효과)",
+    "display_parameters": [
+      "SD",
+      "LDD"
+    ],
+    "baseline_label": "HighSD·LowLDD",
+    "comparison_label": "HighSD·HighLDD",
+    "baseline": {
+      "L": 700,
+      "T": 20,
+      "B": 1e16,
+      "SD": 1e20,
+      "LDD": 5e17
+    },
+    "comparison": {
+      "L": 700,
+      "T": 20,
+      "B": 1e16,
+      "SD": 1e20,
+      "LDD": 5e18
+    },
+    "references": [
+      {
+        "condition_id": "low_sd_low_ldd",
+        "label": "LowSD·LowLDD",
+        "conditions": {
+          "L": 700,
+          "T": 20,
+          "B": 1e16,
+          "SD": 1e19,
+          "LDD": 5e17
+        }
+      },
+      {
+        "condition_id": "low_sd_high_ldd",
+        "label": "LowSD·HighLDD",
+        "conditions": {
+          "L": 700,
+          "T": 20,
+          "B": 1e16,
+          "SD": 1e19,
+          "LDD": 5e18
+        }
+      }
+    ]
+  },
+  "prediction_questions": [
+    {
+      "question_id": "junction_pred_ion",
+      "type": "single_select_with_reason",
+      "prompt": "High SD 조건에서 LDD doping을 5×10¹⁷ cm⁻³에서 5×10¹⁸ cm⁻³로 높이면 Ion은 어떻게 변할까요?",
+      "options": ["증가", "감소", "큰 변화 없음"],
+      "correct_options": ["증가"],
+      "reason_required": true,
+      "concepts_by_option": {
+        "증가": [
+          "high_ldd_improves_conduction_at_both_sd_levels",
+          "high_sd_strengthens_high_ldd_drive_gain"
+        ]
+      }
+    },
+    {
+      "question_id": "junction_pred_ron",
+      "type": "single_select_with_reason",
+      "prompt": "High SD 조건에서 LDD doping을 높이면 유효 Ron은 어떻게 변할까요?",
+      "options": ["증가", "감소", "큰 변화 없음"],
+      "correct_options": ["감소"],
+      "reason_required": true,
+      "concepts_by_option": {
+        "감소": [
+          "high_ldd_improves_conduction_at_both_sd_levels"
+        ]
+      },
+      "misconceptions_by_option": {
+        "큰 변화 없음": [
+          "effective_ron_is_sum_of_isolated_region_resistances"
+        ]
+      }
+    },
+    {
+      "question_id": "junction_pred_best_drive",
+      "type": "single_select_with_reason",
+      "prompt": "네 접합 조건 중 가장 큰 Ion과 가장 작은 유효 Ron을 함께 보일 것으로 예상되는 조건은 무엇인가요?",
+      "options": [
+        "LowSD·LowLDD",
+        "LowSD·HighLDD",
+        "HighSD·LowLDD",
+        "HighSD·HighLDD"
+      ],
+      "correct_options": ["HighSD·HighLDD"],
+      "reason_required": true,
+      "concepts_by_option": {
+        "HighSD·HighLDD": [
+          "high_high_junction_maximizes_drive_in_current_result"
+        ]
+      },
+      "misconceptions_by_option": {
+        "LowSD·LowLDD": ["higher_doping_always_improves_junction"]
+      }
+    }
+  ],
+  "observation_questions": [
+    {
+      "question_id": "junction_obs_iv_interaction",
+      "type": "single_select_with_reason",
+      "prompt": "Low SD와 High SD에서 LDD Low→High 변화의 Ion 증가율을 각각 비교했습니다. 현재 네 Curve가 보여주는 관계로 가장 타당한 것은 무엇인가요?",
+      "options": [
+        "두 SD 수준 모두 LDD 증가로 Ion이 늘며 증가율은 High SD에서 더 크다",
+        "LDD 효과는 두 SD 수준에서 완전히 같아 두 파라미터를 독립적인 고정 효과로 볼 수 있다",
+        "LowSD·LowLDD와 HighSD·HighLDD 차이로 SD 효과와 LDD 효과를 각각 분리할 수 있다",
+        "High SD에서는 LDD가 전류 경로에 영향을 주지 않아 Ion 차이가 사라진다"
+      ],
+      "correct_options": [
+        "두 SD 수준 모두 LDD 증가로 Ion이 늘며 증가율은 High SD에서 더 크다"
+      ],
+      "reason_required": true,
+      "concepts_by_option": {
+        "두 SD 수준 모두 LDD 증가로 Ion이 늘며 증가율은 High SD에서 더 크다": [
+          "high_ldd_improves_conduction_at_both_sd_levels",
+          "high_sd_strengthens_high_ldd_drive_gain",
+          "junction_tradeoff_requires_matched_pairs"
+        ]
+      },
+      "misconceptions_by_option": {
+        "LDD 효과는 두 SD 수준에서 완전히 같아 두 파라미터를 독립적인 고정 효과로 볼 수 있다": ["sd_and_ldd_effects_are_fully_independent"],
+        "LowSD·LowLDD와 HighSD·HighLDD 차이로 SD 효과와 LDD 효과를 각각 분리할 수 있다": ["diagonal_junction_comparison_is_controlled"]
+      }
+    },
+    {
+      "question_id": "junction_obs_iv_tradeoff",
+      "type": "single_select_with_reason",
+      "prompt": "HighSD·HighLDD의 Ion·Ron 이점과 Ioff·DIBL 비용을 서로 다른 설계 목표에 적용하는 방법으로 가장 타당한 것은 무엇인가요?",
+      "options": [
+        "구동 전류 최대화 문제에서는 후보가 되지만, Ioff·DIBL 상한이 있는 문제에서는 네 조건을 제한값에 다시 대조해 선택한다",
+        "Ion과 Ron의 순위를 하나의 구동 점수로 합치면 Ioff·DIBL 제한도 같은 순서로 반영된다",
+        "DIBL 증가는 낮아진 Ron을 통해 Drain 전압이 더 잘 전달된 결과이므로 두 지표를 하나의 저항 항목으로 합친다",
+        "Ioff가 가장 큰 조건은 off-state에서 우선 제외하므로 Ion·Ron의 on-state 정보는 후보 비교에 사용하지 않는다"
+      ],
+      "correct_options": [
+        "구동 전류 최대화 문제에서는 후보가 되지만, Ioff·DIBL 상한이 있는 문제에서는 네 조건을 제한값에 다시 대조해 선택한다"
+      ],
+      "reason_required": true,
+      "concepts_by_option": {
+        "구동 전류 최대화 문제에서는 후보가 되지만, Ioff·DIBL 상한이 있는 문제에서는 네 조건을 제한값에 다시 대조해 선택한다": [
+          "high_high_junction_maximizes_drive_in_current_result",
+          "high_high_junction_has_drain_control_cost"
+        ]
+      },
+      "misconceptions_by_option": {
+        "Ion과 Ron의 순위를 하나의 구동 점수로 합치면 Ioff·DIBL 제한도 같은 순서로 반영된다": ["maximum_drive_is_universal_optimum"],
+        "DIBL 증가는 낮아진 Ron을 통해 Drain 전압이 더 잘 전달된 결과이므로 두 지표를 하나의 저항 항목으로 합친다": ["effective_ron_is_sum_of_isolated_region_resistances"],
+        "Ioff가 가장 큰 조건은 off-state에서 우선 제외하므로 Ion·Ron의 on-state 정보는 후보 비교에 사용하지 않는다": ["higher_doping_always_improves_junction"]
+      }
+    },
+    {
+      "question_id": "junction_obs_field_pairs",
+      "type": "single_select_with_reason",
+      "prompt": "SD 효과와 LDD 효과를 Field Map에서 각각 분리하고 I–V 결과와 교차 검증하려면 어떤 대응 비교가 필요한가요?",
+      "options": [
+        "LDD 효과는 각 고정 SD에서 Low→High LDD를, SD 효과는 각 고정 LDD에서 Low→High SD를 비교하고 Drain 인접 분포를 Ion·Ron·DIBL과 연결한다",
+        "LowSD·LowLDD→HighSD·HighLDD 대각선 변화에서 Ion 증가율을 빼면 LDD의 Field 효과가 분리된다",
+        "HighSD 두 조건의 Field 최대값 차이로 SD 효과를, LowSD 두 조건의 차이로 LDD 효과를 구한다",
+        "네 조건의 Ron 순위를 Drain 인접 Field 순위로 사용하고 Potential 분포는 DIBL 순위로 대체한다"
+      ],
+      "correct_options": [
+        "LDD 효과는 각 고정 SD에서 Low→High LDD를, SD 효과는 각 고정 LDD에서 Low→High SD를 비교하고 Drain 인접 분포를 Ion·Ron·DIBL과 연결한다"
+      ],
+      "reason_required": true,
+      "concepts_by_option": {
+        "LDD 효과는 각 고정 SD에서 Low→High LDD를, SD 효과는 각 고정 LDD에서 Low→High SD를 비교하고 Drain 인접 분포를 Ion·Ron·DIBL과 연결한다": [
+          "junction_tradeoff_requires_matched_pairs",
+          "field_and_curve_jointly_support_junction_choice"
+        ]
+      },
+      "misconceptions_by_option": {
+        "LowSD·LowLDD→HighSD·HighLDD 대각선 변화에서 Ion 증가율을 빼면 LDD의 Field 효과가 분리된다": ["diagonal_junction_comparison_is_controlled"],
+        "HighSD 두 조건의 Field 최대값 차이로 SD 효과를, LowSD 두 조건의 차이로 LDD 효과를 구한다": ["sd_and_ldd_effects_are_fully_independent"],
+        "네 조건의 Ron 순위를 Drain 인접 Field 순위로 사용하고 Potential 분포는 DIBL 순위로 대체한다": ["field_hotspot_ranks_all_junction_performance"]
+      }
+    }
+  ],
+  "allowed_next_actions": [
+    {"action_id": "compare_junction_pairs", "description": "각 SD 수준에서 LDD 변화의 Curve와 Field를 대응 비교한다."},
+    {"action_id": "retry_junction_choice", "description": "최대 구동 조건과 목표 적합 조건의 차이를 다시 판단한다."},
+    {"action_id": "review_junction_theory", "description": "Theory의 Source/Drain과 LDD 항목을 연결해 복습한다."}
+  ],
+  "theory_reference": "Theory > MOSFET Basics > Junction engineering"
+}

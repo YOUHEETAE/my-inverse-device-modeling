@@ -34,8 +34,18 @@ PREDICTIONS = {
 OBSERVATIONS = {
     "sce_obs_subthreshold": {"selected": ["300 nm"], "reason": ""},
     "sce_obs_tradeoff": {
-        "selected": ["Ioff", "DIBL", "SS"],
-        "reason": "300 nm 조건에서 Ioff, DIBL, SS가 모두 증가했다.",
+        "selected": [
+            "Ioff 증가 — 고정된 off-bias에서 누설 전류가 커졌다",
+            "DIBL 증가 — Drain bias에 대한 Channel 장벽과 Vth의 민감도가 커졌다",
+            "SS 증가 — subthreshold 전류 한 decade를 조절하는 데 더 큰 Gate 전압이 필요해졌다",
+        ],
+        "reason": "300 nm 조건에서 세 지표의 실제 방향과 정의가 일치한다.",
+    },
+    "sce_obs_field_coupling": {
+        "selected": [
+            "Drain 쪽 전위 영향이 Channel을 따라 Source 장벽 방향으로 더 깊게 이어져 낮은 Gate bias의 장벽 제어가 약해졌다"
+        ],
+        "reason": "Drain 결합의 공간적 변화와 DIBL·Ioff 증가를 연결했다.",
     },
 }
 FOLLOWUPS = (

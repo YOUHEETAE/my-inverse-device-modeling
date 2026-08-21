@@ -75,6 +75,30 @@ CONCEPT_METRICS = {
     "vth_decreases": "vth_high",
     "dibl_increases": "dibl",
     "ss_increases": "ss",
+    "gm_can_increase": "gm_max",
+    "ss_can_decrease": "ss",
+    "ioff_increases_in_current_result": "ioff",
+    "sd_doping_increases_ion_in_current_result": "ion",
+    "sd_doping_decreases_effective_ron_in_current_result": "ron",
+    "dibl_increases_in_current_result": "dibl",
+    "drive_and_drain_control_tradeoff": "gds",
+    "higher_ldd_increases_ion_in_current_result": "ion",
+    "higher_ldd_decreases_effective_ron_in_current_result": "ron",
+    "higher_ldd_increases_gds_in_current_result": "gds",
+    "thin_oxide_improves_short_channel_ss_in_current_result": "ss",
+    "thin_oxide_reduces_short_channel_dibl_in_current_result": "dibl",
+    "thin_oxide_partially_compensates_short_channel_effect": "dibl",
+    "compensation_does_not_equal_full_recovery": "dibl",
+    "high_ldd_improves_conduction_at_both_sd_levels": "ion",
+    "high_sd_strengthens_high_ldd_drive_gain": "ion",
+    "high_high_junction_maximizes_drive_in_current_result": "ion",
+    "high_high_junction_has_drain_control_cost": "dibl",
+    "drive_candidate_has_highest_ion": "ion",
+    "leakage_candidate_has_lowest_ioff": "ioff",
+    "balanced_candidate_meets_all_current_targets": "ion",
+    "drive_candidate_fails_leakage_and_dibl_targets": "dibl",
+    "leakage_candidate_fails_drive_and_ss_targets": "ss",
+    "control_candidate_fails_drive_target": "ion",
 }
 
 
@@ -353,7 +377,36 @@ class LearningLLMService:
         positive = tuple(f"{concept} 개념을 확인했습니다." for concept in evaluation.correct_concepts)
         corrections = tuple(f"{concept} 개념을 결과와 다시 연결해보세요." for concept in evaluation.missing_concepts)
         if evaluation.detected_misconceptions:
-            corrections += ("짧은 채널이 모든 특성을 개선하는 것은 아닙니다.",)
+            if topic.topic_id == "body_doping_design_window":
+                corrections += (
+                    "높은 Vth나 낮은 Ioff만으로 모든 설계 목표가 개선됐다고 판단하지 않습니다.",
+                )
+            elif topic.topic_id == "source_drain_on_state_conduction":
+                corrections += (
+                    "Ion 증가와 유효 Ron 감소만으로 Drain-side 전기적 제어까지 개선됐다고 판단하지 않습니다.",
+                )
+            elif topic.topic_id == "ldd_field_resistance_tradeoff":
+                corrections += (
+                    "낮은 Drain Field만으로 모든 신뢰성이 개선됐거나 높은 LDD가 모든 성능에 유리하다고 판단하지 않습니다.",
+                )
+            elif topic.topic_id == "channel_oxide_electrostatic_compensation":
+                corrections += (
+                    "SS·DIBL의 개선을 Long-Channel 수준의 완전한 회복이나 Ioff 감소와 동일시하지 않습니다.",
+                )
+            elif topic.topic_id == "source_drain_ldd_junction_engineering":
+                corrections += (
+                    "HighSD·HighLDD의 최대 구동 이득을 누설·DIBL·Field와 무관한 보편적 최적 조건으로 판단하지 않습니다.",
+                )
+            elif topic.topic_id == "integrated_device_design":
+                corrections += (
+                    "한 지표의 최고값이나 후보 이름으로 선택하지 않고 모든 설계 제약을 동시에 적용합니다.",
+                )
+            elif topic.topic_id == "oxide_gate_control":
+                corrections += (
+                    "강한 Gate 제어가 누설과 Oxide 전계까지 모두 개선한다는 뜻은 아닙니다.",
+                )
+            else:
+                corrections += ("짧은 채널이 모든 특성을 개선하는 것은 아닙니다.",)
         has_gap = bool(
             evaluation.missing_concepts
             or evaluation.detected_misconceptions
@@ -371,6 +424,60 @@ class LearningLLMService:
                 "Gate/oxide/channel 인접 영역의 Potential과 Electric Field를 같은 "
                 "color scale에서 다시 확인하세요."
             )
+        elif topic.topic_id == "body_doping_design_window":
+            curve_focus = (
+                "두 Id–Vg Curve의 Vth 가로 이동과 고정 on/off bias의 Ion·Ioff를 "
+                "같은 축에서 다시 연결해보세요."
+            )
+            field_focus = (
+                "Channel 표면 부근 Potential과 Electric Field를 같은 bias와 color "
+                "scale에서 비교하고 Vth 이동과 연결해보세요."
+            )
+        elif topic.topic_id == "source_drain_on_state_conduction":
+            curve_focus = (
+                "On-state Id–Vd의 Ion·Ron과 두 Drain bias의 Vth 간격 및 포화영역 "
+                "기울기를 각각 다시 연결해보세요."
+            )
+            field_focus = (
+                "Drain-side LDD 인접 Potential과 Electric Field를 같은 bias와 color "
+                "scale에서 비교하고 DIBL 방향과 연결해보세요."
+            )
+        elif topic.topic_id == "ldd_field_resistance_tradeoff":
+            curve_focus = (
+                "On-state Id–Vd의 Ion·Ron과 포화영역 gds를 구분해 access conduction과 "
+                "출력 특성을 다시 연결해보세요."
+            )
+            field_focus = (
+                "Drain 인접 Potential과 Electric Field를 같은 bias와 color scale에서 "
+                "비교하고 낮은 LDD의 Ion·Ron 결과와 연결해보세요."
+            )
+        elif topic.topic_id == "channel_oxide_electrostatic_compensation":
+            curve_focus = (
+                "Long·Thick→Long·Thin과 Short·Thick→Short·Thin의 SS·DIBL 변화량을 "
+                "각각 구한 뒤 Short·Thin과 Long·Thin의 잔여 차이도 확인하세요."
+            )
+            field_focus = (
+                "같은 bias와 color scale에서 Long과 Short 각각의 Thick→Thin "
+                "Potential·Electric Field 공간 변화를 대응 비교하세요."
+            )
+        elif topic.topic_id == "source_drain_ldd_junction_engineering":
+            curve_focus = (
+                "Low SD와 High SD에서 각각 LowLDD→HighLDD의 Ion·Ron 차이를 구하고 "
+                "HighSD·HighLDD의 Ioff·DIBL 비용을 다시 확인하세요."
+            )
+            field_focus = (
+                "각 SD 수준의 LDD pair를 같은 bias와 color scale에서 대응 비교해 "
+                "Drain 인접 Potential·Electric Field 변화를 확인하세요."
+            )
+        elif topic.topic_id == "integrated_device_design":
+            curve_focus = (
+                "네 후보의 Ion·Ioff·DIBL·SS를 목표 상·하한과 하나씩 대조하고 실패한 "
+                "제약을 표시하세요."
+            )
+            field_focus = (
+                "Balanced와 Control의 Drain 인접 분포를 같은 bias와 color scale에서 "
+                "비교해 전기적 통과 후 남은 electrostatic margin을 확인하세요."
+            )
         else:
             curve_focus = (
                 "log(Id)–Vg의 subthreshold 기울기, 두 Drain bias의 문턱 이동과 "
@@ -386,6 +493,42 @@ class LearningLLMService:
                 "trade-off를 분리해 판단해야 합니다."
             )
             next_question = "gm 증가와 SS 감소가 모두 Gate control과 연결되는 이유는 무엇인가요?"
+        elif topic.topic_id == "body_doping_design_window":
+            summary = (
+                "Body doping 증가에 따른 Vth 이동, Ioff 억제와 Ion 손실을 함께 "
+                "판단해야 합니다."
+            )
+            next_question = "Ioff 감소와 Ion 감소가 동시에 나타난 이유는 무엇인가요?"
+        elif topic.topic_id == "source_drain_on_state_conduction":
+            summary = (
+                "Source/Drain doping 증가에 따른 Ion·유효 Ron의 구동 이득과 "
+                "DIBL·gds의 Drain 제어 비용을 함께 판단해야 합니다."
+            )
+            next_question = "Ion 증가와 DIBL 증가가 서로 다른 무엇을 보여주나요?"
+        elif topic.topic_id == "ldd_field_resistance_tradeoff":
+            summary = (
+                "낮은 LDD의 Drain Field 완화 이득과 증가한 access resistance 및 "
+                "구동 전류 손실을 함께 판단해야 합니다."
+            )
+            next_question = "낮은 LDD에서 Field와 Ion이 함께 감소한 이유는 무엇인가요?"
+        elif topic.topic_id == "channel_oxide_electrostatic_compensation":
+            summary = (
+                "얇은 Oxide의 SS·DIBL 보상 효과와 Long-Channel 기준까지 남아 있는 "
+                "차이, 그리고 Ioff 증가를 함께 판단해야 합니다."
+            )
+            next_question = "부분적 보상과 완전한 회복은 어떤 비교로 구분할 수 있나요?"
+        elif topic.topic_id == "source_drain_ldd_junction_engineering":
+            summary = (
+                "SD와 LDD의 대응 차이로 구동 이득을 분리하고 최대 구동 조건의 "
+                "Ioff·DIBL·Field 비용을 함께 판단해야 합니다."
+            )
+            next_question = "HighSD·HighLDD가 모든 접합 목표의 최적 조건이 아닌 이유는 무엇인가요?"
+        elif topic.topic_id == "integrated_device_design":
+            summary = (
+                "모든 전기적 제약을 동시에 통과한 후보를 고른 뒤 Field Map으로 "
+                "남은 공간적 설계 여유를 별도로 검토해야 합니다."
+            )
+            next_question = "설계 목표가 바뀌면 Balanced 선택이 달라질 수 있는 이유는 무엇인가요?"
         else:
             summary = (
                 "채널 길이 감소에 따른 구동 성능 변화와 off-state/SCE 악화를 함께 "
@@ -686,7 +829,10 @@ class LearningLLMService:
             metric_definitions,
         )
         answer = draft.answer
-        if response_plan is not None:
+        if (
+            response_plan is not None
+            and route.question_type != "current_result"
+        ):
             if response_plan.misconception_targets:
                 answer = (
                     "먼저 한 방향의 변화만 보고 모든 조건에 일반화하면 안 됩니다. "
@@ -1167,11 +1313,15 @@ class LearningLLMService:
                     pipeline_diagnostics + answer_provider_calls
                 ),
                 next_learning_question=(
-                    external.next_learning_question
-                    or self._adaptive_next_question(
-                        response_plan,
-                        concepts,
+                    (
+                        external.next_learning_question
+                        or self._adaptive_next_question(
+                            response_plan,
+                            concepts,
+                        )
                     )
+                    if response_plan.check_understanding
+                    else None
                 ),
             )
         if self.provider is not None:
