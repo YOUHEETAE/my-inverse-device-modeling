@@ -4,7 +4,11 @@ import inspect
 
 from backend.explanation.errors import ExplanationPipelineError
 from backend.explanation.providers.external import ProviderHTTPError
-from frontend.app import IntegratedModelApp
+from frontend.app import (
+    IntegratedModelApp,
+    _load_runtime_models_async,
+    _start_interactive_app,
+)
 from frontend.visualization.explanation_panel import ExplanationPanelMixin
 
 
@@ -14,6 +18,18 @@ def test_gui_fixes_automatic_explanation_to_groq_without_selector() -> None:
     assert "ExplanationService(service_provider)" in source
     assert "provider_box" not in source
     assert "explanation_provider_var" not in source
+
+
+def test_interactive_startup_shows_window_before_async_model_loading() -> None:
+    startup_source = inspect.getsource(_start_interactive_app)
+    loader_source = inspect.getsource(_load_runtime_models_async)
+    assert startup_source.index("_create_tk_window()") < startup_source.index(
+        "_load_runtime_models_async("
+    )
+    assert "window.mainloop()" in startup_source
+    assert "ttk.Progressbar" in startup_source
+    assert "threading.Thread(" in loader_source
+    assert 'daemon=True' in loader_source
 
 
 def test_automatic_explanation_formats_public_failure_only() -> None:

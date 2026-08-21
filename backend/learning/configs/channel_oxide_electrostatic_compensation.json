@@ -1,0 +1,282 @@
+{
+  "schema_version": "1.0",
+  "topic_id": "channel_oxide_electrostatic_compensation",
+  "catalog_order": 6,
+  "prerequisite_topic_ids": [
+    "ldd_field_resistance_tradeoff"
+  ],
+  "title": "Channel Length × Oxide Thickness: Electrostatic Compensation",
+  "description": "긴·짧은 Channel과 두 Oxide 두께의 2×2 비교를 통해 얇은 Oxide가 Short-Channel Effect를 얼마나 보상하는지 학습한다.",
+  "learning_objectives": [
+    "Channel Length와 Oxide Thickness의 효과를 네 조건의 대응 비교로 분리한다.",
+    "짧은 Channel에서 얇은 Oxide가 SS와 DIBL을 완화하는 정도를 실제 값으로 판단한다.",
+    "부분적 보상과 Long-Channel 수준의 완전한 회복을 구분하고 Ioff 변화까지 함께 해석한다."
+  ],
+  "required_outputs": [
+    "idvd",
+    "idvg",
+    "potential",
+    "electric_field"
+  ],
+  "expected_concepts": [
+    "thin_oxide_improves_short_channel_ss_in_current_result",
+    "thin_oxide_reduces_short_channel_dibl_in_current_result",
+    "oxide_compensation_depends_on_channel_length",
+    "thin_oxide_partially_compensates_short_channel_effect",
+    "compensation_does_not_equal_full_recovery",
+    "interaction_requires_matched_pair_comparison"
+  ],
+  "common_misconceptions": [
+    "thin_oxide_fully_restores_long_channel_behavior",
+    "channel_and_oxide_effects_are_independent",
+    "diagonal_comparison_proves_interaction",
+    "field_peak_alone_quantifies_compensation",
+    "lower_ss_guarantees_lower_ioff_in_interaction_case",
+    "thin_oxide_eliminates_short_channel_effect"
+  ],
+  "theory_concepts": [
+    "channel_length",
+    "short_channel_effect",
+    "oxide_thickness",
+    "dibl",
+    "subthreshold_swing",
+    "off_current",
+    "potential",
+    "electric_field"
+  ],
+  "experiment": {
+    "comparison_design": "two_by_two",
+    "comparison_caption": "전기적 파라미터 (Short Channel의 Oxide 보상)",
+    "display_parameters": [
+      "L",
+      "T"
+    ],
+    "baseline_label": "Short·Thick",
+    "comparison_label": "Short·Thin",
+    "baseline": {
+      "L": 300,
+      "T": 20,
+      "B": 1e16,
+      "SD": 1e20,
+      "LDD": 1e18
+    },
+    "comparison": {
+      "L": 300,
+      "T": 10,
+      "B": 1e16,
+      "SD": 1e20,
+      "LDD": 1e18
+    },
+    "references": [
+      {
+        "condition_id": "long_thick",
+        "label": "Long·Thick",
+        "conditions": {
+          "L": 700,
+          "T": 20,
+          "B": 1e16,
+          "SD": 1e20,
+          "LDD": 1e18
+        }
+      },
+      {
+        "condition_id": "long_thin",
+        "label": "Long·Thin",
+        "conditions": {
+          "L": 700,
+          "T": 10,
+          "B": 1e16,
+          "SD": 1e20,
+          "LDD": 1e18
+        }
+      }
+    ]
+  },
+  "prediction_questions": [
+    {
+      "question_id": "comp_pred_ss",
+      "type": "single_select_with_reason",
+      "prompt": "L=300 nm에서 Oxide를 20 nm에서 10 nm로 얇게 하면 SS는 어떻게 변할까요?",
+      "options": [
+        "증가",
+        "감소",
+        "큰 변화 없음"
+      ],
+      "correct_options": [
+        "감소"
+      ],
+      "reason_required": true,
+      "concepts_by_option": {
+        "감소": [
+          "thin_oxide_improves_short_channel_ss_in_current_result",
+          "thin_oxide_partially_compensates_short_channel_effect"
+        ]
+      }
+    },
+    {
+      "question_id": "comp_pred_dibl",
+      "type": "single_select_with_reason",
+      "prompt": "L=300 nm에서 Oxide를 20 nm에서 10 nm로 얇게 하면 DIBL은 어떻게 변할까요?",
+      "options": [
+        "증가",
+        "감소",
+        "큰 변화 없음"
+      ],
+      "correct_options": [
+        "감소"
+      ],
+      "reason_required": true,
+      "concepts_by_option": {
+        "감소": [
+          "thin_oxide_reduces_short_channel_dibl_in_current_result",
+          "thin_oxide_partially_compensates_short_channel_effect"
+        ]
+      }
+    },
+    {
+      "question_id": "comp_pred_recovery",
+      "type": "single_select_with_reason",
+      "prompt": "얇은 Oxide를 적용한 L=300 nm 조건의 SS와 DIBL은 L=700 nm·10 nm Oxide 조건 수준까지 회복될까요?",
+      "options": [
+        "SS와 DIBL 모두 Long-Channel 수준까지 회복한다",
+        "두 지표 모두 개선되지만 DIBL은 Long-Channel보다 높은 수준에 남는다",
+        "SS와 DIBL 모두 거의 변하지 않는다",
+        "SS와 DIBL이 모두 더 악화된다"
+      ],
+      "correct_options": [
+        "두 지표 모두 개선되지만 DIBL은 Long-Channel보다 높은 수준에 남는다"
+      ],
+      "reason_required": true,
+      "concepts_by_option": {
+        "두 지표 모두 개선되지만 DIBL은 Long-Channel보다 높은 수준에 남는다": [
+          "thin_oxide_partially_compensates_short_channel_effect",
+          "compensation_does_not_equal_full_recovery"
+        ]
+      },
+      "misconceptions_by_option": {
+        "SS와 DIBL 모두 Long-Channel 수준까지 회복한다": [
+          "thin_oxide_fully_restores_long_channel_behavior"
+        ],
+        "SS와 DIBL 모두 거의 변하지 않는다": [
+          "channel_and_oxide_effects_are_independent"
+        ],
+        "SS와 DIBL이 모두 더 악화된다": [
+          "thin_oxide_eliminates_short_channel_effect"
+        ]
+      }
+    }
+  ],
+  "observation_questions": [
+    {
+      "question_id": "comp_obs_iv_interaction",
+      "type": "single_select_with_reason",
+      "prompt": "Oxide 20→10 nm 변화에 따른 SS·DIBL 감소량을 L=700 nm와 L=300 nm에서 각각 비교했습니다. 네 Curve가 보여주는 상호작용으로 가장 타당한 해석은 무엇인가요?",
+      "options": [
+        "짧은 Channel에서 SS와 DIBL의 감소 폭이 더 커 Oxide 두께 효과가 Channel Length에 따라 달라졌다",
+        "두 Channel에서 Oxide 효과가 같은 비율이므로 두 파라미터는 독립적으로 작용했다",
+        "Long·Thick과 Short·Thin의 차이가 작으므로 두 파라미터의 효과가 서로 상쇄됐다",
+        "Ion 증가 폭이 가장 큰 조건이 전기적 제어도 가장 잘 회복된 조건이다"
+      ],
+      "correct_options": [
+        "짧은 Channel에서 SS와 DIBL의 감소 폭이 더 커 Oxide 두께 효과가 Channel Length에 따라 달라졌다"
+      ],
+      "reason_required": true,
+      "concepts_by_option": {
+        "짧은 Channel에서 SS와 DIBL의 감소 폭이 더 커 Oxide 두께 효과가 Channel Length에 따라 달라졌다": [
+          "oxide_compensation_depends_on_channel_length",
+          "interaction_requires_matched_pair_comparison"
+        ]
+      },
+      "misconceptions_by_option": {
+        "두 Channel에서 Oxide 효과가 같은 비율이므로 두 파라미터는 독립적으로 작용했다": [
+          "channel_and_oxide_effects_are_independent"
+        ],
+        "Long·Thick과 Short·Thin의 차이가 작으므로 두 파라미터의 효과가 서로 상쇄됐다": [
+          "diagonal_comparison_proves_interaction"
+        ],
+        "Ion 증가 폭이 가장 큰 조건이 전기적 제어도 가장 잘 회복된 조건이다": [
+          "thin_oxide_eliminates_short_channel_effect"
+        ]
+      }
+    },
+    {
+      "question_id": "comp_obs_iv_boundary",
+      "type": "single_select_with_reason",
+      "prompt": "Short·Thin을 Short·Thick 및 Long·Thin과 각각 비교했을 때 SS·DIBL·Ioff가 보여주는 보상 범위를 가장 정확히 설명한 것은 무엇인가요?",
+      "options": [
+        "Short·Thick 대비 SS·DIBL 감소는 Gate 제어 보상을 보여주지만, Long·Thin보다 높은 DIBL과 증가한 Ioff는 잔류 SCE와 누설 비용을 보여준다",
+        "Short·Thick 대비 SS 감소폭이 크므로 Short·Thin은 Long·Thin보다도 강한 정전기 제어를 회복했다",
+        "Short·Thin의 Ioff 증가가 Vth 이동을 보여주므로 SS·DIBL 감소는 Gate 제어가 아니라 Curve 위치 변화의 결과다",
+        "Long·Thin과 Short·Thin의 DIBL 차이는 Channel Length가 아니라 두 조건의 Oxide 보상량 차이만 나타낸다"
+      ],
+      "correct_options": [
+        "Short·Thick 대비 SS·DIBL 감소는 Gate 제어 보상을 보여주지만, Long·Thin보다 높은 DIBL과 증가한 Ioff는 잔류 SCE와 누설 비용을 보여준다"
+      ],
+      "reason_required": true,
+      "concepts_by_option": {
+        "Short·Thick 대비 SS·DIBL 감소는 Gate 제어 보상을 보여주지만, Long·Thin보다 높은 DIBL과 증가한 Ioff는 잔류 SCE와 누설 비용을 보여준다": [
+          "thin_oxide_partially_compensates_short_channel_effect",
+          "compensation_does_not_equal_full_recovery"
+        ]
+      },
+      "misconceptions_by_option": {
+        "Short·Thin의 Ioff 증가가 Vth 이동을 보여주므로 SS·DIBL 감소는 Gate 제어가 아니라 Curve 위치 변화의 결과다": [
+          "lower_ss_guarantees_lower_ioff_in_interaction_case"
+        ],
+        "Short·Thick 대비 SS 감소폭이 크므로 Short·Thin은 Long·Thin보다도 강한 정전기 제어를 회복했다": [
+          "thin_oxide_eliminates_short_channel_effect"
+        ],
+        "Long·Thin과 Short·Thin의 DIBL 차이는 Channel Length가 아니라 두 조건의 Oxide 보상량 차이만 나타낸다": [
+          "channel_and_oxide_effects_are_independent"
+        ]
+      }
+    },
+    {
+      "question_id": "comp_obs_field_pairing",
+      "type": "single_select_with_reason",
+      "prompt": "Oxide 20→10 nm의 공간적 효과가 Channel Length에 따라 달라지는지를 네 Field Map으로 검증하려면 어떤 비교 조합이 필요한가요?",
+      "options": [
+        "같은 bias·scale에서 Long의 Thick→Thin 차이와 Short의 Thick→Thin 차이를 각각 구해 위치·방향·크기의 차이를 비교한다",
+        "Thick 조건의 Long→Short 차이와 Thin 조건의 Long→Short 차이만 비교해 Oxide 변화량을 직접 구한다",
+        "Long·Thick→Short·Thin 대각선 차이에서 Channel Length 효과를 뺀 값을 Oxide 효과로 사용한다",
+        "네 조건의 global Electric Field 최대값을 순서화하고 그 순서를 SS·DIBL 감소량의 순서와 대응시킨다"
+      ],
+      "correct_options": [
+        "같은 bias·scale에서 Long의 Thick→Thin 차이와 Short의 Thick→Thin 차이를 각각 구해 위치·방향·크기의 차이를 비교한다"
+      ],
+      "reason_required": true,
+      "concepts_by_option": {
+        "같은 bias·scale에서 Long의 Thick→Thin 차이와 Short의 Thick→Thin 차이를 각각 구해 위치·방향·크기의 차이를 비교한다": [
+          "interaction_requires_matched_pair_comparison",
+          "oxide_compensation_depends_on_channel_length"
+        ]
+      },
+      "misconceptions_by_option": {
+        "Long·Thick→Short·Thin 대각선 차이에서 Channel Length 효과를 뺀 값을 Oxide 효과로 사용한다": [
+          "diagonal_comparison_proves_interaction"
+        ],
+        "네 조건의 global Electric Field 최대값을 순서화하고 그 순서를 SS·DIBL 감소량의 순서와 대응시킨다": [
+          "field_peak_alone_quantifies_compensation"
+        ],
+        "Thick 조건의 Long→Short 차이와 Thin 조건의 Long→Short 차이만 비교해 Oxide 변화량을 직접 구한다": [
+          "channel_and_oxide_effects_are_independent"
+        ]
+      }
+    }
+  ],
+  "allowed_next_actions": [
+    {
+      "action_id": "observe_matched_curve_pairs",
+      "description": "Long과 Short 조건에서 Oxide 변화의 Curve 차이를 각각 비교한다."
+    },
+    {
+      "action_id": "retry_compensation_prediction",
+      "description": "SS·DIBL의 개선과 완전 회복의 차이를 다시 답한다."
+    },
+    {
+      "action_id": "review_electrostatic_scaling_theory",
+      "description": "Theory의 Short-Channel Effect와 Gate oxide 항목을 연결해 복습한다."
+    }
+  ],
+  "theory_reference": "Theory > MOSFET Basics > Electrostatic scaling과 Gate control"
+}

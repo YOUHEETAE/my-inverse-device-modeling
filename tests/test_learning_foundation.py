@@ -35,7 +35,7 @@ def test_sce_topic_is_structured_and_uses_verified_single_change() -> None:
     assert comparison.changed_parameters == ("L",)
     assert comparison.fixed_parameters == ("T", "B", "SD", "LDD")
     assert topic.prediction_questions[0].reason_required
-    assert len(topic.observation_questions) == 2
+    assert len(topic.observation_questions) == 3
     assert {item.action_id for item in topic.allowed_next_actions} == {
         "observe_potential_map", "retry_sce_prediction", "review_sce_theory",
     }
@@ -44,7 +44,16 @@ def test_sce_topic_is_structured_and_uses_verified_single_change() -> None:
 
 def test_oxide_topic_is_isolated_and_changes_only_verified_tox() -> None:
     topics = load_topics()
-    assert set(topics) == {"sce_channel_length", "oxide_gate_control"}
+    assert set(topics) == {
+        "sce_channel_length",
+        "oxide_gate_control",
+        "body_doping_design_window",
+        "source_drain_on_state_conduction",
+        "ldd_field_resistance_tradeoff",
+        "channel_oxide_electrostatic_compensation",
+        "source_drain_ldd_junction_engineering",
+        "integrated_device_design",
+    }
     topic = topics["oxide_gate_control"]
     comparison = compare_experiment_conditions(
         topic.baseline_conditions,
@@ -76,6 +85,111 @@ def test_oxide_topic_is_isolated_and_changes_only_verified_tox() -> None:
         "oxide_gate_control",
     }
     assert sce_session.session_id != oxide_session.session_id
+
+
+def test_body_doping_topic_changes_only_verified_body_concentration() -> None:
+    topic = load_topic("body_doping_design_window")
+    comparison = compare_experiment_conditions(
+        topic.baseline_conditions,
+        topic.comparison_conditions,
+    )
+
+    assert topic.catalog_order == 3
+    assert topic.prerequisite_topic_ids == ("oxide_gate_control",)
+    assert comparison.changed_parameters == ("B",)
+    assert comparison.fixed_parameters == ("L", "T", "SD", "LDD")
+    assert topic.baseline_conditions["B"] == 1e16
+    assert topic.comparison_conditions["B"] == 5e16
+    assert {"body_doping", "depletion_region", "threshold_voltage"} <= set(
+        topic.theory_concepts
+    )
+    assert len(topic.prediction_questions) == 3
+    assert len(topic.observation_questions) == 3
+
+
+def test_source_drain_topic_changes_only_verified_terminal_doping() -> None:
+    topic = load_topic("source_drain_on_state_conduction")
+    comparison = compare_experiment_conditions(
+        topic.baseline_conditions,
+        topic.comparison_conditions,
+    )
+
+    assert topic.catalog_order == 4
+    assert topic.prerequisite_topic_ids == ("body_doping_design_window",)
+    assert comparison.changed_parameters == ("SD",)
+    assert comparison.fixed_parameters == ("L", "T", "B", "LDD")
+    assert topic.baseline_conditions["SD"] == 1e19
+    assert topic.comparison_conditions["SD"] == 1e20
+    assert {"source_drain_doping", "on_resistance", "dibl"} <= set(
+        topic.theory_concepts
+    )
+    assert len(topic.prediction_questions) == 3
+    assert len(topic.observation_questions) == 3
+
+
+def test_ldd_topic_changes_only_verified_extension_doping() -> None:
+    topic = load_topic("ldd_field_resistance_tradeoff")
+    comparison = compare_experiment_conditions(
+        topic.baseline_conditions,
+        topic.comparison_conditions,
+    )
+
+    assert topic.catalog_order == 5
+    assert topic.prerequisite_topic_ids == ("source_drain_on_state_conduction",)
+    assert comparison.changed_parameters == ("LDD",)
+    assert comparison.fixed_parameters == ("L", "T", "B", "SD")
+    assert topic.baseline_conditions["LDD"] == 5e17
+    assert topic.comparison_conditions["LDD"] == 5e18
+    assert {"ldd", "electric_field", "on_resistance"} <= set(
+        topic.theory_concepts
+    )
+    assert len(topic.prediction_questions) == 3
+    assert len(topic.observation_questions) == 3
+
+
+def test_channel_oxide_topic_defines_verified_two_by_two_conditions() -> None:
+    topic = load_topic("channel_oxide_electrostatic_compensation")
+    comparison = compare_experiment_conditions(
+        topic.baseline_conditions,
+        topic.comparison_conditions,
+    )
+
+    assert topic.catalog_order == 6
+    assert topic.prerequisite_topic_ids == (
+        "ldd_field_resistance_tradeoff",
+    )
+    assert comparison.changed_parameters == ("T",)
+    assert (topic.baseline_conditions["L"], topic.baseline_conditions["T"]) == (300, 20)
+    assert (topic.comparison_conditions["L"], topic.comparison_conditions["T"]) == (300, 10)
+    assert [item.condition_id for item in topic.reference_conditions] == [
+        "long_thick",
+        "long_thin",
+    ]
+    assert [
+        (item.conditions["L"], item.conditions["T"])
+        for item in topic.reference_conditions
+    ] == [(700, 20), (700, 10)]
+    assert len(topic.prediction_questions) == 3
+    assert len(topic.observation_questions) == 3
+
+
+def test_junction_and_integrated_topics_complete_the_curriculum() -> None:
+    junction = load_topic("source_drain_ldd_junction_engineering")
+    integrated = load_topic("integrated_device_design")
+
+    assert junction.catalog_order == 7
+    assert junction.comparison_design == "two_by_two"
+    assert junction.display_parameters == ("SD", "LDD")
+    assert len(junction.reference_conditions) == 2
+    assert integrated.catalog_order == 8
+    assert integrated.prerequisite_topic_ids == (
+        "source_drain_ldd_junction_engineering",
+    )
+    assert integrated.comparison_design == "candidate_set"
+    assert integrated.display_parameters == ("L", "T", "B", "SD", "LDD")
+    assert len(integrated.reference_conditions) == 2
+    assert len(integrated.prediction_questions) == 3
+    assert len(integrated.observation_questions) == 3
 
 
 def test_condition_validation_separates_range_from_verified_values() -> None:
@@ -140,10 +254,23 @@ def test_learning_state_machine_runs_the_happy_path_and_blocks_duplicates() -> N
         machine.transition(session, step)
     machine.submit_observations(session, {
         "sce_obs_subthreshold": "300 nm",
-        "sce_obs_tradeoff": {"selected": ["Ioff", "DIBL"], "reason": "곡선 이동"},
+        "sce_obs_tradeoff": {
+            "selected": [
+                "Ioff 증가 — 고정된 off-bias에서 누설 전류가 커졌다",
+                "DIBL 증가 — Drain bias에 대한 Channel 장벽과 Vth의 민감도가 커졌다",
+                "SS 증가 — subthreshold 전류 한 decade를 조절하는 데 더 큰 Gate 전압이 필요해졌다",
+            ],
+            "reason": "각 지표의 정의와 실제 변화를 연결했다",
+        },
+        "sce_obs_field_coupling": {
+            "selected": [
+                "Drain 쪽 전위 영향이 Channel을 따라 Source 장벽 방향으로 더 깊게 이어져 낮은 Gate bias의 장벽 제어가 약해졌다"
+            ],
+            "reason": "Field와 DIBL·Ioff를 교차 확인했다",
+        },
     })
     assert [answer.question_id for answer in session.observation_answers] == [
-        "sce_obs_subthreshold", "sce_obs_tradeoff",
+        "sce_obs_subthreshold", "sce_obs_tradeoff", "sce_obs_field_coupling",
     ]
     machine.transition(session, LearningStep.FEEDBACK_READY)
     machine.transition(session, LearningStep.SESSION_COMPLETE)

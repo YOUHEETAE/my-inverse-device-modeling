@@ -23,6 +23,10 @@ _CONCEPT_METRICS = {
 _BROAD_RESULT_CONCEPTS = {
     "channel_length",
     "short_channel_effect",
+    "source_drain_doping",
+    "ldd",
+    "oxide_thickness",
+    "design_target",
 }
 _FIELD_CONCEPTS = {
     "potential",
@@ -32,6 +36,8 @@ _FIELD_CONCEPTS = {
     "short_channel_effect",
     "punch_through",
     "depletion_region",
+    "source_drain_doping",
+    "ldd",
 }
 _DIALOGUE_KEYS = (
     "current_topic",
@@ -69,7 +75,8 @@ def select_result_metrics(
         if change.available
     )
     if (
-        not requested
+        route.aggregate_result
+        or not requested
         or (
             route.answer_structure == "parameter_by_parameter"
             and set(concepts).intersection(_BROAD_RESULT_CONCEPTS)
@@ -198,7 +205,10 @@ def compact_simulation_facts(
 
     metrics = set(result_metrics)
     concepts = set(route.matched_concepts)
-    broad = bool(concepts.intersection(_BROAD_RESULT_CONCEPTS))
+    broad = (
+        route.aggregate_result
+        or bool(concepts.intersection(_BROAD_RESULT_CONCEPTS))
+    )
     curve = [
         _compact_observation(item)
         for item in context.curve_observations

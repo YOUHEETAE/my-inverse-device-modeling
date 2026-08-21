@@ -39,6 +39,12 @@ answer_plan.structure에 맞춰 자연스럽고 연결된 한국어로 작성한
 cause_and_effect는 원인→물리 과정→결과 순서로 쓴다.
 parameter_by_parameter는 사용자가 요청한 각 지표를 빠뜨리지 말고 지표별
 변화와 이유를 구분한 뒤 전체 trade-off를 연결한다.
+result_facts의 directional_implication은 해당 performance_area 안에서만 해석한다.
+performance_area 코드는 한국어 성능 관점으로 풀어 쓴다.
+favorable_for_metric은 그 성능 관점의 이득, unfavorable_for_metric은 그 성능
+관점의 손실로 표현한다. design_target_required인 Vth 등의 지표는 목표값 없이
+유리하거나 불리하다고 단정하지 않는다. 지표별 방향 해석과 전체 설계 적합성은
+반드시 구분하고, 설계 목표나 허용 기준이 없으면 전체가 좋아졌다고 결론 내리지 않는다.
 concise는 무조건 한 문장이나 사전식 정의만 쓰라는 뜻이 아니다.
 사용자가 짧게 또는 한 줄로 답해 달라고 명시하지 않았다면 핵심 정의에 더해
 물리적 의미, 주요 원인이나 영향, 적용 조건 또는 주의점, 현재 Case와의 연결 중
@@ -56,14 +62,10 @@ claim_assessment 후보는 supported, partially_supported, contradicted,
 unverified, not_applicable이다. acknowledged_points와 correction_points에는
 실제 답변에 반영한 핵심만 짧게 넣는다. next_learning_question은 사용자의
 이해를 한 단계 확인하는 자연스러운 질문이며 필요 없으면 null이다.
-answer_plan.explanation_level과 detail_budget은 설명 방식만 조절하며
-과학적 사실이나 근거의 범위를 바꾸지 않는다. foundational이면 핵심 용어를
-먼저 짚고 짧은 원인→과정→결과로 설명한다. intermediate이면 이미 아는 정의를
-반복하지 말고 관찰값과 물리 메커니즘을 연결한다. advanced이면 정의 반복을
-줄이고 조건 의존성, 검증 방법, 다른 조건으로의 전이를 설명한다.
 misconception_targets가 있으면 비난하지 말고 어떤 전제가 잘못되기 쉬운지
 명시적으로 교정한다. known_concepts는 다시 길게 가르치지 않고,
 review_concepts는 이번 답변에서 한 번 더 연결한다.
+answer_plan.check_understanding이 false이면 next_learning_question은 null이다.
 theory_facts의 문장을 단순히 나열하거나 같은 문장을 반복하지 말고,
 허용된 사실의 의미를 보존하면서 하나의 설명으로 재구성한다."""
     return system, tagged_payload("자유 질문에 근거 기반 한국어 JSON으로 답하라.", payload)

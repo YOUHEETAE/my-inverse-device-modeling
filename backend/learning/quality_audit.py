@@ -197,7 +197,7 @@ def audit_followup_history(
         )
         if checks["adaptive_metadata"]:
             adaptive += 1
-        if turn.question_type != "out_of_scope":
+        if turn.question_type not in {"current_result", "out_of_scope"}:
             checks["learning_continuation"] = bool(turn.next_learning_question)
 
         if turn.fallback_reason:

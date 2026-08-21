@@ -11,6 +11,8 @@ from dataclasses import replace
 import logging
 import sys
 import math
+import queue
+import threading
 from pathlib import Path
 from tkinter import messagebox, ttk
 
@@ -590,8 +592,104 @@ def _parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def _load_runtime_models(args):
+    return (
+        FinalCurvePredictor(args.curve_model_dir.resolve()),
+        FieldMapPredictor(args.field_model_dir.resolve()),
+    )
+
+
+def _load_runtime_models_async(args) -> queue.Queue:
+    results: queue.Queue = queue.Queue()
+
+    def load() -> None:
+        try:
+            results.put(("status", "I–V 모델을 불러오는 중입니다..."))
+            curve_predictor = FinalCurvePredictor(
+                args.curve_model_dir.resolve()
+            )
+            results.put(("status", "Field Map 모델을 불러오는 중입니다..."))
+            field_predictor = FieldMapPredictor(
+                args.field_model_dir.resolve()
+            )
+            results.put(("ready", (curve_predictor, field_predictor)))
+        except Exception as exc:
+            results.put(("error", exc))
+
+    threading.Thread(
+        target=load,
+        name="runtime-model-loader",
+        daemon=True,
+    ).start()
+    return results
+
+
+def _start_interactive_app(args) -> int:
+    window = _create_tk_window()
+    window.title("Integrated AI Device Model Visualization")
+    window.geometry("560x180")
+    window.resizable(False, False)
+    loading = ttk.Frame(window, padding=24)
+    loading.pack(fill=tk.BOTH, expand=True)
+    ttk.Label(
+        loading,
+        text="Device Model Visualization",
+        font=("TkDefaultFont", 15, "bold"),
+    ).pack(anchor="w")
+    status_var = tk.StringVar(value="실행에 필요한 모델을 준비하고 있습니다...")
+    ttk.Label(
+        loading,
+        textvariable=status_var,
+        foreground="#4b5563",
+    ).pack(anchor="w", pady=(10, 12))
+    progress = ttk.Progressbar(loading, mode="indeterminate")
+    progress.pack(fill=tk.X)
+    progress.start(12)
+    window.update_idletasks()
+
+    results = _load_runtime_models_async(args)
+
+    def poll_models() -> None:
+        try:
+            event, payload = results.get_nowait()
+        except queue.Empty:
+            window.after(50, poll_models)
+            return
+        if event == "status":
+            status_var.set(str(payload))
+            window.after(10, poll_models)
+            return
+        progress.stop()
+        if event == "error":
+            LOGGER.error(
+                "Runtime model loading failed",
+                exc_info=(type(payload), payload, payload.__traceback__),
+            )
+            status_var.set("모델을 불러오지 못했습니다. 설치 파일을 확인해 주세요.")
+            ttk.Button(loading, text="닫기", command=window.destroy).pack(
+                anchor="e", pady=(14, 0)
+            )
+            return
+        curve_predictor, field_predictor = payload
+        loading.destroy()
+        window.resizable(True, True)
+        IntegratedModelApp(
+            window,
+            curve_predictor,
+            field_predictor,
+            args.geo_template.resolve(),
+        )
+
+    window.after(20, poll_models)
+    window.mainloop()
+    return 0
+
+
 def main() -> int:
-    args = _parse_args(); curve_predictor = FinalCurvePredictor(args.curve_model_dir.resolve()); field_predictor = FieldMapPredictor(args.field_model_dir.resolve())
+    args = _parse_args()
+    if not (args.ui_smoke_test or args.smoke_test or args.save_dir):
+        return _start_interactive_app(args)
+    curve_predictor, field_predictor = _load_runtime_models(args)
     if args.ui_smoke_test:
         window = _create_tk_window(); window.withdraw()
 
@@ -703,17 +801,8 @@ def main() -> int:
         sce_label = app.case_study_panel._topic_label("sce_channel_length")
         app.case_study_panel.topic_choice_var.set(sce_label)
         app.case_study_panel._switch_topic()
-        app.case_study_panel._show_learning_portfolio()
+        app.case_study_panel._show_cover()
         window.update_idletasks()
-        portfolio_dialogs = [
-            child
-            for child in window.winfo_children()
-            if isinstance(child, tk.Toplevel)
-            and child.title() == "전체 Case 학습 현황"
-        ]
-        portfolio_dialog_ok = bool(portfolio_dialogs)
-        for dialog in portfolio_dialogs:
-            dialog.destroy()
         checks = {
             "provider_selector_removed": not hasattr(app, "provider_box"),
             "automatic_llm_fixed": (
@@ -741,9 +830,9 @@ def main() -> int:
             "case_study_session_switch": session_switch_ok,
             "case_study_multi_case_switch": multi_case_switch_ok,
             "case_study_portfolio": (
-                app.case_study_panel.portfolio_button.winfo_reqwidth() > 0
+                app.case_study_panel.show_cover
                 and "전체 Case" in app.case_study_panel.portfolio_var.get()
-                and portfolio_dialog_ok
+                and not hasattr(app.case_study_panel, "portfolio_button")
             ),
             "case_study_fixed_parameters": fixed_parameters,
             "case_study_result_tab_preserved": result_tab_preserved,
@@ -782,7 +871,7 @@ def main() -> int:
         print(f"curve_finite={bool(np.isfinite(idvd.currents).all() and np.isfinite(idvg.currents).all())}")
         print(f"field_nodes={len(mesh.node_xy_nm)}, field_elements={len(mesh.triangles)}, field_finite={all(np.isfinite(v).all() for v in [*prediction.node_fields.values(), *prediction.element_fields.values()])}")
         return 0
-    window = _create_tk_window(); IntegratedModelApp(window, curve_predictor, field_predictor, args.geo_template.resolve()); window.mainloop(); return 0
+    return 0
 
 
 if __name__ == "__main__":

@@ -1,0 +1,245 @@
+{
+  "schema_version": "1.0",
+  "topic_id": "source_drain_on_state_conduction",
+  "catalog_order": 4,
+  "prerequisite_topic_ids": [
+    "body_doping_design_window"
+  ],
+  "title": "Source/Drain Doping과 On-State Conduction",
+  "description": "Source/Drain doping 증가가 전류 주입, 유효 on-state 저항과 Drain-side 전기적 제어에 미치는 영향을 학습한다.",
+  "learning_objectives": [
+    "Source/Drain doping과 on-state 전류 경로 및 유효 Ron의 관계를 설명한다.",
+    "Ion·Ron의 구동 이득과 DIBL·gds의 Drain 제어 변화를 구분해 해석한다.",
+    "I–V Curve와 Drain-side Field Map을 연결해 구동 성능과 전기적 제어의 trade-off를 판단한다."
+  ],
+  "required_outputs": [
+    "idvd",
+    "idvg",
+    "potential",
+    "electric_field"
+  ],
+  "expected_concepts": [
+    "sd_doping_increases_ion_in_current_result",
+    "sd_doping_decreases_effective_ron_in_current_result",
+    "dibl_increases_in_current_result",
+    "sd_doping_changes_terminal_conduction",
+    "drive_and_drain_control_tradeoff",
+    "drain_field_redistribution_supports_tradeoff"
+  ],
+  "common_misconceptions": [
+    "ron_is_pure_contact_resistance",
+    "higher_sd_doping_improves_everything",
+    "ion_increase_proves_mobility_increase",
+    "dibl_and_gds_are_the_same_metric",
+    "field_increase_directly_equals_current_increase",
+    "field_hotspot_alone_proves_breakdown"
+  ],
+  "theory_concepts": [
+    "source_drain_doping",
+    "on_current",
+    "on_resistance",
+    "output_conductance",
+    "dibl",
+    "pn_junction",
+    "depletion_region",
+    "potential",
+    "electric_field"
+  ],
+  "experiment": {
+    "baseline": {
+      "L": 700,
+      "T": 20,
+      "B": 1e16,
+      "SD": 1e19,
+      "LDD": 1e18
+    },
+    "comparison": {
+      "L": 700,
+      "T": 20,
+      "B": 1e16,
+      "SD": 1e20,
+      "LDD": 1e18
+    }
+  },
+  "prediction_questions": [
+    {
+      "question_id": "sd_pred_ion",
+      "type": "single_select_with_reason",
+      "prompt": "현재 모델과 고정된 조건에서 Source/Drain doping이 1×10¹⁹ cm⁻³에서 1×10²⁰ cm⁻³로 증가하면 Ion은 어떻게 변할까요?",
+      "options": [
+        "증가",
+        "감소",
+        "큰 변화 없음"
+      ],
+      "correct_options": [
+        "증가"
+      ],
+      "reason_required": true,
+      "concepts_by_option": {
+        "증가": [
+          "sd_doping_increases_ion_in_current_result",
+          "sd_doping_changes_terminal_conduction"
+        ]
+      },
+      "misconceptions_by_option": {}
+    },
+    {
+      "question_id": "sd_pred_ron",
+      "type": "single_select_with_reason",
+      "prompt": "현재 모델의 동일한 on-state 추출 조건에서 Source/Drain doping이 증가하면 유효 Ron은 어떻게 변할까요?",
+      "options": [
+        "증가",
+        "감소",
+        "큰 변화 없음"
+      ],
+      "correct_options": [
+        "감소"
+      ],
+      "reason_required": true,
+      "concepts_by_option": {
+        "감소": [
+          "sd_doping_decreases_effective_ron_in_current_result",
+          "sd_doping_changes_terminal_conduction"
+        ]
+      },
+      "misconceptions_by_option": {}
+    },
+    {
+      "question_id": "sd_pred_dibl",
+      "type": "single_select_with_reason",
+      "prompt": "현재 모델과 고정된 조건에서 Source/Drain doping이 증가하면 DIBL은 어떻게 변할까요?",
+      "options": [
+        "증가",
+        "감소",
+        "큰 변화 없음"
+      ],
+      "correct_options": [
+        "증가"
+      ],
+      "reason_required": true,
+      "concepts_by_option": {
+        "증가": [
+          "dibl_increases_in_current_result",
+          "drive_and_drain_control_tradeoff"
+        ]
+      },
+      "misconceptions_by_option": {
+        "감소": [
+          "higher_sd_doping_improves_everything"
+        ]
+      }
+    }
+  ],
+  "observation_questions": [
+    {
+      "question_id": "sd_obs_iv_conduction",
+      "type": "multi_select_with_reason",
+      "prompt": "두 I–V Curve와 추출값을 함께 볼 때 1×10²⁰ cm⁻³ 조건의 on-state conduction 이득을 가장 직접적으로 보여주는 결과 두 개를 고르고 서로의 관계를 설명하세요.",
+      "options": [
+        "Ion 증가",
+        "Ron 감소",
+        "DIBL 증가",
+        "gds 증가",
+        "Drain-side Electric Field 증가"
+      ],
+      "correct_options": [
+        "Ion 증가",
+        "Ron 감소"
+      ],
+      "reason_required": true,
+      "concepts_by_option": {
+        "Ion 증가": [
+          "sd_doping_increases_ion_in_current_result"
+        ],
+        "Ron 감소": [
+          "sd_doping_decreases_effective_ron_in_current_result"
+        ]
+      },
+      "misconceptions_by_option": {
+        "Drain-side Electric Field 증가": [
+          "field_increase_directly_equals_current_increase"
+        ]
+      }
+    },
+    {
+      "question_id": "sd_obs_iv_tradeoff",
+      "type": "single_select_with_reason",
+      "prompt": "1×10²⁰ cm⁻³ 조건에서 Ion·Ron·DIBL·gds가 보여주는 서로 다른 전기적 역할을 올바르게 연결한 것은 무엇인가요?",
+      "options": [
+        "Ion·Ron은 on-state 전류 경로를, DIBL은 Drain bias에 따른 장벽 이동을, gds는 포화영역 전류 기울기를 나타내므로 구동 이득과 두 Drain 제어 비용을 나누어 본다",
+        "Ion·Ron·gds는 모두 on-state 전도 경로의 저항 변화를 나타내고, DIBL 증가는 그 저항 감소로 Drain 전위 전달이 커진 부수 효과로 묶어 해석한다",
+        "DIBL과 gds는 모두 Drain 전압 민감도를 나타내므로 하나의 Drain 제어 비용으로 합치고, Ion·Ron만 독립적인 구동 지표로 본다",
+        "Ion 증가와 Ron 감소는 mobility 향상을, DIBL·gds 증가는 고농도 접합에서 carrier 주입이 강해진 정도를 각각 나타낸다"
+      ],
+      "correct_options": [
+        "Ion·Ron은 on-state 전류 경로를, DIBL은 Drain bias에 따른 장벽 이동을, gds는 포화영역 전류 기울기를 나타내므로 구동 이득과 두 Drain 제어 비용을 나누어 본다"
+      ],
+      "reason_required": true,
+      "concepts_by_option": {
+        "Ion·Ron은 on-state 전류 경로를, DIBL은 Drain bias에 따른 장벽 이동을, gds는 포화영역 전류 기울기를 나타내므로 구동 이득과 두 Drain 제어 비용을 나누어 본다": [
+          "sd_doping_changes_terminal_conduction",
+          "dibl_increases_in_current_result",
+          "drive_and_drain_control_tradeoff"
+        ]
+      },
+      "misconceptions_by_option": {
+        "Ion·Ron·gds는 모두 on-state 전도 경로의 저항 변화를 나타내고, DIBL 증가는 그 저항 감소로 Drain 전위 전달이 커진 부수 효과로 묶어 해석한다": [
+          "higher_sd_doping_improves_everything"
+        ],
+        "DIBL과 gds는 모두 Drain 전압 민감도를 나타내므로 하나의 Drain 제어 비용으로 합치고, Ion·Ron만 독립적인 구동 지표로 본다": [
+          "dibl_and_gds_are_the_same_metric"
+        ],
+        "Ion 증가와 Ron 감소는 mobility 향상을, DIBL·gds 증가는 고농도 접합에서 carrier 주입이 강해진 정도를 각각 나타낸다": [
+          "ion_increase_proves_mobility_increase"
+        ]
+      }
+    },
+    {
+      "question_id": "sd_obs_field_evidence",
+      "type": "single_select_with_reason",
+      "prompt": "Drain-side Potential·Electric Field 변화가 어떤 전기적 지표를 공간적으로 뒷받침하고, 어떤 지표는 I–V에서 따로 읽어야 하는지 가장 정확히 구분한 것은 무엇인가요?",
+      "options": [
+        "Drain 인접 분포 변화는 DIBL 증가와 연결하고, Ion 증가와 유효 Ron 감소는 on-state I–V에서 별도의 전류 경로 근거로 확인한다",
+        "Drain 인접 Electric Field 증가를 낮아진 access resistance의 공간 근거로 두고 Ion·Ron과 연결하며, DIBL은 두 Drain bias의 Curve 이동에서 별도로 읽는다",
+        "Source/Drain 내부 Potential 강하 감소를 contact resistance 변화로 연결하고, Drain-side Field 최대값은 gds 증가의 공간 근거로 사용한다",
+        "Drain-side Field와 gds의 동반 증가는 고농도 접합의 carrier 주입 강화를 보여주며, 그 주입 변화가 DIBL 증가도 함께 만든다"
+      ],
+      "correct_options": [
+        "Drain 인접 분포 변화는 DIBL 증가와 연결하고, Ion 증가와 유효 Ron 감소는 on-state I–V에서 별도의 전류 경로 근거로 확인한다"
+      ],
+      "reason_required": true,
+      "concepts_by_option": {
+        "Drain 인접 분포 변화는 DIBL 증가와 연결하고, Ion 증가와 유효 Ron 감소는 on-state I–V에서 별도의 전류 경로 근거로 확인한다": [
+          "dibl_increases_in_current_result",
+          "drain_field_redistribution_supports_tradeoff"
+        ]
+      },
+      "misconceptions_by_option": {
+        "Drain 인접 Electric Field 증가를 낮아진 access resistance의 공간 근거로 두고 Ion·Ron과 연결하며, DIBL은 두 Drain bias의 Curve 이동에서 별도로 읽는다": [
+          "field_increase_directly_equals_current_increase"
+        ],
+        "Drain-side Field와 gds의 동반 증가는 고농도 접합의 carrier 주입 강화를 보여주며, 그 주입 변화가 DIBL 증가도 함께 만든다": [
+          "ion_increase_proves_mobility_increase"
+        ],
+        "Source/Drain 내부 Potential 강하 감소를 contact resistance 변화로 연결하고, Drain-side Field 최대값은 gds 증가의 공간 근거로 사용한다": [
+          "ron_is_pure_contact_resistance"
+        ]
+      }
+    }
+  ],
+  "allowed_next_actions": [
+    {
+      "action_id": "observe_sd_current_and_field",
+      "description": "I–V와 Drain-side Field에서 conduction 이득과 전기적 제어 변화를 확인한다."
+    },
+    {
+      "action_id": "retry_sd_prediction",
+      "description": "같은 결과를 보고 Ion, 유효 Ron과 DIBL의 변화 방향을 다시 답한다."
+    },
+    {
+      "action_id": "review_sd_theory",
+      "description": "Theory의 Source/Drain doping, on-state 저항과 Drain 제어 항목을 복습한다."
+    }
+  ],
+  "theory_reference": "Theory > MOSFET Basics > Source/Drain doping과 On-State Conduction"
+}

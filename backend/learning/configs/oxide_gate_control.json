@@ -28,7 +28,16 @@
   "common_misconceptions": [
     "thinner_oxide_only_changes_current",
     "stronger_gate_control_has_no_tradeoff",
-    "field_hotspot_alone_proves_breakdown"
+    "field_hotspot_alone_proves_breakdown",
+    "ioff_increase_proves_oxide_tunneling",
+    "field_peak_alone_proves_gate_control",
+    "field_map_alone_proves_overall_tradeoff",
+    "ss_improvement_guarantees_lower_ioff",
+    "dibl_improvement_explains_away_ioff",
+    "ioff_increase_is_gate_control_benefit",
+    "drain_field_represents_oxide_stress",
+    "potential_shift_quantifies_oxide_field",
+    "electrical_improvement_settles_field_tradeoff"
   ],
   "theory_concepts": [
     "oxide_thickness",
@@ -57,15 +66,92 @@
   },
   "prediction_questions": [
     {
-      "question_id": "oxide_pred_gm_ss",
+      "question_id": "oxide_pred_gm",
+      "type": "single_select_with_reason",
+      "prompt": "Gate oxide가 20 nm에서 10 nm로 얇아지면 gm은 어떻게 변할까요?",
+      "options": [
+        "증가",
+        "감소",
+        "큰 변화 없음"
+      ],
+      "reason_required": true,
+      "correct_options": [
+        "증가"
+      ],
+      "concepts_by_option": {
+        "증가": [
+          "thinner_oxide_strengthens_gate_control",
+          "gm_can_increase"
+        ]
+      },
+      "misconceptions_by_option": {
+        "큰 변화 없음": [
+          "thinner_oxide_only_changes_current"
+        ]
+      }
+    },
+    {
+      "question_id": "oxide_pred_ss",
+      "type": "single_select_with_reason",
+      "prompt": "Gate oxide가 20 nm에서 10 nm로 얇아지면 SS는 어떻게 변할까요?",
+      "options": [
+        "증가",
+        "감소",
+        "큰 변화 없음"
+      ],
+      "reason_required": true,
+      "correct_options": [
+        "감소"
+      ],
+      "concepts_by_option": {
+        "감소": [
+          "thinner_oxide_strengthens_gate_control",
+          "ss_can_decrease"
+        ]
+      },
+      "misconceptions_by_option": {
+        "큰 변화 없음": [
+          "thinner_oxide_only_changes_current"
+        ]
+      }
+    },
+    {
+      "question_id": "oxide_pred_ioff",
+      "type": "single_select_with_reason",
+      "prompt": "현재 모델과 고정된 조건에서 Gate oxide가 20 nm에서 10 nm로 얇아지면 Ioff는 어떻게 변할까요?",
+      "options": [
+        "증가",
+        "감소",
+        "큰 변화 없음"
+      ],
+      "reason_required": true,
+      "correct_options": [
+        "증가"
+      ],
+      "concepts_by_option": {
+        "증가": [
+          "ioff_increases_in_current_result",
+          "gate_control_reliability_tradeoff"
+        ]
+      },
+      "misconceptions_by_option": {
+        "큰 변화 없음": [
+          "stronger_gate_control_has_no_tradeoff"
+        ]
+      }
+    }
+  ],
+  "observation_questions": [
+    {
+      "question_id": "oxide_obs_iv_gate_control",
       "type": "multi_select_with_reason",
-      "prompt": "Gate oxide가 20 nm에서 10 nm로 얇아지면 gm과 SS는 어떻게 변할까요?",
+      "prompt": "10 nm 조건에서 Ion·Ioff·gm은 증가하고 SS·DIBL은 감소했습니다. 이 중 Gate 전압에 대한 channel 제어가 강해졌음을 가장 직접적으로 보여주는 두 지표를 고르고 Curve 근거를 설명하세요.",
       "options": [
         "gm 증가",
-        "gm 감소",
-        "SS 증가",
         "SS 감소",
-        "큰 변화 없음"
+        "Ioff 증가",
+        "Ion 증가",
+        "DIBL 감소"
       ],
       "reason_required": true,
       "correct_options": [
@@ -81,76 +167,69 @@
           "thinner_oxide_strengthens_gate_control",
           "ss_can_decrease"
         ]
-      },
-      "misconceptions_by_option": {
-        "큰 변화 없음": [
-          "thinner_oxide_only_changes_current"
-        ]
       }
-    }
-  ],
-  "observation_questions": [
+    },
     {
-      "question_id": "oxide_obs_gate_control",
-      "type": "single_select",
-      "prompt": "두 Id–Vg Curve에서 더 강한 Gate 제어와 일치하는 조건은 무엇인가요?",
+      "question_id": "oxide_obs_iv_tradeoff",
+      "type": "single_select_with_reason",
+      "prompt": "10 nm 조건에서 SS 감소와 Vth 감소가 동시에 나타났는데도 Ioff가 증가했습니다. 고정된 off-bias에서 이 세 결과를 가장 잘 연결한 것은 무엇인가요?",
       "options": [
-        "20 nm",
-        "10 nm",
-        "차이를 확인하기 어렵다"
+        "SS 감소로 subthreshold 기울기는 가팔라졌지만 Vth의 낮은 Vg 방향 이동이 더 크게 작용해 off-bias가 전도 시작점에 가까워졌다",
+        "SS 감소가 만든 누설 억제와 Vth 감소가 만든 누설 증가가 거의 상쇄되고, 남은 Ioff 증가는 gm 증가가 subthreshold 전류를 키운 결과다",
+        "DIBL 감소는 높은 Drain bias에서 장벽을 더 낮추는 방향으로 작용하고, Vth 감소와 함께 Ioff를 증가시켰다",
+        "Vth 감소는 Curve의 기울기를 바꾸고 SS 감소는 Curve를 이동시키므로 두 변화가 같은 방향으로 Ioff를 증가시켰다"
       ],
+      "reason_required": true,
       "correct_options": [
-        "10 nm"
+        "SS 감소로 subthreshold 기울기는 가팔라졌지만 Vth의 낮은 Vg 방향 이동이 더 크게 작용해 off-bias가 전도 시작점에 가까워졌다"
       ],
       "concepts_by_option": {
-        "10 nm": [
-          "thinner_oxide_strengthens_gate_control",
-          "gm_can_increase",
-          "ss_can_decrease"
+        "SS 감소로 subthreshold 기울기는 가팔라졌지만 Vth의 낮은 Vg 방향 이동이 더 크게 작용해 off-bias가 전도 시작점에 가까워졌다": [
+          "ioff_increases_in_current_result",
+          "gate_control_reliability_tradeoff"
+        ]
+      },
+      "misconceptions_by_option": {
+        "SS 감소가 만든 누설 억제와 Vth 감소가 만든 누설 증가가 거의 상쇄되고, 남은 Ioff 증가는 gm 증가가 subthreshold 전류를 키운 결과다": [
+          "ss_improvement_guarantees_lower_ioff"
+        ],
+        "DIBL 감소는 높은 Drain bias에서 장벽을 더 낮추는 방향으로 작용하고, Vth 감소와 함께 Ioff를 증가시켰다": [
+          "dibl_improvement_explains_away_ioff"
+        ],
+        "Vth 감소는 Curve의 기울기를 바꾸고 SS 감소는 Curve를 이동시키므로 두 변화가 같은 방향으로 Ioff를 증가시켰다": [
+          "ioff_increase_is_gate_control_benefit"
         ]
       }
     },
     {
-      "question_id": "oxide_obs_tradeoff",
-      "type": "multi_select_with_reason",
-      "prompt": "Gate control 변화와 함께 확인해야 할 Oxide Field 관찰 및 해석 한계를 선택하세요.",
+      "question_id": "oxide_obs_field_evidence",
+      "type": "single_select_with_reason",
+      "prompt": "10 nm 조건의 Drain-side 제어 개선과 Gate oxide의 국부 전계 부담을 Field Map에서 구분하려면 어떤 물리량과 영역을 대응시켜야 하나요?",
       "options": [
-        "Oxide 및 인접 영역의 전계 분포 확인",
-        "Ioff 증가",
-        "Potential 분포 변화",
-        "Field Map만으로 breakdown 확정",
-        "I–V와 Field를 함께 비교",
-        "추가 확인 불필요"
+        "Drain 인접 분포는 DIBL과 연결하고, Gate–Oxide–Channel 경계의 Electric Field는 같은 bias·scale에서 두 두께를 비교한다",
+        "Drain 인접 Electric Field의 최대값을 대표 Oxide 전계로 두고, 위치 차이는 두 조건의 gm 비율로 정규화한다",
+        "Gate 아래 Channel Potential contour의 이동량을 계면 Electric Field 변화로 환산하고 Vth 이동과 대조한다",
+        "DIBL·SS 감소율로 Gate 제어 개선량을 먼저 정한 뒤 Field Map의 최대값 위치가 같은지만 확인한다"
       ],
       "reason_required": true,
       "correct_options": [
-        "Oxide 및 인접 영역의 전계 분포 확인",
-        "Ioff 증가",
-        "Potential 분포 변화",
-        "I–V와 Field를 함께 비교"
+        "Drain 인접 분포는 DIBL과 연결하고, Gate–Oxide–Channel 경계의 Electric Field는 같은 bias·scale에서 두 두께를 비교한다"
       ],
       "concepts_by_option": {
-        "Oxide 및 인접 영역의 전계 분포 확인": [
+        "Drain 인접 분포는 DIBL과 연결하고, Gate–Oxide–Channel 경계의 Electric Field는 같은 bias·scale에서 두 두께를 비교한다": [
           "oxide_field_distribution_requires_check",
-          "gate_control_reliability_tradeoff"
-        ],
-        "Ioff 증가": [
-          "ioff_increases_in_current_result",
-          "gate_control_reliability_tradeoff"
-        ],
-        "Potential 분포 변화": [
-          "thinner_oxide_strengthens_gate_control"
-        ],
-        "I–V와 Field를 함께 비교": [
           "gate_control_reliability_tradeoff"
         ]
       },
       "misconceptions_by_option": {
-        "Field Map만으로 breakdown 확정": [
-          "field_hotspot_alone_proves_breakdown"
+        "Drain 인접 Electric Field의 최대값을 대표 Oxide 전계로 두고, 위치 차이는 두 조건의 gm 비율로 정규화한다": [
+          "drain_field_represents_oxide_stress"
         ],
-        "추가 확인 불필요": [
-          "stronger_gate_control_has_no_tradeoff"
+        "Gate 아래 Channel Potential contour의 이동량을 계면 Electric Field 변화로 환산하고 Vth 이동과 대조한다": [
+          "potential_shift_quantifies_oxide_field"
+        ],
+        "DIBL·SS 감소율로 Gate 제어 개선량을 먼저 정한 뒤 Field Map의 최대값 위치가 같은지만 확인한다": [
+          "electrical_improvement_settles_field_tradeoff"
         ]
       }
     }
@@ -162,7 +241,7 @@
     },
     {
       "action_id": "retry_oxide_prediction",
-      "description": "같은 결과를 보고 gm과 SS의 변화 방향을 다시 답한다."
+      "description": "같은 결과를 보고 gm, SS와 Ioff의 변화 방향을 다시 답한다."
     },
     {
       "action_id": "review_oxide_theory",

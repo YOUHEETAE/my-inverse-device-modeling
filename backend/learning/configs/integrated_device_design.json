@@ -1,0 +1,221 @@
+{
+  "schema_version": "1.0",
+  "topic_id": "integrated_device_design",
+  "catalog_order": 8,
+  "prerequisite_topic_ids": [
+    "source_drain_ldd_junction_engineering"
+  ],
+  "title": "Integrated Device Design: Target-Based Selection",
+  "description": "서로 다른 설계 의도를 가진 네 후보의 Curve와 Field를 비교해 목표 사양을 만족하는 조건을 선택하는 종합 Case이다.",
+  "learning_objectives": [
+    "Ion·Ioff·SS·DIBL의 동시 제약으로 후보 조건을 체계적으로 선별한다.",
+    "Drive·Leakage·Control 중심 후보의 장단점과 Balanced 후보의 선택 근거를 설명한다.",
+    "전기적 사양 통과와 Field 분포 검토의 역할을 구분해 최종 설계 판단을 작성한다."
+  ],
+  "required_outputs": [
+    "idvd",
+    "idvg",
+    "potential",
+    "electric_field"
+  ],
+  "expected_concepts": [
+    "design_targets_require_simultaneous_constraints",
+    "drive_candidate_has_highest_ion",
+    "leakage_candidate_has_lowest_ioff",
+    "balanced_candidate_meets_all_current_targets",
+    "drive_candidate_fails_leakage_and_dibl_targets",
+    "leakage_candidate_fails_drive_and_ss_targets",
+    "control_candidate_fails_drive_target",
+    "field_review_checks_spatial_design_margin"
+  ],
+  "common_misconceptions": [
+    "highest_ion_is_best_integrated_design",
+    "lowest_ioff_is_best_integrated_design",
+    "one_passing_metric_outweighs_failed_constraints",
+    "field_map_replaces_electrical_spec_check",
+    "electrical_pass_proves_reliability",
+    "candidate_labels_are_performance_proof"
+  ],
+  "theory_concepts": [
+    "channel_length",
+    "short_channel_effect",
+    "oxide_thickness",
+    "body_doping",
+    "source_drain_doping",
+    "ldd",
+    "on_current",
+    "off_current",
+    "subthreshold_swing",
+    "dibl",
+    "electric_field",
+    "potential"
+  ],
+  "experiment": {
+    "comparison_design": "candidate_set",
+    "comparison_caption": "전기적 파라미터 (Control→Balanced)",
+    "display_parameters": ["L", "T", "B", "SD", "LDD"],
+    "condition_descriptions": {
+      "Drive": "짧은 Channel, 얇은 Oxide, 낮은 Body doping과 높은 SD·LDD doping으로 구동 성능을 우선한 후보",
+      "Leakage": "긴 Channel, 두꺼운 Oxide, 높은 Body doping과 낮은 SD·LDD doping으로 off-state 누설 억제를 우선한 후보",
+      "Control": "긴 Channel과 얇은 Oxide를 사용해 정전기적 제어 특성을 비교하는 기준 후보",
+      "Balanced": "얇은 Oxide와 높은 Body doping을 유지하면서 Channel을 줄여 구동과 전기적 제약의 균형을 겨냥한 후보"
+    },
+    "baseline_label": "Control",
+    "comparison_label": "Balanced",
+    "baseline": {
+      "L": 700,
+      "T": 10,
+      "B": 5e16,
+      "SD": 1e20,
+      "LDD": 5e17
+    },
+    "comparison": {
+      "L": 300,
+      "T": 10,
+      "B": 5e16,
+      "SD": 1e20,
+      "LDD": 5e17
+    },
+    "references": [
+      {
+        "condition_id": "drive",
+        "label": "Drive",
+        "conditions": {"L": 300, "T": 10, "B": 1e16, "SD": 1e20, "LDD": 5e18}
+      },
+      {
+        "condition_id": "leakage",
+        "label": "Leakage",
+        "conditions": {"L": 700, "T": 20, "B": 5e16, "SD": 1e19, "LDD": 5e17}
+      }
+    ]
+  },
+  "prediction_questions": [
+    {
+      "question_id": "design_pred_highest_ion",
+      "type": "single_select_with_reason",
+      "prompt": "네 후보 중 가장 큰 Ion을 보일 것으로 예상되는 조건은 무엇인가요?",
+      "options": ["Drive", "Leakage", "Control", "Balanced"],
+      "correct_options": ["Drive"],
+      "reason_required": true,
+      "concepts_by_option": {
+        "Drive": ["drive_candidate_has_highest_ion"]
+      },
+      "misconceptions_by_option": {
+        "Leakage": ["candidate_labels_are_performance_proof"]
+      }
+    },
+    {
+      "question_id": "design_pred_lowest_ioff",
+      "type": "single_select_with_reason",
+      "prompt": "네 후보 중 가장 작은 Ioff를 보일 것으로 예상되는 조건은 무엇인가요?",
+      "options": ["Drive", "Leakage", "Control", "Balanced"],
+      "correct_options": ["Leakage"],
+      "reason_required": true,
+      "concepts_by_option": {
+        "Leakage": ["leakage_candidate_has_lowest_ioff"]
+      },
+      "misconceptions_by_option": {
+        "Drive": ["candidate_labels_are_performance_proof"]
+      }
+    },
+    {
+      "question_id": "design_pred_target_choice",
+      "type": "single_select_with_reason",
+      "prompt": "목표가 Ion≥10 mA/µm, Ioff≤0.001 mA/µm, DIBL≤30 mV/V, SS≤80 mV/dec일 때 네 조건 중 모든 기준을 만족할 것으로 예상되는 후보는 무엇인가요?",
+      "options": ["Drive", "Leakage", "Control", "Balanced"],
+      "correct_options": ["Balanced"],
+      "reason_required": true,
+      "concepts_by_option": {
+        "Balanced": [
+          "design_targets_require_simultaneous_constraints",
+          "balanced_candidate_meets_all_current_targets"
+        ]
+      },
+      "misconceptions_by_option": {
+        "Drive": ["highest_ion_is_best_integrated_design"],
+        "Leakage": ["lowest_ioff_is_best_integrated_design"],
+        "Control": ["one_passing_metric_outweighs_failed_constraints"]
+      }
+    }
+  ],
+  "observation_questions": [
+    {
+      "question_id": "design_obs_constraint_filter",
+      "type": "single_select_with_reason",
+      "prompt": "실제 전기적 파라미터를 목표 사양과 대조했을 때 최종 후보와 판단 근거로 가장 타당한 것은 무엇인가요?",
+      "options": [
+        "Balanced만 네 기준을 모두 만족하므로 통과 후보로 선택한다",
+        "Drive가 Ion 차이가 가장 크므로 Ioff와 DIBL 초과를 허용하고 선택한다",
+        "Leakage가 Ioff가 가장 작으므로 Ion과 SS 기준을 제외하고 선택한다",
+        "Control이 DIBL이 가장 작으므로 Ion 미달을 보완된 것으로 판단한다"
+      ],
+      "correct_options": ["Balanced만 네 기준을 모두 만족하므로 통과 후보로 선택한다"],
+      "reason_required": true,
+      "concepts_by_option": {
+        "Balanced만 네 기준을 모두 만족하므로 통과 후보로 선택한다": [
+          "design_targets_require_simultaneous_constraints",
+          "balanced_candidate_meets_all_current_targets"
+        ]
+      },
+      "misconceptions_by_option": {
+        "Drive가 Ion 차이가 가장 크므로 Ioff와 DIBL 초과를 허용하고 선택한다": ["highest_ion_is_best_integrated_design"],
+        "Leakage가 Ioff가 가장 작으므로 Ion과 SS 기준을 제외하고 선택한다": ["lowest_ioff_is_best_integrated_design"],
+        "Control이 DIBL이 가장 작으므로 Ion 미달을 보완된 것으로 판단한다": ["one_passing_metric_outweighs_failed_constraints"]
+      }
+    },
+    {
+      "question_id": "design_obs_rejection_reasons",
+      "type": "multi_select_with_reason",
+      "prompt": "탈락한 세 후보의 실제 미달 사유를 모두 고르세요.",
+      "options": [
+        "Drive: Ioff와 DIBL 기준 초과",
+        "Leakage: Ion 미달과 SS 기준 초과",
+        "Control: Ion 기준 미달",
+        "Drive: SS 기준 초과",
+        "Balanced: DIBL 기준 초과"
+      ],
+      "correct_options": [
+        "Drive: Ioff와 DIBL 기준 초과",
+        "Leakage: Ion 미달과 SS 기준 초과",
+        "Control: Ion 기준 미달"
+      ],
+      "reason_required": true,
+      "concepts_by_option": {
+        "Drive: Ioff와 DIBL 기준 초과": ["drive_candidate_fails_leakage_and_dibl_targets"],
+        "Leakage: Ion 미달과 SS 기준 초과": ["leakage_candidate_fails_drive_and_ss_targets"],
+        "Control: Ion 기준 미달": ["control_candidate_fails_drive_target"]
+      }
+    },
+    {
+      "question_id": "design_obs_field_margin",
+      "type": "single_select_with_reason",
+      "prompt": "Balanced가 네 전기적 기준을 통과한 뒤 Control 대비 증가한 DIBL·Drain-side Field를 설계 판단에 반영하는 방법으로 가장 타당한 것은 무엇인가요?",
+      "options": [
+        "동일 bias·scale에서 Drain 인접 분포를 비교해 Control보다 줄어든 정전기적 여유를 기록하고, 별도 Field 한계가 있을 때 최종 통과 여부에 추가한다",
+        "DIBL 기준을 이미 통과했으므로 Drain-side Field 차이는 같은 정전기 특성의 중복 정보로 처리한다",
+        "Balanced와 Control의 global Field 비율만큼 DIBL 기준값을 보정해 전기적 사양표를 다시 계산한다",
+        "Drive와 Leakage의 Field 극값 사이에 Balanced가 위치하는지 확인해 네 전기적 기준의 통과 여부를 대신 평가한다"
+      ],
+      "correct_options": [
+        "동일 bias·scale에서 Drain 인접 분포를 비교해 Control보다 줄어든 정전기적 여유를 기록하고, 별도 Field 한계가 있을 때 최종 통과 여부에 추가한다"
+      ],
+      "reason_required": true,
+      "concepts_by_option": {
+        "동일 bias·scale에서 Drain 인접 분포를 비교해 Control보다 줄어든 정전기적 여유를 기록하고, 별도 Field 한계가 있을 때 최종 통과 여부에 추가한다": [
+          "field_review_checks_spatial_design_margin"
+        ]
+      },
+      "misconceptions_by_option": {
+        "DIBL 기준을 이미 통과했으므로 Drain-side Field 차이는 같은 정전기 특성의 중복 정보로 처리한다": ["electrical_pass_proves_reliability"],
+        "Balanced와 Control의 global Field 비율만큼 DIBL 기준값을 보정해 전기적 사양표를 다시 계산한다": ["field_map_replaces_electrical_spec_check"],
+        "Drive와 Leakage의 Field 극값 사이에 Balanced가 위치하는지 확인해 네 전기적 기준의 통과 여부를 대신 평가한다": ["field_map_replaces_electrical_spec_check"]
+      }
+    }
+  ],
+  "allowed_next_actions": [
+    {"action_id": "review_candidate_matrix", "description": "네 후보의 사양 충족 여부를 표로 다시 확인한다."},
+    {"action_id": "retry_integrated_choice", "description": "모든 제약을 동시에 적용해 후보를 다시 선택한다."},
+    {"action_id": "review_integrated_theory", "description": "앞선 Case의 파라미터별 Trade-off를 종합해 복습한다."}
+  ],
+  "theory_reference": "Theory > MOSFET Design > Target-based integrated selection"
+}

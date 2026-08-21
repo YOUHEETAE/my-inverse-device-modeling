@@ -102,6 +102,75 @@ def test_external_question_uses_interpreter_then_grounded_writer() -> None:
     )
 
 
+def test_broad_result_questions_override_empty_or_misclassified_intent() -> None:
+    topic, context = load_topic("sce_channel_length"), _context()
+    direct_answer = {
+        "question_type": "current_result",
+        "answer": (
+            "현재 비교는 채널 길이 조건을 바꾼 결과이며, 지표별 이득과 손실이 "
+            "함께 나타나는 trade-off를 보여 줍니다."
+        ),
+        "evidence_ids": ["experiment:conditions", "metric:ion", "metric:ioff"],
+        "distinguishes_current_result": True,
+        "needs_new_experiment": False,
+        "suggested_action_id": None,
+        "next_learning_question": "다른 조건도 생각해 볼까요?",
+    }
+    provider = _Provider(
+        _intent(
+            target_concepts=[],
+            requested_metrics=[],
+            needs_current_result=True,
+        ),
+        direct_answer,
+    )
+    response = LearningLLMService(provider).ask_followup(
+        topic,
+        "지금 내가 돌린 시뮬레이션이 정확히 뭐를 의미하는거야?",
+        context,
+    )
+
+    assert response.question_type == "current_result"
+    assert response.uses_current_result
+    assert response.next_learning_question is None
+    result_facts = provider.calls[1][2]["knowledge_layers"]["result_facts"]
+    assert set(result_facts) == {
+        name
+        for name, change in context.electrical_changes.items()
+        if change.available
+    }
+    assert result_facts["ioff"]["directional_implication"] == (
+        "unfavorable_for_metric"
+    )
+    assert result_facts["vth_high"]["directional_implication"] == (
+        "design_target_required"
+    )
+
+    provider = _Provider(
+        _intent(
+            intent="predict_change",
+            target_concepts=[],
+            requested_metrics=[],
+            needs_current_result=False,
+            needs_new_experiment=True,
+            answer_structure="cause_and_effect",
+        ),
+        direct_answer,
+    )
+    response = LearningLLMService(provider).ask_followup(
+        topic,
+        "각 파라미터의 변화가 좋은쪽으로 변화한건지 아닌지 알려줘.",
+        context,
+    )
+    assert response.question_type == "current_result"
+    assert response.uses_current_result
+    assert not response.needs_new_experiment
+    assert response.interpreted_intent["intent"] == "predict_change"
+    assert provider.calls[1][2]["answer_plan"][
+        "organize_each_requested_metric"
+    ]
+
+
 def test_definition_question_uses_small_rich_nonduplicated_context_pack() -> None:
     provider = _Provider(
         _intent(
