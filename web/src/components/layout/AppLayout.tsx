@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { ChevronRight } from "lucide-react";
+import { AccountMenu } from "@/features/auth/AccountMenu";
 import { Sidebar } from "./Sidebar";
 
 interface AppLayoutProps {
@@ -13,7 +14,8 @@ export function AppLayout({ title, breadcrumb, children }: AppLayoutProps) {
     <div className="flex h-screen w-screen overflow-hidden">
       <Sidebar />
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-background">
-        <header className="flex h-9 shrink-0 items-center gap-3 border-b border-outline-variant bg-surface-container px-3">
+        {/* h-11: 계정 아바타가 들어가면서 h-9(36px)로는 너무 눌렸다. */}
+        <header className="flex h-11 shrink-0 items-center gap-3 border-b border-outline-variant bg-surface-container px-3">
           <h2 className="text-xs font-bold">{title}</h2>
           <div className="h-3 w-px bg-outline" />
           <nav className="flex items-center gap-1.5 font-mono text-[11px] text-on-surface-variant">
@@ -26,6 +28,12 @@ export function AppLayout({ title, breadcrumb, children }: AppLayoutProps) {
               </span>
             ))}
           </nav>
+          {/* 계정은 "어디로 갈까"(사이드바)와 성격이 다른 관심사라 상단 오른쪽에
+              둔다. 사이드바는 Theory/Case Study에서 하위 챕터가 펼쳐져 길이가
+              변하기도 해서 위치가 흔들린다. */}
+          <div className="ml-auto flex items-center">
+            <AccountMenu />
+          </div>
         </header>
         <main className="flex-1 overflow-hidden">{children}</main>
       </div>

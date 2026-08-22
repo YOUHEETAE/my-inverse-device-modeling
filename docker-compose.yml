@@ -55,6 +55,11 @@ services:
       # 전송돼서, 기동은 성공하지만 로그인만 실패한다.
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:?GOOGLE_CLIENT_ID must be set in .env}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:?GOOGLE_CLIENT_SECRET must be set in .env}
+      # Where to send the browser after a successful login. Caddy serves the
+      # frontend and the API from the same origin here, so a bare path is
+      # enough — unlike local development, where the frontend is a separate
+      # Vite server on another port.
+      - FRONTEND_URL=/
     # Same loopback-only rationale as backend above: Caddy reaches this over
     # the internal network, the published port is for host-side debugging.
     ports:

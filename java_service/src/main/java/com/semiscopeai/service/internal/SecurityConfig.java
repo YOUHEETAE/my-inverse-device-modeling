@@ -2,8 +2,12 @@ package com.semiscopeai.service.internal;
 
 import com.semiscopeai.service.auth.CustomOAuth2UserService;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.web.authentication.logout.HttpStatusReturningLogoutSuccessHandler;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
@@ -20,14 +24,23 @@ import org.springframework.security.web.SecurityFilterChain;
 public class SecurityConfig {
 
     private final CustomOAuth2UserService customOAuth2UserService;
+    private final String frontendUrl;
 
-    public SecurityConfig(CustomOAuth2UserService customOAuth2UserService) {
+    public SecurityConfig(
+            CustomOAuth2UserService customOAuth2UserService,
+            @Value("${app.frontend-url}") String frontendUrl) {
         this.customOAuth2UserService = customOAuth2UserService;
+        this.frontendUrl = frontendUrl;
     }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        return http.csrf(csrf -> csrf.disable())
+        return http
+                // CorsConfig의 CorsConfigurationSource 빈을 사용한다. 이걸
+                // 켜야 시큐리티 필터가 처리하는 /logout, /oauth2/** 에도 CORS
+                // 헤더가 붙는다.
+                .cors(Customizer.withDefaults())
+                .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
                 // 브라우저 기본 인증 팝업이 뜨지 않게 — 이 서비스는 JSON API다.
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
@@ -36,7 +49,19 @@ public class SecurityConfig {
                 // userService를 지정하지 않으면 스프링 기본 구현이 쓰여서
                 // 인증만 되고 users 테이블에는 아무것도 저장되지 않는다.
                 .oauth2Login(oauth -> oauth
-                        .userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService)))
+                        .userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService))
+                        // alwaysUse=true: 스프링은 원래 "인증이 필요해서 막혔던 경로"로
+                        // 되돌려보내는데, 우리는 모든 경로가 permitAll이라 막힌 요청이
+                        // 없어서 그 기록이 비어있다. 항상 프론트로 보내고, 사용자가
+                        // 보던 화면 복원은 프론트가 처리한다(로그인 직전 경로를
+                        // sessionStorage에 저장해둔다).
+                        .defaultSuccessUrl(frontendUrl, true))
+                // 기본 동작은 /login?logout 으로 302 리다이렉트인데, 그런 경로가
+                // 없어서 프론트의 axios 호출이 404로 실패한다(세션은 이미 끊긴
+                // 뒤라 "로그아웃은 됐는데 화면은 그대로"가 된다). JSON API이므로
+                // 본문 없이 상태 코드만 돌려준다.
+                .logout(logout -> logout.logoutSuccessHandler(
+                        new HttpStatusReturningLogoutSuccessHandler(HttpStatus.NO_CONTENT)))
                 .build();
     }
 }

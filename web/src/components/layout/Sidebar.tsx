@@ -46,7 +46,10 @@ export function Sidebar() {
           <BarChart3 className="h-3.5 w-3.5 text-primary" />
         </div>
         <div>
-          <h1 className="text-xs font-bold leading-snug">SemiScope</h1>
+          <h1 className="flex items-baseline gap-1 text-xs font-bold leading-snug">
+            SemiScope
+            <span className="text-[10px] font-bold italic tracking-tight text-primary">beta</span>
+          </h1>
           <p className="font-mono text-[9px] uppercase tracking-wide text-on-surface-variant">
             AI
           </p>
