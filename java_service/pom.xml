@@ -110,13 +110,44 @@
 			<artifactId>spring-boot-starter-security-test</artifactId>
 			<scope>test</scope>
 		</dependency>
-		<!-- 테스트는 실제 PostgreSQL 없이 인메모리 DB로 돈다 -->
+		<!-- 대부분의 테스트는 인메모리 DB로 충분하다 -->
 		<dependency>
 			<groupId>com.h2database</groupId>
 			<artifactId>h2</artifactId>
 			<scope>test</scope>
 		</dependency>
+		<!-- 채팅 저장소는 jsonb 캐스팅과 RETURNING 같은 PostgreSQL 전용 SQL을
+		     쓴다. H2로 검증하면 통과해도 실제로는 깨질 수 있어서 진짜
+		     PostgreSQL을 띄운다. Flyway 마이그레이션도 여기서 실제로 실행된다. -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-testcontainers</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.testcontainers</groupId>
+			<artifactId>postgresql</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.testcontainers</groupId>
+			<artifactId>junit-jupiter</artifactId>
+			<scope>test</scope>
+		</dependency>
 	</dependencies>
+
+	<dependencyManagement>
+		<dependencies>
+			<!-- Boot 4의 부모 POM은 Testcontainers 버전을 관리하지 않는다 -->
+			<dependency>
+				<groupId>org.testcontainers</groupId>
+				<artifactId>testcontainers-bom</artifactId>
+				<version>1.21.4</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
 
 	<build>
 		<plugins>

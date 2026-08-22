@@ -5,6 +5,7 @@ import com.semiscopeai.service.auth.CustomOAuth2UserService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.logout.HttpStatusReturningLogoutSuccessHandler;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.Customizer;
@@ -41,7 +42,19 @@ public class SecurityConfig {
                 // 헤더가 붙는다.
                 .cors(Customizer.withDefaults())
                 .csrf(csrf -> csrf.disable())
-                .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
+                // 자유질문만 로그인을 요구한다. 질문 한 번에 LLM 비용이 나가는데
+                // 비로그인은 계정 단위로 한도를 걸 수단이 없고, 대화 이력도
+                // 사용자에 묶여 저장되므로 익명이면 매번 단발 질문이 된다.
+                // 나머지 예측·조회 API는 그대로 공개다.
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/chat/**").authenticated()
+                        .anyRequest().permitAll())
+                // 인증이 필요한 요청이 막혔을 때 구글 로그인 페이지로
+                // 리다이렉트하는 것이 oauth2Login의 기본 동작인데, 프론트가
+                // fetch로 부르는 API에서는 그 리다이렉트를 따라갈 수 없다
+                // (다른 출처라 CORS에도 막힌다). 401을 그대로 돌려준다.
+                .exceptionHandling(handling -> handling.authenticationEntryPoint(
+                        new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
                 // 브라우저 기본 인증 팝업이 뜨지 않게 — 이 서비스는 JSON API다.
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
                 .httpBasic(basic -> basic.disable())
