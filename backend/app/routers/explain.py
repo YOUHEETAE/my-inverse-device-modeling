@@ -2,7 +2,12 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from ai.curve_model.inference import device_features
-from app.services import curve_predictor, explanation_service
+from app.services import (
+    curve_predictor,
+    explanation_service,
+    field_chat_service,
+    iv_chat_service,
+)
 
 from app.services import build_field_map
 
@@ -56,6 +61,53 @@ class ExplainResponse(BaseModel):
 
 class PromptResponse(BaseModel):
     prompt: str
+
+
+# One previous exchange. The client sends these back on each request because
+# the chat services are stateless — they take history as an argument (see
+# IVChatService.answer). Only the two most recent turns actually reach the
+# LLM (iv_chat.py truncates), so sending more is harmless but pointless.
+class ChatTurn(BaseModel):
+    question: str = Field(max_length=800)
+    answer: str
+    # Present on turns the LLM failed to answer; those are dropped rather
+    # than fed back as context.
+    source: str | None = None
+    comparison_focus: str | None = None
+
+
+class ChatRequest(BaseModel):
+    question: str = Field(min_length=1, max_length=800)
+    history: list[ChatTurn] = []
+    # Returned by a previous answer and passed back unchanged. The services
+    # use it to resume a clarification they had already started rather than
+    # re-classifying the question from scratch.
+    intent_checkpoint: dict = {}
+
+
+class ExplainCurveChatRequest(ChatRequest):
+    curves: list[CurveConfig]
+
+
+class ExplainFieldChatRequest(ChatRequest):
+    fields: list[FieldConfig]
+    display: str
+    scale_mode: str
+    range_mode: str
+
+
+class ChatResponse(BaseModel):
+    answer: str
+    # "external_llm" / "local_router" / "external_error" — the UI shows this
+    # so a fallback answer isn't mistaken for a real one.
+    source: str
+    intent: str | None
+    used_evidence_ids: list[str]
+    suggested_followup: str | None
+    # True when the question can't be answered from the current analysis and
+    # the user needs to run a different device configuration.
+    needs_new_experiment: bool
+    intent_checkpoint: dict
 
 
 router = APIRouter()
@@ -148,3 +200,69 @@ async def explain_fields_prompt(payload: ExplainFieldRequest) -> PromptResponse:
         raise HTTPException(status_code=400, detail=str(e))
 
     return PromptResponse(prompt=prompt)
+
+
+def _chat_history(turns: list[ChatTurn]) -> list[dict]:
+    return [turn.model_dump() for turn in turns]
+
+
+def _chat_response(response) -> ChatResponse:
+    return ChatResponse(
+        answer=response.answer,
+        source=response.source,
+        intent=response.intent.intent if response.intent else None,
+        used_evidence_ids=list(response.used_evidence_ids),
+        suggested_followup=response.suggested_followup,
+        needs_new_experiment=response.needs_new_experiment,
+        intent_checkpoint=dict(response.intent_checkpoint),
+    )
+
+
+# Free-form follow-up questions about an analysis. Unlike /explain/curves,
+# which describes the result once, this answers whatever the user asks about
+# it — the Tkinter app has had this (frontend/visualization/explanation_panel.py);
+# the web API simply never exposed it.
+#
+# The request carries the device configuration rather than an analysis id
+# because HTTP is stateless and the services need the prediction to build
+# their evidence pack — so each question re-runs the curve prediction, same
+# as /explain/curves does.
+@router.post("/explain/curves/chat")
+def explain_curves_chat(payload: ExplainCurveChatRequest) -> ChatResponse:
+    results, configs = _predict_curve_results(payload.curves)
+    snapshot = iv_chat_service.build_snapshot(results, configs)
+
+    try:
+        response = iv_chat_service.answer(
+            snapshot,
+            payload.question,
+            history=_chat_history(payload.history),
+            intent_checkpoint=payload.intent_checkpoint,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    return _chat_response(response)
+
+
+@router.post("/explain/fields/chat")
+async def explain_fields_chat(payload: ExplainFieldChatRequest) -> ChatResponse:
+    outputs = _build_field_outputs(payload.fields)
+
+    try:
+        snapshot = field_chat_service.build_snapshot(
+            outputs,
+            payload.display,
+            payload.scale_mode,
+            payload.range_mode,
+        )
+        response = field_chat_service.answer(
+            snapshot,
+            payload.question,
+            history=_chat_history(payload.history),
+            intent_checkpoint=payload.intent_checkpoint,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    return _chat_response(response)

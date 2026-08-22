@@ -276,6 +276,11 @@ verified_iv_facts가 없으면 어떤 가능성과 일치하며 어떤 I-V 지�
 말한다. Electric field만으로 breakdown 발생을 확정하지 않는다. 국부 current
 density와 terminal current를 동일시하지 않는다. 여러 parameter가 동시에 바뀌면
 개별 원인을 단정하지 않는다. 수치와 변화 방향을 만들거나 재계산하지 않는다.
+context_pack에 없는 숫자는 일반 상식이나 이론 상수라도 쓰지 않는다. 비교나
+평가가 필요하면 숫자 없이 서술한다.
+used_evidence_ids에는 context_pack의 allowed_evidence_ids에 있는 ID만 넣는다.
+현재 결과를 근거로 답할 때는 used_evidence_ids를 비워 두지 않되, 정의나 일반
+이론만 묻는 질문처럼 인용할 근거가 없으면 빈 배열로 둔다.
 정량화 질문에는 device input parameter와 Field에서 계산한 spatial metric을
 구분한다. quantification_guide의 method_catalog로 계산 방법을 설명하고,
 current_spatial_changes로 현재 검증된 방향을 설명한다. exact numeric value는

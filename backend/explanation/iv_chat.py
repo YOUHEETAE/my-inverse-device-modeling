@@ -241,11 +241,17 @@ def validate_iv_intent(
 
 
 def _intent_prompt(payload: dict[str, Any]) -> tuple[str, str]:
-    system = """당신은 MOSFET I-V 분석 질문 해석기다.
+    # 허용값 목록은 검증에 쓰는 상수에서 그대로 만든다. 예전에는 프롬프트에
+    # 손으로 적어둔 목록과 검증 상수가 따로 놀았고, answer_structure는 아예
+    # 적히지 않아 모델이 목록에 없는 값(value_only 등)을 지어내 매번
+    # invalid_iv_intent_content로 거부됐다.
+    intents = ", ".join(sorted(IV_CHAT_INTENTS))
+    structures = ", ".join(sorted(IV_CHAT_STRUCTURES))
+    system = f"""당신은 MOSFET I-V 분석 질문 해석기다.
 질문의 의미만 분류하고 답변하지 않는다. 제공된 metric과 mechanism 이름만 쓴다.
-intent는 explain_overall, explain_metric, explain_mechanism, compare_curves,
-define_extraction, evaluate_claim, hypothetical, new_experiment, out_of_scope,
-clarify 중 하나다. 현재 보이는 결과의 이유·비교·수치를 묻는 질문은
+intent는 {intents} 중 하나다.
+answer_structure는 {structures} 중 하나다.
+현재 보이는 결과의 이유·비교·수치를 묻는 질문은
 needs_current_result=true다. 새로운 조건 추가·변경 요청은 needs_new_experiment=true다.
 응답은 intent, requested_metrics, requested_mechanisms, needs_current_result,
 needs_new_experiment, references_previous, answer_structure만 가진 JSON object다."""
@@ -259,7 +265,9 @@ needs_new_experiment, references_previous, answer_structure만 가진 JSON objec
 def _answer_prompt(payload: dict[str, Any]) -> tuple[str, str]:
     system = """당신은 반도체 소자 학습용 I-V 분석 튜터다.
 Python이 검증한 context_pack만 근거로 자연스럽고 충분한 한국어 답변을 작성한다.
-수치와 변화 방향을 새로 계산하거나 만들지 않는다. current_result_facts는 현재
+수치와 변화 방향을 새로 계산하거나 만들지 않는다. context_pack에 없는 숫자는
+일반 상식이나 이론 상수(예: 이론적 SS 하한, 상온 온도)라도 쓰지 않는다.
+비교나 평가가 필요하면 숫자 없이 서술한다. current_result_facts는 현재
 모델 결과이고 theory_facts는 일반 물리 이론이므로 둘을 명확하게 구분한다.
 통제된 단일 파라미터 비교의 mechanism_chains는 관찰과 방향이 일치한 경로다.
 원인→물리 과정→관찰 지표→성능 의미 순서로 연결하되, 단순 수치 나열로 끝내지 않는다.
@@ -269,6 +277,9 @@ comparison_focus는 기존 Comparison Plan에서 허용된 근거를 좁힌 결�
 subject와 comparison 밖의 결과를 섞지 않으며 original_plan_claim_level보다 강한
 주장으로 승격하지 않는다.
 evidence ID는 used_evidence_ids JSON 필드에만 넣고 answer 본문에는 절대 노출하지 않는다.
+used_evidence_ids에는 context_pack의 allowed_evidence_ids에 있는 ID만 넣는다.
+현재 결과를 근거로 답할 때는 used_evidence_ids를 비워 두지 않되, 정의나 일반
+이론만 묻는 질문처럼 인용할 근거가 없으면 빈 배열로 둔다.
 응답은 answer, used_evidence_ids, needs_new_experiment, suggested_followup만 가진 JSON object다."""
     return system, (
         "<GROUNDED_IV_QUESTION>\n"

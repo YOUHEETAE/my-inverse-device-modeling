@@ -1,8 +1,12 @@
+from dataclasses import replace
+
 from app import REPO_ROOT
 from ai.curve_model.inference import FinalCurvePredictor
 from ai.field_map_model.inference import FieldMapPredictor
 from backend.explanation.providers import ProviderSettings, create_explanation_provider
 from backend.explanation.service import ExplanationService
+from backend.explanation.iv_chat import IVChatService
+from backend.explanation.field_chat import FieldChatService
 from ai.field_map_model.inference import generate_gmsh_mesh
 from ai.shared.field_data import GeneratedFieldMap
 
@@ -10,6 +14,31 @@ _initial_provider = create_explanation_provider(
     ProviderSettings.from_environment("auto")
 )
 explanation_service = ExplanationService(_initial_provider)
+
+
+def _create_chat_provider():
+    """Strict provider for free-form questions — mirrors the Tkinter app's
+    create_case_study_provider (frontend/app.py).
+
+    Unlike the explanation service above, mock and "safe" fallbacks are
+    disabled: a canned answer to a question the user actually typed reads as
+    a real answer, which is worse than saying the LLM is unavailable. The
+    chat services accept None and report provider_unavailable themselves.
+    """
+    try:
+        settings = replace(
+            ProviderSettings.from_environment("external_llm"),
+            allow_mock_fallback=False,
+            allow_safe_fallback=False,
+        )
+        return create_explanation_provider(settings)
+    except RuntimeError:
+        return None
+
+
+_chat_provider = _create_chat_provider()
+iv_chat_service = IVChatService(_chat_provider)
+field_chat_service = FieldChatService(_chat_provider)
 
 
 curve_predictor = FinalCurvePredictor(
