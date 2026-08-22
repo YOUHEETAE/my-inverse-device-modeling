@@ -10,6 +10,7 @@ from backend.learning import (
     TutorQuestionRouter,
     load_topic,
 )
+from backend.learning.intent_interpreter import QuestionIntent
 
 
 FIXTURE = Path(__file__).parent / "fixtures" / "learning" / "sce_channel_length_analysis.json"
@@ -83,6 +84,92 @@ def test_router_distinguishes_hypothetical_new_experiment_and_out_of_scope() -> 
     unrelated = router.route("오늘 날씨가 어때?", topic, context)
     assert unrelated.question_type == "out_of_scope"
     assert unrelated.relevance_to_case == "unrelated"
+
+
+def test_router_treats_broad_current_simulation_questions_as_current_result() -> None:
+    router = TutorQuestionRouter()
+    topic, context = load_topic("sce_channel_length"), _context()
+
+    meaning = router.route(
+        "지금 내가 돌린 시뮬레이션이 정확히 뭐를 의미하는거야?",
+        topic,
+        context,
+    )
+    assert meaning.question_type == "current_result"
+    assert meaning.relevance_to_case == "direct"
+    assert meaning.uses_current_result
+    assert meaning.aggregate_result
+
+    judgment = router.route(
+        "각 파라미터의 변화가 좋은쪽으로 변화한건지 아닌지 알려줘.",
+        topic,
+        context,
+        interpreted_intent=QuestionIntent(
+            intent="predict_change",
+            utterance_type="concept_question",
+            confidence=0.88,
+            requested_action="predict",
+            needs_theory=True,
+            answer_structure="cause_and_effect",
+        ),
+    )
+    assert judgment.question_type == "current_result"
+    assert judgment.uses_current_result
+    assert judgment.aggregate_result
+    assert judgment.answer_structure == "parameter_by_parameter"
+
+
+def test_explicit_current_result_intent_survives_empty_targets() -> None:
+    router = TutorQuestionRouter()
+    topic, context = load_topic("sce_channel_length"), _context()
+    route = router.route(
+        "지금 내가 돌린 시뮬레이션이 정확히 뭐를 의미하는거야?",
+        topic,
+        context,
+        interpreted_intent=QuestionIntent(
+            intent="explain_current_result",
+            utterance_type="current_result_question",
+            confidence=0.93,
+            requested_action="explain",
+            needs_current_result=True,
+            needs_theory=True,
+        ),
+    )
+    assert route.question_type == "current_result"
+    assert route.uses_current_result
+    assert route.relevance_to_case == "direct"
+
+
+def test_local_tutor_explains_aggregate_result_as_metric_tradeoff() -> None:
+    topic, context = load_topic("sce_channel_length"), _context()
+    meaning = LearningLLMService().ask_followup(
+        topic,
+        "지금 내가 돌린 시뮬레이션이 정확히 뭐를 의미하는거야?",
+        context,
+    )
+    assert meaning.question_type == "current_result"
+    assert meaning.uses_current_result
+    assert "700 nm" in meaning.answer and "300 nm" in meaning.answer
+    assert "T, B, SD, LDD" in meaning.answer
+    assert "trade-off" in meaning.answer
+
+    response = LearningLLMService().ask_followup(
+        topic,
+        "각 파라미터의 변화가 좋은쪽으로 변화한건지 아닌지 알려줘.",
+        context,
+    )
+
+    assert response.question_type == "current_result"
+    assert response.uses_current_result
+    assert response.next_learning_question is None
+    assert all(
+        label in response.answer
+        for label in ("Ion", "Ioff", "Vth", "DIBL", "SS")
+    )
+    assert "이득" in response.answer
+    assert "손실" in response.answer
+    assert "목표값" in response.answer
+    assert "trade-off" in response.answer
 
 
 def test_router_inherits_elliptical_followup_context() -> None:

@@ -5,7 +5,7 @@ from pathlib import Path
 
 from .knowledge_base import load_theory_knowledge_base
 from .schemas import TopicConfig
-from .validation import compare_experiment_conditions
+from .validation import compare_experiment_conditions, validate_model_conditions
 
 
 class TopicConfigError(ValueError):
@@ -38,6 +38,39 @@ def validate_topic(topic: TopicConfig) -> TopicConfig:
     comparison = compare_experiment_conditions(topic.baseline_conditions, topic.comparison_conditions)
     if topic.topic_id == "sce_channel_length" and comparison.changed_parameters != ("L",):
         raise TopicConfigError("sce_topic_must_change_channel_length_only")
+    reference_ids = [item.condition_id for item in topic.reference_conditions]
+    _require_unique(reference_ids, "reference_condition_id")
+    for reference in topic.reference_conditions:
+        if not reference.condition_id or not reference.label:
+            raise TopicConfigError("invalid_reference_condition")
+        validate_model_conditions(
+            reference.conditions,
+            require_supported_value=True,
+        )
+    if topic.comparison_design not in {
+        "controlled_pair",
+        "two_by_two",
+        "candidate_set",
+    }:
+        raise TopicConfigError("invalid_comparison_design")
+    if topic.display_parameters and not set(topic.display_parameters).issubset(
+        topic.baseline_conditions
+    ):
+        raise TopicConfigError("invalid_display_parameters")
+    condition_labels = {
+        *(item.label for item in topic.reference_conditions),
+        topic.baseline_label,
+        topic.comparison_label,
+    }
+    if (
+        not set(topic.condition_descriptions).issubset(condition_labels)
+        or (
+            topic.condition_descriptions
+            and set(topic.condition_descriptions) != condition_labels
+        )
+        or any(not value.strip() for value in topic.condition_descriptions.values())
+    ):
+        raise TopicConfigError("invalid_condition_descriptions")
     question_ids = [item.question_id for item in (*topic.prediction_questions, *topic.observation_questions)]
     action_ids = [item.action_id for item in topic.allowed_next_actions]
     _require_unique(question_ids, "question_id")

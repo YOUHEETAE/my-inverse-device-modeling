@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable
@@ -55,6 +56,11 @@ class LearningExperimentResult:
     curve_analysis: AnalysisPayload
     field_analyses: dict[str, AnalysisPayload]
     learning_context: LearningAnalysisContext
+    references: tuple[ConditionRun, ...] = ()
+
+    @property
+    def display_runs(self) -> tuple[ConditionRun, ...]:
+        return (*self.references, self.baseline, self.comparison)
 
 
 @dataclass
@@ -110,13 +116,24 @@ class LearningExperimentRunner:
             conditions["SD"],
             conditions["LDD"],
         )
+        electrical_parameters = extract_electrical_parameters(idvd, idvg)
+        ion = electrical_parameters.get("ion_ma_per_um")
+        ioff = electrical_parameters.get("ioff_ma_per_um")
+        if (
+            ion is not None
+            and ioff is not None
+            and math.isfinite(float(ion))
+            and math.isfinite(float(ioff))
+            and float(ioff) != 0.0
+        ):
+            electrical_parameters["ion_ioff_ratio"] = float(ion) / float(ioff)
         return ConditionRun(
             label=label,
             conditions=dict(conditions),
             idvd=idvd,
             idvg=idvg,
             field_map=field_map,
-            electrical_parameters=extract_electrical_parameters(idvd, idvg),
+            electrical_parameters=electrical_parameters,
         )
 
     def execute(self, topic: TopicConfig) -> LearningExperimentResult:
@@ -136,8 +153,18 @@ class LearningExperimentRunner:
 
         stage = "prediction"
         try:
-            baseline = self._run_condition("Baseline", dict(topic.baseline_conditions))
-            comparison_run = self._run_condition("Comparison", dict(topic.comparison_conditions))
+            references = tuple(
+                self._run_condition(reference.label, dict(reference.conditions))
+                for reference in topic.reference_conditions
+            )
+            baseline = self._run_condition(
+                topic.baseline_label,
+                dict(topic.baseline_conditions),
+            )
+            comparison_run = self._run_condition(
+                topic.comparison_label,
+                dict(topic.comparison_conditions),
+            )
             configs = [self._config(baseline.conditions), self._config(comparison_run.conditions)]
             curve_results = [
                 (baseline.label, baseline.idvd, baseline.idvg),
@@ -170,12 +197,68 @@ class LearningExperimentRunner:
                 curve_analysis=curve_analysis,
                 field_analyses=field_analyses,
             )
+            experiment = dict(context.experiment)
+            experiment["display_electrical_parameters"] = {
+                "baseline": {
+                    "label": baseline.label,
+                    "values": dict(baseline.electrical_parameters),
+                },
+                "comparison": {
+                    "label": comparison_run.label,
+                    "values": dict(comparison_run.electrical_parameters),
+                },
+            }
+            if references:
+                experiment["comparison_design"] = topic.comparison_design
+                experiment["condition_results"] = [
+                    {
+                        "condition_id": reference.condition_id,
+                        "label": run.label,
+                        "conditions": dict(run.conditions),
+                        "electrical_parameters": dict(
+                            run.electrical_parameters
+                        ),
+                    }
+                    for reference, run in zip(
+                        topic.reference_conditions,
+                        references,
+                    )
+                ] + [
+                    {
+                        "condition_id": "baseline",
+                        "label": baseline.label,
+                        "conditions": dict(baseline.conditions),
+                        "electrical_parameters": dict(
+                            baseline.electrical_parameters
+                        ),
+                    },
+                    {
+                        "condition_id": "comparison",
+                        "label": comparison_run.label,
+                        "conditions": dict(comparison_run.conditions),
+                        "electrical_parameters": dict(
+                            comparison_run.electrical_parameters
+                        ),
+                    },
+                ]
+            context = LearningAnalysisContext(
+                experiment=experiment,
+                electrical_changes=context.electrical_changes,
+                curve_observations=context.curve_observations,
+                field_observations=context.field_observations,
+                validated_observations=context.validated_observations,
+                warnings=context.warnings,
+                in_training_range=context.in_training_range,
+                analysis_status=context.analysis_status,
+                source_schema_versions=context.source_schema_versions,
+            )
             return LearningExperimentResult(
                 baseline=baseline,
                 comparison=comparison_run,
                 curve_analysis=curve_analysis,
                 field_analyses=field_analyses,
                 learning_context=context,
+                references=references,
             )
         except ExperimentExecutionError:
             raise

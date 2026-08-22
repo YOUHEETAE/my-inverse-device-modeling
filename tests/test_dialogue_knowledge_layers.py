@@ -78,6 +78,18 @@ def test_knowledge_layers_separate_experiment_result_definition_and_theory() -> 
     }
     assert layers.experiment_facts["controlled_single_parameter_comparison"]
     assert layers.result_facts["ion"]["evidence_id"] == "metric:ion"
+    assert (
+        layers.result_facts["ion"]["directional_implication"]
+        == "favorable_for_metric"
+    )
+    assert (
+        layers.result_facts["ioff"]["directional_implication"]
+        == "unfavorable_for_metric"
+    )
+    assert (
+        layers.result_facts["vth_high"]["directional_implication"]
+        == "design_target_required"
+    )
     assert set(layers.metric_definitions) == {"ion"}
     assert layers.theory_facts
 
@@ -366,7 +378,7 @@ def test_adaptive_profile_reaches_writer_and_persists_level() -> None:
         "ion_can_increase",
     )
     assert response.explanation_level == "intermediate"
-    assert response.next_learning_question
+    assert response.next_learning_question is None
 
     session = LearningSession.create(load_topic("sce_channel_length"))
     LearningLLMService.record_followup(

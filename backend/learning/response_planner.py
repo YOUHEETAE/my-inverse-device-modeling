@@ -15,9 +15,12 @@ _LEARNING_TARGET_SIGNALS = {
     "off_current": ("off_current", "ioff", "leak"),
     "subthreshold_swing": ("subthreshold", "ss"),
     "body_doping": ("body_doping", "doping"),
-    "oxide_thickness": ("oxide", "tox"),
+    "source_drain_doping": ("source_drain_doping", "source", "drain", "doping"),
+    "ldd": ("ldd", "drain", "field", "resistance"),
+    "oxide_thickness": ("oxide", "tox", "gate_control", "compensation"),
     "electric_field": ("electric_field", "field"),
     "potential": ("potential", "barrier"),
+    "design_target": ("design", "target", "constraint", "candidate"),
 }
 
 
@@ -263,7 +266,10 @@ def build_response_plan(
             route.question_type != "out_of_scope"
             and not explicitly_short
         ),
-        check_understanding=route.question_type != "out_of_scope",
+        check_understanding=route.question_type not in {
+            "out_of_scope",
+            "current_result",
+        },
         next_question_style=next_style,
         known_concepts=completed,
         review_concepts=review,

@@ -1,0 +1,118 @@
+{
+  "schema_version": 1,
+  "purpose": "business_plan_local_execution_speed_baseline",
+  "generated_from_existing_records_only": true,
+  "new_devsim_run_performed": false,
+  "comparison_framing": "same local execution basis; hardware specifications omitted",
+  "timing_scope": {
+    "name": "devsim_simulation_to_result",
+    "starts": "immediately before launching gmsh_mos2d.py as a subprocess",
+    "ends": "when the subprocess exits",
+    "includes": [
+      "DEVSIM initialization",
+      "two Id-Vd sweeps",
+      "two Id-Vg sweeps",
+      "convergence retries within the subprocess",
+      "final field calculation and Tecplot dump generation"
+    ],
+    "excludes": [
+      "pre-generated Gmsh structure mesh",
+      "post-subprocess curve CSV writing",
+      "electrical parameter extraction",
+      "plot rendering",
+      "LLM response generation"
+    ]
+  },
+  "sources": [
+    {
+      "path": "D:/IDM/dataset/run_status.csv",
+      "sha256": "4424AED6F51350A50E1E5A2D2DC5496794198FA65FE3C1F38489C4FF5E5139C1",
+      "rows": 2691,
+      "status_counts": {"ok": 2565, "failed": 126}
+    },
+    {
+      "path": "D:/IDM/dataset/test_run_status.csv",
+      "sha256": "813FF47619FBE5F920AF779AC339D16727E3EE992C7BED035091028A14BE561B",
+      "rows": 9,
+      "status_counts": {"ok": 9},
+      "recovered_primary_failures": 9,
+      "overlap_with_primary_successes": 0
+    }
+  ],
+  "case_accounting": {
+    "primary_unique_attempts": 2691,
+    "primary_successes": 2565,
+    "primary_failures": 126,
+    "retry_successes": 9,
+    "remaining_primary_failures": 117,
+    "final_accepted_unique_cases": 2574,
+    "final_accepted_fraction_of_primary_attempt_space": 0.9565217391304348
+  },
+  "accepted_case_outputs": {
+    "idvd_curves_per_case": 2,
+    "idvd_points_per_case": 202,
+    "idvg_curves_per_case": 2,
+    "idvg_points_per_case": 270,
+    "total_iv_points_per_case": 472,
+    "field_maps_per_case": 1,
+    "artifact_paths_checked": 7722,
+    "missing_artifacts": 0,
+    "empty_artifacts": 0,
+    "dataset_integrity_complete_pairs": 2574,
+    "parameter_extraction_ok": 2574
+  },
+  "elapsed_seconds": {
+    "sample_count": 2574,
+    "method": "successful unique cases; nearest-rank percentiles",
+    "min": 93.993,
+    "median": 143.642,
+    "mean": 197.509,
+    "p90": 383.484,
+    "p95": 400.908,
+    "max": 1181.295,
+    "sum_of_per_case_runtime": 508388.934,
+    "sum_hours": 141.21914833333333,
+    "sum_is_wall_clock": false,
+    "sum_note": "Cases were run with parallel jobs, so the sum must not be presented as total elapsed wall-clock time."
+  },
+  "record_reconciliation": {
+    "status_point_count_anomalies": 1,
+    "anomaly": {
+      "case_id": "L500T10|B1e17SD5e20LDD5e18",
+      "status_record": {"idvd_points": 201, "idvg_points": 270, "ivpoint_count": 471},
+      "current_idvd_csv": {"rows": 202, "IDVD_VG1P5": 101, "IDVD_VG3P0": 101},
+      "resolution": "The current output was regenerated after the status record and is canonical; use the current integrity report and output file counts."
+    }
+  },
+  "representative_case_timings": {
+    "short": {
+      "case_id": "L100T5|B5e16SD1e20LDD1e18",
+      "elapsed_sec": 98.512,
+      "idvd_points": 202,
+      "idvg_points": 270
+    },
+    "default": {
+      "case_id": "L200T20|B1e16SD1e20LDD1e18",
+      "elapsed_sec": 134.979,
+      "idvd_points": 202,
+      "idvg_points": 270
+    },
+    "long": {
+      "case_id": "L1600T50|B1e16SD1e20LDD1e18",
+      "elapsed_sec": 392.972,
+      "idvd_points": 202,
+      "idvg_points": 270
+    }
+  },
+  "llm_scope": {
+    "application_execution": "local client",
+    "provider_execution": "internet-connected Groq API",
+    "included_in_simulation_speedup": false,
+    "future_reporting": "separate online explanation response latency"
+  },
+  "recommended_business_plan_baseline": {
+    "primary": "median 143.642 seconds per accepted device condition",
+    "conservative": "p95 400.908 seconds per accepted device condition",
+    "output_scope": "four I-V curves, 472 I-V points, and one final field map"
+  }
+}

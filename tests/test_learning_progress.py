@@ -21,9 +21,21 @@ def test_portfolio_respects_curriculum_and_recommends_next_case() -> None:
     assert [item.topic_id for item in empty.cases] == [
         "sce_channel_length",
         "oxide_gate_control",
+        "body_doping_design_window",
+        "source_drain_on_state_conduction",
+        "ldd_field_resistance_tradeoff",
+        "channel_oxide_electrostatic_compensation",
+        "source_drain_ldd_junction_engineering",
+        "integrated_device_design",
     ]
     assert [item.status for item in empty.cases] == [
         "not_started",
+        "locked",
+        "locked",
+        "locked",
+        "locked",
+        "locked",
+        "locked",
         "locked",
     ]
     assert empty.next_topic_id == "sce_channel_length"
@@ -37,6 +49,12 @@ def test_portfolio_respects_curriculum_and_recommends_next_case() -> None:
     assert [item.status for item in after_sce.cases] == [
         "completed",
         "not_started",
+        "locked",
+        "locked",
+        "locked",
+        "locked",
+        "locked",
+        "locked",
     ]
     assert after_sce.completed_case_count == 1
     assert after_sce.next_topic_id == "oxide_gate_control"
@@ -78,8 +96,14 @@ def test_portfolio_reports_all_cases_completed() -> None:
     sessions = [
         _session("sce_channel_length", LearningStep.SESSION_COMPLETE),
         _session("oxide_gate_control", LearningStep.SESSION_COMPLETE),
+        _session("body_doping_design_window", LearningStep.SESSION_COMPLETE),
+        _session("source_drain_on_state_conduction", LearningStep.SESSION_COMPLETE),
+        _session("ldd_field_resistance_tradeoff", LearningStep.SESSION_COMPLETE),
+        _session("channel_oxide_electrostatic_compensation", LearningStep.SESSION_COMPLETE),
+        _session("source_drain_ldd_junction_engineering", LearningStep.SESSION_COMPLETE),
+        _session("integrated_device_design", LearningStep.SESSION_COMPLETE),
     ]
     portfolio = build_learning_portfolio(load_topics(), sessions)
-    assert portfolio.completed_case_count == portfolio.total_case_count == 2
+    assert portfolio.completed_case_count == portfolio.total_case_count == 8
     assert portfolio.recommendation_kind == "review"
     assert portfolio.next_topic_id == "sce_channel_length"

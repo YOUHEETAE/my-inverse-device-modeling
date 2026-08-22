@@ -46,12 +46,21 @@ def test_fast_platform_readiness_audit_is_strict_and_complete() -> None:
     assert by_id["runtime_assets"].detail["required_file_count"] == 5
     assert by_id["curriculum_reachability"].detail[
         "reachable_order"
-    ] == ["sce_channel_length", "oxide_gate_control"]
+    ] == [
+        "sce_channel_length",
+        "oxide_gate_control",
+        "body_doping_design_window",
+        "source_drain_on_state_conduction",
+        "ldd_field_resistance_tradeoff",
+        "channel_oxide_electrostatic_compensation",
+        "source_drain_ldd_junction_engineering",
+        "integrated_device_design",
+    ]
     assert by_id["session_isolation_round_trip"].status == "passed"
     assert by_id["portfolio_recommendation"].detail == {
         "initial_recommendation": "sce_channel_length",
         "next_recommendation": "oxide_gate_control",
-        "total_cases": 2,
+        "total_cases": 8,
     }
     assert by_id["real_model_contracts"].status == "skipped"
     assert by_id["local_tutor_grounding"].status == "skipped"

@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "status": "validated",
+  "comparison_basis": "same local execution basis",
+  "hardware_specifications_recorded": false,
+  "llm_included": false,
+  "results": {
+    "tcad_median_s": 143.642,
+    "tcad_p95_s": 400.908,
+    "ai_primary_median_s": 0.90414595,
+    "ai_primary_p95_s": 1.7340239999999998,
+    "ai_e2e_median_s": 1.12143035,
+    "ai_e2e_p95_s": 2.074013,
+    "primary_median_speedup": 158.87036821875938,
+    "end_to_end_median_speedup": 128.08820449705146,
+    "conservative_speedup": 82.83737710666058,
+    "p95_to_p95_ratio": 231.20095223595524,
+    "paired_representative_cases": {
+      "short": {
+        "case_id": "L100T5|B5e16SD1e20LDD1e18",
+        "tcad_elapsed_s": 98.512,
+        "ai_median_s": 0.876592,
+        "speedup": 112.38067424754047
+      },
+      "default": {
+        "case_id": "L200T20|B1e16SD1e20LDD1e18",
+        "tcad_elapsed_s": 134.979,
+        "ai_median_s": 0.730619,
+        "speedup": 184.74608516887736
+      },
+      "long": {
+        "case_id": "L1600T50|B1e16SD1e20LDD1e18",
+        "tcad_elapsed_s": 392.972,
+        "ai_median_s": 1.426336,
+        "speedup": 275.5115204271644
+      }
+    }
+  }
+}

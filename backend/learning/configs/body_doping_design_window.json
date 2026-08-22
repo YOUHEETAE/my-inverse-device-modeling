@@ -1,0 +1,248 @@
+{
+  "schema_version": "1.0",
+  "topic_id": "body_doping_design_window",
+  "catalog_order": 3,
+  "prerequisite_topic_ids": [
+    "oxide_gate_control"
+  ],
+  "title": "Body Doping과 Vth–Ioff Design Window",
+  "description": "Body doping 증가가 Vth와 채널 전위, Ion·Ioff에 미치는 영향을 비교하고 성능과 누설의 설계 균형을 학습한다.",
+  "learning_objectives": [
+    "Body doping과 공핍 전하 및 Vth 이동의 관계를 설명한다.",
+    "Vth 이동이 고정된 on/off bias에서 Ion과 Ioff를 어떻게 함께 바꾸는지 해석한다.",
+    "I–V Curve와 Field Map을 연결해 누설 억제와 구동 전류 손실의 trade-off를 판단한다."
+  ],
+  "required_outputs": [
+    "idvg",
+    "potential",
+    "electric_field"
+  ],
+  "expected_concepts": [
+    "body_doping_raises_vth_in_current_result",
+    "ioff_decreases_in_current_result",
+    "ion_decreases_in_current_result",
+    "ion_ioff_design_tradeoff",
+    "body_doping_changes_depletion_electrostatics",
+    "field_redistribution_supports_body_effect"
+  ],
+  "common_misconceptions": [
+    "higher_vth_is_always_better",
+    "lower_ioff_means_all_metrics_improve",
+    "ss_and_vth_are_the_same_metric",
+    "field_increase_means_higher_drive_current",
+    "vth_shift_is_only_extraction_artifact"
+  ],
+  "theory_concepts": [
+    "body_doping",
+    "depletion_region",
+    "threshold_voltage",
+    "off_current",
+    "on_current",
+    "subthreshold_swing",
+    "potential",
+    "electric_field"
+  ],
+  "experiment": {
+    "baseline": {
+      "L": 700,
+      "T": 20,
+      "B": 1e16,
+      "SD": 1e20,
+      "LDD": 1e18
+    },
+    "comparison": {
+      "L": 700,
+      "T": 20,
+      "B": 5e16,
+      "SD": 1e20,
+      "LDD": 1e18
+    }
+  },
+  "prediction_questions": [
+    {
+      "question_id": "body_pred_vth",
+      "type": "single_select_with_reason",
+      "prompt": "현재 모델과 고정된 조건에서 Body doping이 1×10¹⁶ cm⁻³에서 5×10¹⁶ cm⁻³로 증가하면 Vth는 어떻게 변할까요?",
+      "options": [
+        "증가",
+        "감소",
+        "큰 변화 없음"
+      ],
+      "correct_options": [
+        "증가"
+      ],
+      "reason_required": true,
+      "concepts_by_option": {
+        "증가": [
+          "body_doping_raises_vth_in_current_result",
+          "body_doping_changes_depletion_electrostatics"
+        ]
+      },
+      "misconceptions_by_option": {
+        "큰 변화 없음": [
+          "vth_shift_is_only_extraction_artifact"
+        ]
+      }
+    },
+    {
+      "question_id": "body_pred_ioff",
+      "type": "single_select_with_reason",
+      "prompt": "현재 모델과 고정된 off-state bias에서 Body doping이 증가하면 Ioff는 어떻게 변할까요?",
+      "options": [
+        "증가",
+        "감소",
+        "큰 변화 없음"
+      ],
+      "correct_options": [
+        "감소"
+      ],
+      "reason_required": true,
+      "concepts_by_option": {
+        "감소": [
+          "ioff_decreases_in_current_result"
+        ]
+      },
+      "misconceptions_by_option": {}
+    },
+    {
+      "question_id": "body_pred_ion",
+      "type": "single_select_with_reason",
+      "prompt": "현재 모델과 고정된 on-state bias에서 Body doping이 증가하면 Ion은 어떻게 변할까요?",
+      "options": [
+        "증가",
+        "감소",
+        "큰 변화 없음"
+      ],
+      "correct_options": [
+        "감소"
+      ],
+      "reason_required": true,
+      "concepts_by_option": {
+        "감소": [
+          "ion_decreases_in_current_result",
+          "ion_ioff_design_tradeoff"
+        ]
+      },
+      "misconceptions_by_option": {
+        "증가": [
+          "lower_ioff_means_all_metrics_improve"
+        ]
+      }
+    }
+  ],
+  "observation_questions": [
+    {
+      "question_id": "body_obs_iv_shift",
+      "type": "multi_select_with_reason",
+      "prompt": "두 Id–Vg Curve와 추출값을 함께 볼 때 5×10¹⁶ cm⁻³ 조건의 가로 이동과 고정 off-bias 전류를 가장 직접적으로 설명하는 결과 두 개를 고르고 연결 관계를 설명하세요.",
+      "options": [
+        "Vth 증가",
+        "Ioff 감소",
+        "SS 감소",
+        "Ion 증가",
+        "Curve 위치 변화 없음"
+      ],
+      "correct_options": [
+        "Vth 증가",
+        "Ioff 감소"
+      ],
+      "reason_required": true,
+      "concepts_by_option": {
+        "Vth 증가": [
+          "body_doping_raises_vth_in_current_result"
+        ],
+        "Ioff 감소": [
+          "ioff_decreases_in_current_result"
+        ]
+      },
+      "misconceptions_by_option": {
+        "SS 감소": [
+          "ss_and_vth_are_the_same_metric"
+        ],
+        "Curve 위치 변화 없음": [
+          "vth_shift_is_only_extraction_artifact"
+        ]
+      }
+    },
+    {
+      "question_id": "body_obs_iv_tradeoff",
+      "type": "single_select_with_reason",
+      "prompt": "5×10¹⁶ cm⁻³ 조건에서 Ion과 Ioff가 모두 감소했는데 Ion/Ioff ratio는 증가했습니다. 세 값의 상대 변화와 설계 의미를 올바르게 연결한 것은 무엇인가요?",
+      "options": [
+        "Ioff의 상대 감소폭이 Ion보다 커 비율은 증가했지만, 절대 Ion 감소는 구동 성능 비용으로 남는다",
+        "Ion의 상대 감소폭이 Ioff보다 커도 분모가 작아졌으므로 Ion/Ioff ratio는 증가한다",
+        "Vth 증가가 Ion과 Ioff를 같은 비율로 감소시켜 Ion/Ioff ratio가 증가한다",
+        "SS 증가는 on-bias Ion을 높이고 off-bias Ioff를 낮추므로 Ion/Ioff ratio 증가의 주원인이다"
+      ],
+      "correct_options": [
+        "Ioff의 상대 감소폭이 Ion보다 커 비율은 증가했지만, 절대 Ion 감소는 구동 성능 비용으로 남는다"
+      ],
+      "reason_required": true,
+      "concepts_by_option": {
+        "Ioff의 상대 감소폭이 Ion보다 커 비율은 증가했지만, 절대 Ion 감소는 구동 성능 비용으로 남는다": [
+          "ioff_decreases_in_current_result",
+          "ion_decreases_in_current_result",
+          "ion_ioff_design_tradeoff"
+        ]
+      },
+      "misconceptions_by_option": {
+        "Ion의 상대 감소폭이 Ioff보다 커도 분모가 작아졌으므로 Ion/Ioff ratio는 증가한다": [
+          "lower_ioff_means_all_metrics_improve"
+        ],
+        "Vth 증가가 Ion과 Ioff를 같은 비율로 감소시켜 Ion/Ioff ratio가 증가한다": [
+          "higher_vth_is_always_better"
+        ],
+        "SS 증가는 on-bias Ion을 높이고 off-bias Ioff를 낮추므로 Ion/Ioff ratio 증가의 주원인이다": [
+          "ss_and_vth_are_the_same_metric"
+        ]
+      }
+    },
+    {
+      "question_id": "body_obs_field_evidence",
+      "type": "single_select_with_reason",
+      "prompt": "Body doping 증가 후 Channel 표면 부근 Potential·Electric Field와 Vth·Ion·Ioff 변화를 하나의 원인–결과 흐름으로 가장 잘 연결한 것은 무엇인가요?",
+      "options": [
+        "증가한 공핍 전하가 Channel 인접 정전기를 바꾸어 inversion에 필요한 Gate bias를 높였고, 같은 on/off bias의 전류를 모두 낮췄다",
+        "Channel 인접 Electric Field 증가는 같은 Gate bias의 inversion charge 증가를 나타내며, Ion 감소는 Source/Drain 직렬저항 증가가 더 크게 작용한 결과다",
+        "Potential 분포 변화는 Source/Drain 접합의 built-in potential을 높여 전류를 낮췄고, 추출된 Vth 이동은 그 접합 변화가 Curve에 반영된 결과다",
+        "Ioff 감소는 SS가 만든 subthreshold 기울기 변화가 주도하고, Vth 증가는 on-bias Ion 감소를 주로 설명한다"
+      ],
+      "correct_options": [
+        "증가한 공핍 전하가 Channel 인접 정전기를 바꾸어 inversion에 필요한 Gate bias를 높였고, 같은 on/off bias의 전류를 모두 낮췄다"
+      ],
+      "reason_required": true,
+      "concepts_by_option": {
+        "증가한 공핍 전하가 Channel 인접 정전기를 바꾸어 inversion에 필요한 Gate bias를 높였고, 같은 on/off bias의 전류를 모두 낮췄다": [
+          "body_doping_changes_depletion_electrostatics",
+          "field_redistribution_supports_body_effect"
+        ]
+      },
+      "misconceptions_by_option": {
+        "Channel 인접 Electric Field 증가는 같은 Gate bias의 inversion charge 증가를 나타내며, Ion 감소는 Source/Drain 직렬저항 증가가 더 크게 작용한 결과다": [
+          "field_increase_means_higher_drive_current"
+        ],
+        "Potential 분포 변화는 Source/Drain 접합의 built-in potential을 높여 전류를 낮췄고, 추출된 Vth 이동은 그 접합 변화가 Curve에 반영된 결과다": [
+          "vth_shift_is_only_extraction_artifact"
+        ],
+        "Ioff 감소는 SS가 만든 subthreshold 기울기 변화가 주도하고, Vth 증가는 on-bias Ion 감소를 주로 설명한다": [
+          "lower_ioff_means_all_metrics_improve"
+        ]
+      }
+    }
+  ],
+  "allowed_next_actions": [
+    {
+      "action_id": "observe_body_potential_field",
+      "description": "Potential과 Electric Field에서 channel 표면 부근의 공간 변화를 확인한다."
+    },
+    {
+      "action_id": "retry_body_prediction",
+      "description": "같은 결과를 보고 Vth, Ioff와 Ion의 변화 방향을 다시 답한다."
+    },
+    {
+      "action_id": "review_body_theory",
+      "description": "Theory의 Body doping, 공핍영역과 Vth 항목을 복습한다."
+    }
+  ],
+  "theory_reference": "Theory > MOSFET Basics > Body doping과 Vth"
+}

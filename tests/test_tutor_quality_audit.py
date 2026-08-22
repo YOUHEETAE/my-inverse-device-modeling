@@ -74,7 +74,6 @@ def test_quality_audit_reports_exact_contract_failures() -> None:
         "claim_feedback",
         "claim_evidence",
         "adaptive_metadata",
-        "learning_continuation",
         "fallback_diagnostic",
     }
     assert "turn_1:result_grounding" in report.gate_failures

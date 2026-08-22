@@ -34,6 +34,7 @@ class QuestionRoute:
     requested_action: str = "explain"
     answer_structure: str = "cause_and_effect"
     intent_source: str = "deterministic"
+    aggregate_result: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -48,6 +49,7 @@ class QuestionRoute:
             "requested_action": self.requested_action,
             "answer_structure": self.answer_structure,
             "intent_source": self.intent_source,
+            "aggregate_result": self.aggregate_result,
         }
 
 
@@ -59,9 +61,14 @@ DEFAULT_CONCEPT_ALIASES: dict[str, tuple[str, ...]] = {
     ),
     "short_channel_effect": ("sce", "short channel", "short-channel", "단채널", "짧은 채널"),
     "threshold_voltage": ("vth", "threshold voltage", "문턱전압", "문턱 전압", "임계전압"),
-    "dibl": ("dibl", "drain induced barrier lowering", "드레인 유도 장벽"),
+    "dibl": (
+        "dibl", "drain induced barrier lowering", "드레인 유도 장벽",
+        "drain 제어", "드레인 제어",
+    ),
     "subthreshold_swing": ("subthreshold swing", "subthreshold slope", "ss", "서브스레시홀드"),
-    "on_current": ("ion", "on current", "온전류", "구동 전류", "구동전류"),
+    "on_current": (
+        "ion", "on current", "온전류", "구동 전류", "구동전류", "구동 이득",
+    ),
     "off_current": ("ioff", "off current", "오프전류", "누설 전류", "누설전류"),
     "transconductance": ("gm", "transconductance", "트랜스컨덕턴스"),
     "output_conductance": ("gds", "output conductance", "출력 컨덕턴스"),
@@ -73,8 +80,20 @@ DEFAULT_CONCEPT_ALIASES: dict[str, tuple[str, ...]] = {
     "depletion_region": ("depletion", "공핍층", "공핍 영역", "공핍영역"),
     "punch_through": ("punch-through", "punch through", "펀치스루", "펀치 스루"),
     "body_doping": ("body doping", "bulk doping", "바디 도핑", "기판 도핑", "벌크 도핑"),
-    "oxide_thickness": ("oxide thickness", "tox", "산화막 두께", "옥사이드 두께"),
+    "source_drain_doping": (
+        "source/drain doping", "source drain doping", "s/d doping", "sd doping",
+        "high sd", "low sd", "sd 농도",
+        "소스 드레인 도핑", "소스/드레인 도핑", "source/drain 도핑",
+    ),
+    "oxide_thickness": (
+        "oxide thickness", "gate oxide", "oxide", "tox",
+        "산화막 두께", "옥사이드 두께",
+    ),
     "ldd": ("ldd", "lightly doped drain"),
+    "design_target": (
+        "설계 목표", "목표 사양", "통합 설계", "최적 조건", "후보",
+        "balanced", "drive", "leakage", "control",
+    ),
 }
 
 _RESULT_CUES = (
@@ -88,6 +107,23 @@ _CHANGE_CUES = ("바꾸", "변경", "높이면", "낮추면", "늘리면", "줄�
 _EXPERIMENT_CUES = (
     "시뮬", "실험해", "실행해", "추가해", "추가해줄",
     "계산해", "예측해", "돌려",
+)
+_AGGREGATE_SCOPE_CUES = (
+    "각 파라미터", "각 지표", "모든 파라미터", "모든 지표",
+    "전체 파라미터", "전체 지표", "전체 결과",
+)
+_RESULT_MEANING_CUES = (
+    "무슨 의미", "어떤 의미", "뭐를 의미", "무엇을 의미",
+    "의미하는", "의미가 뭐", "정확히 뭐",
+)
+_METRIC_JUDGMENT_CUES = (
+    "좋은 쪽", "좋은쪽", "나쁜 쪽", "나쁜쪽", "유리", "불리",
+    "이득", "손실", "장점", "단점", "트레이드오프", "trade-off",
+)
+_CURRENT_SIMULATION_CUES = (
+    "이번 시뮬레이션", "현재 시뮬레이션", "돌린 시뮬레이션",
+    "이 시뮬레이션", "이번 실험", "현재 실험", "이 실험",
+    "이번 결과", "현재 결과",
 )
 _FOLLOWUP_CUES = (
     "그럼", "그러면", "그건", "그게", "그거", "그 변화", "그 설명",
@@ -175,6 +211,7 @@ class TutorQuestionRouter:
             "L": "channel_length",
             "B": "body_doping",
             "T": "oxide_thickness",
+            "SD": "source_drain_doping",
             "LDD": "ldd",
         }
         changed = context.experiment.get("changed_parameters", ())
@@ -185,6 +222,8 @@ class TutorQuestionRouter:
             for item in changed
             if item in parameter_mapping
         )
+        if context.experiment.get("comparison_design") == "candidate_set":
+            available.add("design_target")
         return available
 
     def _inherit_concepts(
@@ -215,7 +254,7 @@ class TutorQuestionRouter:
         ):
             return True, "어떤 구조의 길이를 뜻하는지 알려주세요."
         if ("농도" in text or "도핑" in text) and not concepts.intersection(
-            {"body_doping", "ldd"}
+            {"body_doping", "source_drain_doping", "ldd"}
         ):
             return True, "어느 영역의 도핑 농도를 뜻하는지 알려주세요."
         return False, None
@@ -290,7 +329,8 @@ class TutorQuestionRouter:
             for value in values.values()
         }
         parameter_concepts = {
-            "channel_length", "body_doping", "oxide_thickness", "ldd",
+            "channel_length", "body_doping", "source_drain_doping",
+            "oxide_thickness", "ldd",
         }
         new_numeric_condition = bool(
             numeric_values - known_conditions
@@ -311,6 +351,46 @@ class TutorQuestionRouter:
         intent_source = (
             interpreted_intent.source if interpreted_intent else "deterministic"
         )
+        intent_requests_result = bool(
+            interpreted_intent
+            and interpreted_intent.needs_current_result
+            and intent_type in {
+                "explain_current_result",
+                "compare_results",
+                "confirm_experiment_setup",
+            }
+        )
+        aggregate_scope = _contains(text, _AGGREGATE_SCOPE_CUES)
+        current_simulation = _contains(text, _CURRENT_SIMULATION_CUES)
+        asks_result_meaning = current_simulation and _contains(
+            text,
+            _RESULT_MEANING_CUES,
+        )
+        asks_metric_judgment = (
+            aggregate_scope
+            and _contains(text, _METRIC_JUDGMENT_CUES)
+        )
+        aggregate_result = bool(
+            available
+            and (
+                asks_result_meaning
+                or asks_metric_judgment
+                or (aggregate_scope and result_cue and observed_change)
+            )
+            and not new_numeric_condition
+        )
+        if (aggregate_result or intent_requests_result) and not matched:
+            matched.extend(topic.theory_concepts)
+            concepts = set(matched)
+            direct = bool(concepts & case_concepts)
+        if asks_metric_judgment or aggregate_scope:
+            answer_structure = "parameter_by_parameter"
+        domain_related = (
+            domain_related
+            or aggregate_result
+            or intent_requests_result
+        )
+        current_result_reference = current_simulation and intent_requests_result
 
         if not domain_related and not inherited_context:
             return QuestionRoute(
@@ -322,13 +402,20 @@ class TutorQuestionRouter:
                 requested_action=requested_action,
                 answer_structure=answer_structure,
                 intent_source=intent_source,
+                aggregate_result=aggregate_result,
             )
 
-        result_capable = bool(concepts & available)
+        result_capable = bool(concepts & available) or bool(
+            available and (aggregate_result or intent_requests_result)
+        )
         if (
-            experiment_request
-            or new_numeric_condition
-            or intent_type in {"run_experiment", "add_experiment_condition"}
+            not aggregate_result
+            and not current_result_reference
+            and (
+                experiment_request
+                or new_numeric_condition
+                or intent_type in {"run_experiment", "add_experiment_condition"}
+            )
         ):
             question_type = "new_experiment"
             relevance = "direct" if direct else "related"
@@ -351,6 +438,7 @@ class TutorQuestionRouter:
                     "compare_results",
                     "confirm_experiment_setup",
                 }
+                or aggregate_result
                 or (
                     result_capable
                     and observed_change
@@ -361,7 +449,11 @@ class TutorQuestionRouter:
             and result_capable
         ):
             question_type = "current_result"
-            relevance = "direct" if direct else "related"
+            relevance = (
+                "direct"
+                if direct or aggregate_result or intent_requests_result
+                else "related"
+            )
             uses_result = True
             needs_new = False
         elif intent_type == "predict_change":
@@ -408,4 +500,5 @@ class TutorQuestionRouter:
             requested_action=requested_action,
             answer_structure=answer_structure,
             intent_source=intent_source,
+            aggregate_result=aggregate_result,
         )

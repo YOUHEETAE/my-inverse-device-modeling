@@ -1,0 +1,99 @@
+{
+  "schema_version": 1,
+  "status": "validated",
+  "raw_timing_sha256": "7A184E6AC06BB7299AA5452CE90070FD58DD383EA180C569A363FB47A032001B",
+  "summary_sha256_before_validation_artifact": "EA94B5E8321D8A9C195EE71534147CE47693369C6EF99FB6A4410818CD44BA50",
+  "representative_conditions": [
+    "L100T5|B5e16SD1e20LDD1e18",
+    "L200T20|B1e16SD1e20LDD1e18",
+    "L1600T50|B1e16SD1e20LDD1e18"
+  ],
+  "measurement_design": {
+    "warmup_per_condition": 5,
+    "repetitions_per_condition": 30,
+    "conditions": 3,
+    "samples_per_metric": 90,
+    "timer": "time.perf_counter_ns",
+    "hardware_specifications_recorded": false,
+    "llm_included": false
+  },
+  "combined_representative_statistics_ms": {
+    "curve": {
+      "median": 177.3178,
+      "mean": 215.824,
+      "p90": 296.436,
+      "p95": 327.565,
+      "min": 147.334,
+      "max": 1423.294
+    },
+    "field_prepared_mesh": {
+      "median": 643.2045,
+      "mean": 839.432,
+      "p90": 1315.473,
+      "p95": 1371.139,
+      "min": 432.518,
+      "max": 1752.784
+    },
+    "parameter_extraction": {
+      "median": 2.88935,
+      "mean": 3.438,
+      "p90": 4.892,
+      "p95": 6.583,
+      "min": 1.768,
+      "max": 13.15
+    },
+    "simulation_to_result": {
+      "median": 904.14595,
+      "mean": 1053.59,
+      "p90": 1482.13,
+      "p95": 1734.024,
+      "min": 585.509,
+      "max": 2009.735
+    },
+    "mesh_generation": {
+      "median": 280.70855,
+      "mean": 356.381,
+      "p90": 544.974,
+      "p95": 598.767,
+      "min": 202.997,
+      "max": 688.182
+    },
+    "user_end_to_end": {
+      "median": 1121.43035,
+      "mean": 1326.181,
+      "p90": 1835.164,
+      "p95": 2074.013,
+      "min": 745.358,
+      "max": 2396.153
+    }
+  },
+  "per_condition_primary_median_ms": {
+    "short": 876.592,
+    "default": 730.619,
+    "long": 1426.336
+  },
+  "per_condition_end_to_end_median_ms": {
+    "short": 1111.438,
+    "default": 949.559,
+    "long": 1808.13
+  },
+  "model_load_ms": 12038.3838,
+  "validation": {
+    "raw_timing_rows": 540,
+    "all_rows_valid": true,
+    "idvd_shape": "2x101",
+    "idvg_shape": "2x135",
+    "curve_values_finite": true,
+    "field_values_finite": true,
+    "electrical_parameter_extraction_valid": true,
+    "targeted_tests": "7 passed",
+    "application_smoke_test": "curve_finite=True; field_nodes=2958; field_elements=5319; field_finite=True"
+  },
+  "interpretation": {
+    "primary_metric": "simulation_to_result on a prepared mesh with models already loaded",
+    "secondary_metric": "user_end_to_end including Gmsh mesh generation and electrical parameter extraction",
+    "cold_model_load": "one-time startup reference only",
+    "field_latency": "dominant component and increases for the long-channel mesh",
+    "business_plan_suitability": "suitable as a concise local-execution benchmark when timing boundaries are stated"
+  }
+}

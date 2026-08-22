@@ -1,0 +1,77 @@
+{
+  "device": {
+    "L": 500.0,
+    "T": 27.0,
+    "B": 1e+16,
+    "SD": 1e+20,
+    "LDD": 1e+18
+  },
+  "dataset_split": "test",
+  "field_bias_v": {
+    "gate_v": 3.0,
+    "drain_v": 3.0
+  },
+  "source_files": {
+    "idvd": "D:\\IDM\\dataset\\L500T27B1e16SD1e20LDD1e18_IdVd.csv",
+    "idvg": "D:\\IDM\\dataset\\L500T27B1e16SD1e20LDD1e18_IdVg.csv",
+    "field": "D:\\IDM\\dataset\\final_fields\\L500T27B1e16SD1e20LDD1e18_IdVd_Vg3p0_Vd3p0.dat"
+  },
+  "curve_metrics": {
+    "idvd": {
+      "IDVD_VG1P5": {
+        "rmse_mA_per_um": 0.005064983962590849,
+        "range_normalized_rmse": 0.004741354069103204,
+        "r2_linear": 0.9996629702316808
+      },
+      "IDVD_VG3P0": {
+        "rmse_mA_per_um": 0.0024759980764974755,
+        "range_normalized_rmse": 0.0007249534016510064,
+        "r2_linear": 0.9999936373172711
+      }
+    },
+    "idvg": {
+      "IDVG_VD0P05": {
+        "rmse_mA_per_um": 0.0005122452936516473,
+        "range_normalized_rmse": 0.004665483309366021,
+        "decade_mae": 0.010668618170678401,
+        "r2_log10_current": 0.9999367471379125
+      },
+      "IDVG_VD1P5": {
+        "rmse_mA_per_um": 0.011520001672227716,
+        "range_normalized_rmse": 0.004811552633189808,
+        "decade_mae": 0.019501473366473517,
+        "r2_log10_current": 0.9998327490039687
+      }
+    }
+  },
+  "field_metrics": {
+    "potential": {
+      "node_count": 3831,
+      "rmse_v": 0.03378988134587961,
+      "range_normalized_rmse": 0.008211582606881391,
+      "r2_linear": 0.9993878631158739
+    },
+    "total_current_density": {
+      "domain": "bulk semiconductor elements only",
+      "element_count": 5471,
+      "display_and_r2_floor_a_per_cm2": 1e-10,
+      "r2_log10": 0.9941908040853694,
+      "robust_contour_range_a_per_cm2": [
+        8.828138498007121e-10,
+        9771710.500000007
+      ]
+    }
+  },
+  "plot_rules": {
+    "tcad_line": "light solid",
+    "ai_line": "dark dashed, drawn above TCAD",
+    "field_mesh": "TCAD native mesh; AI evaluated at the same coordinates",
+    "global_title_and_device_footer": "omitted"
+  },
+  "outputs": {
+    "curve_png": "C:\\Users\\T590\\devsim_project\\inverse-device-modeling\\docs\\technical_validation\\tcad_ai_evidence\\tcad_vs_ai_500nm_curves.png",
+    "curve_pdf": "C:\\Users\\T590\\devsim_project\\inverse-device-modeling\\docs\\technical_validation\\tcad_ai_evidence\\tcad_vs_ai_500nm_curves.pdf",
+    "field_png": "C:\\Users\\T590\\devsim_project\\inverse-device-modeling\\docs\\technical_validation\\tcad_ai_evidence\\tcad_vs_ai_500nm_fields.png",
+    "field_pdf": "C:\\Users\\T590\\devsim_project\\inverse-device-modeling\\docs\\technical_validation\\tcad_ai_evidence\\tcad_vs_ai_500nm_fields.pdf"
+  }
+}
