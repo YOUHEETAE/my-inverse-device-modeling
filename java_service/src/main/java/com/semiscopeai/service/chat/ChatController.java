@@ -31,7 +31,12 @@ public class ChatController {
     // 한 대화에서 불러올 메시지 상한. 대화가 아무리 길어져도 응답 크기가
     // 무한정 커지지 않게 한다.
     private static final int MESSAGE_LIMIT = 200;
-    private static final int THREAD_LIMIT = 50;
+
+    // 목록은 드롭다운에 들어간다. 한 번에 다섯 행쯤 보이므로 이보다 많으면
+    // 스크롤로 찾는 게 목록을 훑는 것보다 오래 걸린다. 이 목록의 쓰임은
+    // "돌아가서 이어 묻고 싶은 최근 대화"라 오래된 항목은 어차피 안 쓰인다.
+    // 전체 이력이 필요해지면 드롭다운을 키울 게 아니라 별도 화면이 맞다.
+    private static final int THREAD_LIMIT = 20;
 
     private final RestClient pythonServiceClient;
     private final ChatService chatService;

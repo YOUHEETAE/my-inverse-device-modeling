@@ -46,8 +46,14 @@ IV_CHAT_INTENTS = {
     "hypothetical",
     "new_experiment",
     "out_of_scope",
+    "greeting",
     "clarify",
 }
+
+# 결과를 근거로 답하지 않는 분류. LLM 답변 호출 없이 고정 문구로 응답하고,
+# 질문 할당량도 소모하지 않는다 — 인사나 범위 밖 주제에 토큰과 사용자의
+# 남은 질문 수를 쓸 이유가 없다.
+_LOCAL_INTENTS = {"out_of_scope", "greeting"}
 IV_CHAT_STRUCTURES = {
     "overview",
     "cause_and_effect",
@@ -186,6 +192,37 @@ def _with_model_caution(answer: str, intent: IVQuestionIntent) -> str:
     return f"{answer}\n\n{caution}"
 
 
+
+OUT_OF_SCOPE_ANSWER = (
+    "이 도구는 지금 화면의 I-V 결과에 대해서만 답할 수 있습니다. "
+    "소자 특성이나 추출된 지표에 대해 물어봐 주세요."
+)
+
+
+def _greeting_answer(snapshot: "IVAnalysisSnapshot") -> str:
+    """인사에는 지금 무엇을 물을 수 있는지로 답한다.
+
+    LLM에 맡기지 않는 이유: 인사에 필요한 건 창의성이 아니라 "여기서 뭘 할 수
+    있는지"인데, 그건 화면 상태를 아는 쪽이 더 정확히 안다. 매번 같은 문장이
+    나오는 것도 인사에서는 흠이 아니다.
+    """
+    described = []
+    for subject in snapshot.payload.get("subjects", [])[:4]:
+        label = subject.get("display_name") or subject.get("subject_id")
+        length = subject.get("device_parameters", {}).get("channel_length_nm")
+        described.append(f"{label}(L={length:g} nm)" if length else str(label))
+
+    if not described:
+        return "안녕하세요! I-V Curve를 만들고 선택하면 그 결과에 대해 답해 드릴 수 있습니다."
+
+    subjects = ", ".join(described)
+    if len(described) >= 2:
+        hint = "두 곡선의 차이가 왜 생기는지 물어보실 수 있습니다."
+    else:
+        hint = "Ion이나 SS 같은 지표를 물어보시거나, 곡선을 하나 더 추가해 비교해 보실 수 있습니다."
+    return f"안녕하세요! 지금 {subjects}를 보고 계시네요. {hint}"
+
+
 def _canonical_metrics(values: Any) -> tuple[str, ...]:
     if not isinstance(values, (list, tuple)):
         raise ValueError("invalid_iv_intent_metrics")
@@ -229,7 +266,7 @@ def validate_iv_intent(
         raise ValueError("invalid_iv_intent_flags")
     if intent in {"hypothetical", "new_experiment"} and not flags[1]:
         raise ValueError("iv_new_experiment_flag_required")
-    if intent == "out_of_scope" and flags[0]:
+    if intent in _LOCAL_INTENTS and flags[0]:
         raise ValueError("iv_out_of_scope_uses_result")
     lowered_question = question.lower()
     current_cues = (
@@ -243,7 +280,7 @@ def validate_iv_intent(
         "설정하면", "일 때는",
     )
     if (
-        intent != "out_of_scope"
+        intent not in _LOCAL_INTENTS
         and any(cue in lowered_question for cue in current_cues)
         and not flags[0]
     ):
@@ -271,6 +308,8 @@ def _intent_prompt(payload: dict[str, Any]) -> tuple[str, str]:
     system = f"""당신은 MOSFET I-V 분석 질문 해석기다.
 질문의 의미만 분류하고 답변하지 않는다. 제공된 metric과 mechanism 이름만 쓴다.
 intent는 {intents} 중 하나다.
+out_of_scope는 반도체 소자 분석과 무관한 주제이고,
+greeting은 인사나 무엇을 해볼지 묻는 말이다. 둘 다 needs_current_result=false다.
 answer_structure는 {structures} 중 하나다.
 현재 보이는 결과의 이유·비교·수치를 묻는 질문은
 needs_current_result=true다. 새로운 조건 추가·변경 요청은 needs_new_experiment=true다.
@@ -934,6 +973,19 @@ class IVChatService:
                     failure, diagnostic, intent=None, checkpoint=False,
                 )
             provider_calls.extend(diagnostic.get("provider_calls", ()))
+        # 결과를 근거로 답하지 않는 분류는 여기서 끝낸다. 답변 호출을
+        # 건너뛰므로 토큰도, 사용자의 남은 질문 수도 쓰지 않는다.
+        if intent.intent in _LOCAL_INTENTS:
+            return IVChatResponse(
+                answer=(
+                    _greeting_answer(snapshot)
+                    if intent.intent == "greeting"
+                    else OUT_OF_SCOPE_ANSWER
+                ),
+                source="local_router",
+                intent=intent,
+                diagnostic={"provider_calls": tuple(provider_calls)},
+            )
         context_pack = build_iv_context_pack(snapshot, intent, focus)
         answer_payload = {
             "user_question": clean_question,

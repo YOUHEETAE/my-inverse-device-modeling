@@ -96,7 +96,7 @@ export default function CurvesPage() {
   // 서버가 저장하는 device_config와 같은 모양이어야 "화면 변경됨" 비교가
   // 복원된 대화에서도 성립한다.
   const chatConfig = { curves: toCurveConfigs(visibleCurves) };
-  const chat = useChat(askChat, chatConfig);
+  const chat = useChat(askChat, chatConfig, "chat:thread:curves");
 
   // 과거 대화의 얼린 소자 조건을 작업대에 되살린다. 현재 구성을 덮어쓰므로
   // 먼저 확인을 받는다 — 사용자가 방금 만들어둔 소자들이 사라질 수 있다.

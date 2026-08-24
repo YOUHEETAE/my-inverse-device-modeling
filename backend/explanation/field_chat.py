@@ -44,8 +44,12 @@ FIELD_CHAT_INTENTS = {
     "hypothetical",
     "new_experiment",
     "out_of_scope",
+    "greeting",
     "clarify",
 }
+# 결과를 근거로 답하지 않는 분류. iv_chat._LOCAL_INTENTS와 같은 규칙이다.
+_LOCAL_INTENTS = {"out_of_scope", "greeting"}
+
 FIELD_CHAT_STRUCTURES = {
     "overview",
     "spatial_cause_and_effect",
@@ -147,6 +151,25 @@ def _with_model_caution(answer: str, intent: FieldQuestionIntent) -> str:
     return f"{answer}\n\n{caution}"
 
 
+
+FIELD_OUT_OF_SCOPE_ANSWER = (
+    "이 도구는 지금 화면의 Field Map 결과에 대해서만 답할 수 있습니다. "
+    "영역별 분포나 두 소자의 차이에 대해 물어봐 주세요."
+)
+
+
+def _field_greeting_answer(snapshot: "FieldAnalysisSnapshot") -> str:
+    """iv_chat._greeting_answer와 같은 규칙 — 그쪽 설명을 참고."""
+    labels = ", ".join(str(label) for label in snapshot.field_labels[:4])
+    if not labels:
+        return "안녕하세요! Field Map을 만들고 선택하면 그 결과에 대해 답해 드릴 수 있습니다."
+    if len(snapshot.field_labels) >= 2:
+        hint = "두 소자의 분포가 어디서 어떻게 다른지 물어보실 수 있습니다."
+    else:
+        hint = "소자를 하나 더 선택하면 두 분포를 비교해 설명해 드릴 수 있습니다."
+    return f"안녕하세요! 지금 {labels}의 {snapshot.display}를 보고 계시네요. {hint}"
+
+
 def validate_field_intent(
     data: Any,
     *,
@@ -173,6 +196,7 @@ def validate_field_intent(
         "hypothetical": "spatial_cause_and_effect",
         "new_experiment": "concise",
         "out_of_scope": "concise",
+        "greeting": "concise",
         "clarify": "concise",
     }
     structure = str(
@@ -207,7 +231,7 @@ def validate_field_intent(
         raise ValueError("unknown_field_iv_metric")
     if intent in {"hypothetical", "new_experiment"} and not flags[1]:
         raise ValueError("field_new_experiment_flag_required")
-    if intent == "out_of_scope" and flags[0]:
+    if intent in _LOCAL_INTENTS and flags[0]:
         raise ValueError("field_out_of_scope_uses_result")
     lowered = question.lower()
     current_cues = (
@@ -218,7 +242,7 @@ def validate_field_intent(
         "바꾸면", "변경하면", "추가해", "추가하면", "다시 계산",
         "새 조건", "일 때는",
     )
-    if intent != "out_of_scope" and any(cue in lowered for cue in current_cues) and not flags[0]:
+    if intent not in _LOCAL_INTENTS and any(cue in lowered for cue in current_cues) and not flags[0]:
         raise ValueError("field_current_result_cue_mismatch")
     if any(cue in lowered for cue in experiment_cues) and not flags[1]:
         raise ValueError("field_experiment_cue_mismatch")
@@ -260,8 +284,15 @@ def _deterministic_field_intent(
 
 
 def _intent_prompt(payload: dict[str, Any]) -> tuple[str, str]:
-    system = """당신은 MOSFET Field Map 학습 질문 해석기다.
-답변하지 말고 질문의 의도만 분류한다. 제공된 concept, named region, I-V metric
+    # 허용값을 검증 상수에서 그대로 만든다. 목록을 적어주지 않으면 모델이
+    # 이름을 지어내거나(invalid_field_intent_content) 새로 추가한 분류에
+    # 영영 도달하지 못한다 — iv_chat._intent_prompt와 같은 이유다.
+    intents = ", ".join(sorted(FIELD_CHAT_INTENTS))
+    system = f"""당신은 MOSFET Field Map 학습 질문 해석기다.
+답변하지 말고 질문의 의도만 분류한다. intent는 {intents} 중 하나다.
+out_of_scope는 반도체 소자 분석과 무관한 주제이고,
+greeting은 인사나 무엇을 해볼지 묻는 말이다. 둘 다 needs_current_result=false다.
+제공된 concept, named region, I-V metric
 이름만 사용한다. 현재 보이는 분포·영역·비교·원인을 묻는 질문은
 needs_current_result=true다. 새로운 조건 또는 재계산 요청은
 needs_new_experiment=true다. Field 관찰을 I-V와 연결해 확인하려는 질문은
@@ -907,6 +938,19 @@ class FieldChatService(IVChatService):
                     failure, diagnostic, intent=None, checkpoint=False,
                 )
             provider_calls.extend(diagnostic.get("provider_calls", ()))
+        # iv_chat과 같은 규칙 — 결과를 근거로 답하지 않는 분류는 답변 호출
+        # 없이 여기서 끝낸다.
+        if intent.intent in _LOCAL_INTENTS:
+            return FieldChatResponse(
+                answer=(
+                    _field_greeting_answer(snapshot)
+                    if intent.intent == "greeting"
+                    else FIELD_OUT_OF_SCOPE_ANSWER
+                ),
+                source="local_router",
+                intent=intent,
+                diagnostic={"provider_calls": tuple(provider_calls)},
+            )
         context_pack = build_field_context_pack(snapshot, intent, focus)
         answer_payload = {
             "user_question": clean_question,

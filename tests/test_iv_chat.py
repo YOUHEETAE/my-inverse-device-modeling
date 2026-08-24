@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from backend.explanation.iv_chat import (
+    _intent_prompt,
     IVAnalysisSnapshot,
     IVChatService,
     IVQuestionIntent,
@@ -229,3 +230,45 @@ def test_iv_chat_definition_answer_has_no_model_caution():
     body["used_evidence_ids"] = []
     result = IVChatService(QueueProvider(define, body)).answer(snapshot(), "Ion이 뭐야?")
     assert "TCAD 검증을 대체하지 않습니다" not in result.answer
+
+
+def test_iv_greeting_answers_locally_without_an_answer_call():
+    """인사에는 LLM 답변 호출을 쓰지 않는다.
+
+    필요한 건 창의성이 아니라 "여기서 뭘 물을 수 있는지"이고, 그건 화면
+    상태를 아는 쪽이 더 정확하다. 매번 같은 문장이 나오는 것도 인사에서는
+    흠이 아니며, 토큰과 사용자의 남은 질문 수를 아낀다.
+    """
+    provider = QueueProvider(intent(
+        intent="greeting", needs_current_result=False,
+        requested_metrics=[], requested_mechanisms=[], answer_structure="concise",
+    ))
+    result = IVChatService(provider).answer(snapshot(), "안녕")
+
+    assert result.source == "local_router"
+    # 분류 1회뿐 — 답변 생성은 부르지 않는다.
+    assert len(provider.calls) == 1
+    # 지금 보고 있는 소자를 짚어줘야 안내로 쓸모가 있다.
+    assert "Curve 1" in result.answer and "L=700 nm" in result.answer
+
+
+def test_iv_out_of_scope_answers_locally_with_a_fixed_message():
+    provider = QueueProvider(intent(
+        intent="out_of_scope", needs_current_result=False,
+        requested_metrics=[], requested_mechanisms=[], answer_structure="concise",
+    ))
+    result = IVChatService(provider).answer(snapshot(), "요즘 페이커 잘하더라")
+
+    assert result.source == "local_router"
+    assert len(provider.calls) == 1
+    assert "I-V 결과에 대해서만" in result.answer
+
+
+def test_iv_intent_prompt_defines_out_of_scope_and_greeting():
+    """허용값만 나열하고 뜻을 안 적으면 같은 질문이 매번 다르게 분류된다.
+    실제로 "안녕"이 어떤 때는 인사로, 어떤 때는 범위 밖으로 갈렸다.
+    """
+    system, _ = _intent_prompt({"user_question": "안녕"})
+
+    assert "out_of_scope는" in system
+    assert "greeting은" in system

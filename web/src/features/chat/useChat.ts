@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { THREAD_FULL, fetchThread, toChatError, type ChatError } from "./api";
 import { toTurns, type ChatReply, type ChatTurn } from "./types";
 
@@ -13,7 +13,13 @@ type DeviceConfig = Record<string, unknown>;
  *   "화면 변경됨"을 알리는 데만 쓴다 — 서버는 얼린 설정을 따로 들고 있어서
  *   이 값이 바뀌어도 대화 내용에는 영향이 없다.
  */
-export function useChat(ask: Ask, currentConfig: DeviceConfig) {
+/**
+ * @param storageKey 새로고침을 넘겨 대화를 되살리기 위한 키. 대화 자체는
+ *   서버에 있으므로 thread_id만 둔다. sessionStorage인 이유는 새로고침은
+ *   넘기되 탭을 닫으면 잊기 위해서다 — 며칠 뒤 열었을 때 옛 대화가 되살아나
+ *   있으면 당황스럽고, 그건 이전 대화 목록이 할 일이다.
+ */
+export function useChat(ask: Ask, currentConfig: DeviceConfig, storageKey: string) {
   const [turns, setTurns] = useState<ChatTurn[]>([]);
   const [threadId, setThreadId] = useState<number | null>(null);
   const [sending, setSending] = useState(false);
@@ -27,6 +33,24 @@ export function useChat(ask: Ask, currentConfig: DeviceConfig) {
 
   // 낙관적으로 넣은 질문을 답변이 왔을 때 찾아 바꾸기 위한 키
   const pendingKey = useRef(0);
+
+  // 새로고침 직후 마지막 대화를 되살린다. 삭제됐거나 남의 것이면 조용히
+  // 키를 버린다 — 사용자가 하지 않은 일에 오류를 띄울 이유가 없다.
+  useEffect(() => {
+    const saved = sessionStorage.getItem(storageKey);
+    if (!saved) return;
+    fetchThread(Number(saved))
+      .then((thread) => {
+        setTurns(toTurns(thread.messages));
+        setThreadId(thread.thread_id);
+        setTurnsUsed(thread.turns_used);
+        setTurnLimit(thread.turn_limit);
+        setFrozenConfig(thread.device_config);
+      })
+      .catch(() => sessionStorage.removeItem(storageKey));
+    // 최초 1회만. 이후의 thread_id 변화는 send/restore가 직접 기록한다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const send = useCallback(
     async (question: string): Promise<boolean> => {
@@ -45,6 +69,7 @@ export function useChat(ask: Ask, currentConfig: DeviceConfig) {
         // 첫 턴에서만 얼린다. 서버도 같은 시점에 device_config를 저장한다.
         setFrozenConfig((prev: DeviceConfig | null) => prev ?? configAtSend);
         setThreadId(reply.thread_id);
+        sessionStorage.setItem(storageKey, String(reply.thread_id));
         setTurnsUsed(reply.turns_used);
         setTurnLimit(reply.turn_limit);
         setTurns((prev) =>
@@ -66,7 +91,7 @@ export function useChat(ask: Ask, currentConfig: DeviceConfig) {
         setSending(false);
       }
     },
-    [ask, sending, threadId, currentConfig],
+    [ask, sending, threadId, currentConfig, storageKey],
   );
 
   /** 상한에 닿았거나 사용자가 주제를 바꿀 때. thread_id를 비우면 서버가 새로 만든다. */
@@ -76,7 +101,8 @@ export function useChat(ask: Ask, currentConfig: DeviceConfig) {
     setTurnsUsed(0);
     setError(null);
     setFrozenConfig(null);
-  }, []);
+    sessionStorage.removeItem(storageKey);
+  }, [storageKey]);
 
   const restore = useCallback(async (id: number) => {
     setError(null);
@@ -87,10 +113,11 @@ export function useChat(ask: Ask, currentConfig: DeviceConfig) {
       setFrozenConfig(thread.device_config);
       setTurnsUsed(thread.turns_used);
       setTurnLimit(thread.turn_limit);
+      sessionStorage.setItem(storageKey, String(thread.thread_id));
     } catch (err) {
       setError(toChatError(err));
     }
-  }, []);
+  }, [storageKey]);
 
   return {
     turns,

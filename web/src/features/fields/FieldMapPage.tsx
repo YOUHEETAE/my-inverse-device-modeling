@@ -212,7 +212,7 @@ export default function FieldMapPage() {
     scale_mode: scaleMode,
     range_mode: rangeMode,
   };
-  const chat = useChat(askChat, chatConfig);
+  const chat = useChat(askChat, chatConfig, "chat:thread:fields");
 
   // 과거 대화의 얼린 소자 조건을 작업대에 되살린다. 현재 구성을 덮어쓰므로
   // 먼저 확인을 받는다 — 사용자가 방금 만들어둔 소자들이 사라질 수 있다.

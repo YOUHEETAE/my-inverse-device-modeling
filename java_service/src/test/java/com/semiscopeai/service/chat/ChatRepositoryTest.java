@@ -152,6 +152,42 @@ class ChatRepositoryTest {
         assertThat(chatRepository.turnCount(threadId)).isEqualTo(2);
     }
 
+    // 인사나 범위 밖 안내, 되묻기는 LLM을 부르지 않고 돌려준 응답이라
+    // 사용자의 남은 질문 수를 깎지 않는다.
+    @Test
+    void 턴_수를_셀_때_local_router도_빼고_센다() {
+        long threadId = chatRepository.createThread(userId, "curves", Map.of());
+        chatRepository.appendMessage(threadId, "안녕", "안녕하세요!", "local_router", "greeting", null);
+        chatRepository.appendMessage(threadId, "페이커 잘하더라", "범위 밖입니다", "local_router", "out_of_scope", null);
+        chatRepository.appendMessage(threadId, "Ion은?", "6.28", "external_llm", null, null);
+
+        assertThat(chatRepository.turnCount(threadId)).isEqualTo(1);
+    }
+
+    // 이력에서까지 빼면 안 된다 — clarify도 local_router라 명확화 흐름이 끊긴다.
+    @Test
+    void local_router_턴도_이력으로는_넘어간다() {
+        long threadId = chatRepository.createThread(userId, "curves", Map.of());
+        chatRepository.appendMessage(threadId, "어느 곡선?", "어느 곡선을 말씀하시나요?", "local_router", "clarify", null);
+
+        assertThat(chatRepository.recentTurns(threadId, 10))
+                .singleElement()
+                .extracting(ChatTurn::question)
+                .isEqualTo("어느 곡선?");
+    }
+
+    @Test
+    void 목록의_턴_수도_같은_기준이다() {
+        long threadId = chatRepository.createThread(userId, "curves", Map.of());
+        chatRepository.appendMessage(threadId, "안녕", "안녕하세요!", "local_router", "greeting", null);
+        chatRepository.appendMessage(threadId, "Ion은?", "6.28", "external_llm", null, null);
+
+        assertThat(chatRepository.listThreads(userId, null, 10))
+                .singleElement()
+                .extracting(ChatThreadSummary::turnsUsed)
+                .isEqualTo(1);
+    }
+
     @Test
     void 조회한_대화는_사용한_턴_수를_함께_준다() {
         long threadId = chatRepository.createThread(userId, "curves", Map.of());

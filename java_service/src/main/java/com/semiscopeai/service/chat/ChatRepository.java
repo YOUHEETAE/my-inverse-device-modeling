@@ -64,13 +64,17 @@ public class ChatRepository {
                 .orElseGet(Map::of);
     }
 
-    // 대화 길이 상한을 재는 기준. 실패한 턴은 사용자 잘못이 아니므로 세지
-    // 않는다 — 서버 오류로 할당량이 깎이면 안 된다.
+    // 대화 길이 상한을 재는 기준.
+    //
+    // 세지 않는 턴이 둘 있다. 실패한 턴은 사용자 잘못이 아니라 서버 오류이고,
+    // local_router는 LLM을 부르지 않고 돌려준 응답이다 — 인사·범위 밖 안내나
+    // 되묻기에 남은 질문 수를 깎을 이유가 없다.
     public int turnCount(long threadId) {
         return jdbcClient
                 .sql("""
                         SELECT count(*) FROM chat_message
-                        WHERE thread_id = :threadId AND source <> 'external_error'
+                        WHERE thread_id = :threadId
+                          AND source NOT IN ('external_error', 'local_router')
                         """)
                 .param("threadId", threadId)
                 .query(Integer.class)
@@ -202,7 +206,8 @@ public class ChatRepository {
                                  ORDER BY m.created_at, m.id LIMIT 1) AS first_question,
                                (SELECT count(*) FROM chat_message m
                                  WHERE m.thread_id = t.id
-                                   AND m.source <> 'external_error') AS turns_used
+                                   AND m.source NOT IN ('external_error', 'local_router'))
+                                 AS turns_used
                         FROM chat_thread t
                         WHERE t.user_id = :userId
                           AND (CAST(:kind AS text) IS NULL OR t.kind = CAST(:kind AS text))
