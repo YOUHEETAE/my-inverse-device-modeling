@@ -24,6 +24,9 @@ export interface SafeQuestion {
   prompt: string;
   options: string[];
   reason_required: boolean;
+  /** 완료 화면에서 이 질문을 되짚을 때의 제목과 함께 볼 지표. */
+  review_title: string;
+  review_metrics: string[];
 }
 
 export interface ReferenceCondition {
@@ -52,6 +55,12 @@ export interface TopicDetail extends TopicSummary {
   reference_conditions: ReferenceCondition[];
   display_parameters: string[];
   guide: CaseGuide;
+  /** 완료 화면의 "핵심 정리". */
+  core_summary: string[];
+  /** 개념 id -> 사람이 읽는 말. 채점 결과가 id로 오기 때문에 필요하다. */
+  concept_labels: Record<string, string>;
+  /** 모범 답안을 섹션으로 나눌 때 쓰는 제목. */
+  model_answer_sections: Record<string, string>;
   prediction_questions: SafeQuestion[];
   observation_questions: SafeQuestion[];
 }

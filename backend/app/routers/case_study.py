@@ -30,8 +30,12 @@ from pydantic import BaseModel, Field
 from app.services import learning_runner, learning_state_machine, learning_tutor
 from backend.learning.llm_service import LearningLLMService
 from backend.learning.case_presentation import (
+    CASE_CORE_SUMMARIES,
     CASE_UNDERSTANDING_GUIDES,
+    CONCEPT_FEEDBACK_LABELS,
     CONDITION_LABELS,
+    MODEL_ANSWER_SECTION_TITLES,
+    QUESTION_REVIEW_GUIDES,
     format_case_comparison,
 )
 from backend.learning.progress import build_learning_portfolio
@@ -67,6 +71,10 @@ class SafeQuestion(BaseModel):
     prompt: str
     options: list[str]
     reason_required: bool
+    # 완료 화면에서 이 질문을 되짚을 때 쓰는 제목과, 함께 보여줄 지표.
+    # 정답은 여전히 빠져 있다.
+    review_title: str = ""
+    review_metrics: list[str] = Field(default_factory=list)
 
 
 class ReferenceCondition(BaseModel):
@@ -98,6 +106,13 @@ class TopicDetail(TopicSummary):
     # 조건 표에 실제로 띄울 파라미터. 비어 있으면 전부 보여준다.
     display_parameters: list[str]
     guide: CaseGuide
+    # 완료 화면의 "핵심 정리".
+    core_summary: list[str]
+    # 개념 id를 사람이 읽는 말로 (summary_snapshot의 understood_concepts와
+    # detected_misconceptions가 id로 오기 때문에 필요하다).
+    concept_labels: dict[str, str]
+    # 모범 답안을 섹션으로 나눌 때 쓰는 제목.
+    model_answer_sections: dict[str, str]
     prediction_questions: list[SafeQuestion]
     observation_questions: list[SafeQuestion]
 
@@ -207,12 +222,15 @@ def _session_topic(session: LearningSession):
 def _safe_question(question) -> SafeQuestion:
     # 정답(correct_options)과 개념 매핑은 내보내지 않는다 — 학습자가 예측을
     # 적기 전에 답을 볼 수 있으면 예측 단계 자체가 의미를 잃는다.
+    guide = QUESTION_REVIEW_GUIDES.get(question.question_id, {})
     return SafeQuestion(
         question_id=question.question_id,
         type=question.type,
         prompt=question.prompt,
         options=list(question.options),
         reason_required=question.reason_required,
+        review_title=str(guide.get("title", "")),
+        review_metrics=list(guide.get("metric_keys", ())),
     )
 
 
@@ -285,6 +303,14 @@ def get_case_study_topic(topic_id: str) -> TopicDetail:
         ],
         display_parameters=list(topic.display_parameters),
         guide=_guide(topic),
+        core_summary=list(CASE_CORE_SUMMARIES.get(topic.topic_id, ())),
+        # 이 케이스에 등장하는 개념만 추린다 — 100개를 다 보낼 이유가 없다.
+        concept_labels={
+            name: CONCEPT_FEEDBACK_LABELS[name]
+            for name in (*topic.expected_concepts, *topic.common_misconceptions)
+            if name in CONCEPT_FEEDBACK_LABELS
+        },
+        model_answer_sections=dict(MODEL_ANSWER_SECTION_TITLES),
         prediction_questions=[_safe_question(item) for item in topic.prediction_questions],
         observation_questions=[_safe_question(item) for item in topic.observation_questions],
     )

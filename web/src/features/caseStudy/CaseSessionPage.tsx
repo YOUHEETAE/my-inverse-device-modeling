@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { QuestionCard, missingAnswer, EMPTY_ANSWER, type Answer } from "./components/QuestionCard";
 import { ResultsView } from "./components/ResultsView";
+import { SummaryPage } from "./components/SummaryPage";
 import { UnderstandingPage } from "./components/UnderstandingPage";
 import { isUnlocked, stepOf, useCaseSession } from "./useCaseSession";
 import { LEARNING_PAGES, type LearningPage } from "./types";
@@ -80,7 +81,9 @@ export default function CaseSessionPage({ sessionId, caseNumber, onBack }: CaseS
           "min-h-0 flex-1 p-4",
           // 관찰 화면은 안에서 각자 스크롤한다. 바깥이 스크롤하면 그래프가
           // 세로로 눌려서 읽을 수 없게 된다.
-          page === "observation" && step !== "ERROR" ? "overflow-hidden" : "overflow-y-auto",
+          (page === "observation" || page === "explanation") && step !== "ERROR"
+            ? "overflow-hidden"
+            : "overflow-y-auto",
         )}
       >
         {step === "ERROR" ? (
@@ -221,7 +224,54 @@ function PageBody({
     );
   }
 
-  return <FeedbackPlaceholder />;
+  // 4단계는 학습 요약과 결과 화면을 함께 준다 (panel.py의 _build_complete).
+  // 피드백을 읽으며 그래프를 다시 보게 되므로 결과를 치우지 않는다.
+  return <ExplanationPage state={state} />;
+}
+
+function ExplanationPage({ state }: { state: ReturnType<typeof useCaseSession> }) {
+  const [tab, setTab] = useState<"summary" | "results">("summary");
+  const { session, topic } = state;
+  if (!session || !topic) return null;
+
+  return (
+    <div className="flex h-full min-h-0 flex-col">
+      <div role="tablist" className="flex shrink-0 gap-1 border-b border-outline-variant">
+        {([
+          ["summary", "학습 요약"],
+          ["results", "결과 다시 보기"],
+        ] as const).map(([id, label]) => (
+          <button
+            key={id}
+            role="tab"
+            type="button"
+            aria-selected={tab === id}
+            onClick={() => setTab(id)}
+            className={cn(
+              "-mb-px border-b-2 px-3 py-1.5 text-xs font-bold transition-colors motion-reduce:transition-none",
+              tab === id
+                ? "border-primary text-primary"
+                : "border-transparent text-on-surface-variant hover:text-on-surface",
+            )}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      <div className={cn("min-h-0 flex-1 pt-3", tab === "summary" ? "overflow-y-auto" : "overflow-hidden")}>
+        {tab === "summary" ? (
+          <SummaryPage session={session} topic={topic} />
+        ) : (
+          <ResultsView
+            session={session}
+            result={state.result}
+            busy={state.busy}
+            onRegenerate={state.regenerate}
+          />
+        )}
+      </div>
+    </div>
+  );
 }
 
 function AnswerForm({
@@ -343,10 +393,3 @@ function RecoveryNotice({ onRetry, busy }: { onRetry: () => void; busy: boolean 
   );
 }
 
-function FeedbackPlaceholder() {
-  return (
-    <p className="text-center text-xs text-on-surface-variant">
-      최종 설명 화면은 준비 중입니다.
-    </p>
-  );
-}
