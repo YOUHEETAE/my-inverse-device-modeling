@@ -62,6 +62,14 @@ services:
       # itself, which has no root mapping (Whitelabel 404 right after a
       # successful login).
       - FRONTEND_URL=${FRONTEND_URL:-/}
+      # 구글이 인증 후 돌려보낼 주소. Caddy는 /api/* 만 이 서비스로 보내고
+      # 접두사를 떼어내므로, 지정하지 않으면 스프링이 /api 없는 주소를 만들고
+      # 구글이 돌려보낸 요청이 정적 페이지로 떨어진다. 실제 도메인이 있어야
+      # 정할 수 있는 값이라 .env에서 받는다.
+      # 값 없이 이름만 적으면 .env에 있을 때만 전달된다. "=${...:-}" 형태로
+      # 쓰면 미설정일 때 빈 문자열이 넘어가 스프링의 기본값을 덮어버리고,
+      # redirectUri가 비었다며 기동에 실패한다.
+      - OAUTH_REDIRECT_URI
     # Same loopback-only rationale as backend above: Caddy reaches this over
     # the internal network, the published port is for host-side debugging.
     ports:
