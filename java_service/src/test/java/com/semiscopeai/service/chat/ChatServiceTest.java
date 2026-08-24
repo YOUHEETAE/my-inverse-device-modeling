@@ -42,10 +42,11 @@ class ChatServiceTest {
         when(chatRepository.createThread(USER_ID, "curves", Map.of("L", "500"))).thenReturn(42L);
         when(chatRepository.recentTurns(42L, 6)).thenReturn(List.of());
         when(chatRepository.lastIntentCheckpoint(42L)).thenReturn(Map.of());
+        when(chatRepository.deviceConfig(42L)).thenReturn(Map.of("curves", List.of("frozen")));
 
         ChatService service = new ChatService(chatRepository);
         ChatReply reply = service.ask(
-                USER_ID, null, "curves", Map.of("L", "500"), "Ion은?", (h, c) -> answer("6.28", "external_llm"));
+                USER_ID, null, "curves", Map.of("L", "500"), "Ion은?", body -> answer("6.28", "external_llm"));
 
         // 프론트는 이 값을 받아 다음 질문에 실어 보낸다.
         assertThat(reply.threadId()).isEqualTo(42L);
@@ -57,19 +58,22 @@ class ChatServiceTest {
         when(chatRepository.threadBelongsTo(42L, USER_ID)).thenReturn(true);
         when(chatRepository.recentTurns(42L, 6)).thenReturn(List.of(ChatTurn.of("이전 질문", "이전 답변", "external_llm")));
         when(chatRepository.lastIntentCheckpoint(42L)).thenReturn(Map.of("intent", "clarify"));
+        when(chatRepository.deviceConfig(42L)).thenReturn(Map.of("curves", List.of("frozen")));
 
-        AtomicReference<List<ChatTurn>> sentHistory = new AtomicReference<>();
-        AtomicReference<Map<String, Object>> sentCheckpoint = new AtomicReference<>();
+        AtomicReference<Map<String, Object>> sentBody = new AtomicReference<>();
 
         new ChatService(chatRepository)
-                .ask(USER_ID, 42L, "curves", Map.of(), "그건 좋은 값인가요?", (history, checkpoint) -> {
-                    sentHistory.set(history);
-                    sentCheckpoint.set(checkpoint);
+                .ask(USER_ID, 42L, "curves", Map.of(), "그건 좋은 값인가요?", body -> {
+                    sentBody.set(body);
                     return answer("네", "external_llm");
                 });
 
-        assertThat(sentHistory.get()).extracting(ChatTurn::question).containsExactly("이전 질문");
-        assertThat(sentCheckpoint.get()).containsEntry("intent", "clarify");
+        assertThat(sentBody.get()).containsEntry("question", "그건 좋은 값인가요?");
+        assertThat((List<ChatTurn>) sentBody.get().get("history"))
+                .extracting(ChatTurn::question)
+                .containsExactly("이전 질문");
+        assertThat((Map<String, Object>) sentBody.get().get("intent_checkpoint"))
+                .containsEntry("intent", "clarify");
     }
 
     @Test
@@ -77,9 +81,10 @@ class ChatServiceTest {
         when(chatRepository.createThread(anyLong(), any(), any())).thenReturn(42L);
         when(chatRepository.recentTurns(anyLong(), anyInt())).thenReturn(List.of());
         when(chatRepository.lastIntentCheckpoint(anyLong())).thenReturn(Map.of());
+        when(chatRepository.deviceConfig(anyLong())).thenReturn(Map.of("curves", List.of("frozen")));
 
         new ChatService(chatRepository)
-                .ask(USER_ID, null, "curves", Map.of(), "Ion은?", (h, c) -> answer("6.28", "external_llm"));
+                .ask(USER_ID, null, "curves", Map.of(), "Ion은?", body -> answer("6.28", "external_llm"));
 
         verify(chatRepository)
                 .appendMessage(
@@ -98,9 +103,10 @@ class ChatServiceTest {
         when(chatRepository.createThread(anyLong(), any(), any())).thenReturn(42L);
         when(chatRepository.recentTurns(anyLong(), anyInt())).thenReturn(List.of());
         when(chatRepository.lastIntentCheckpoint(anyLong())).thenReturn(Map.of());
+        when(chatRepository.deviceConfig(anyLong())).thenReturn(Map.of("curves", List.of("frozen")));
 
         new ChatService(chatRepository)
-                .ask(USER_ID, null, "curves", Map.of(), "Ion은?", (h, c) -> new ChatAnswer("생성 실패", "external_error", null, List.of(), null, false, null));
+                .ask(USER_ID, null, "curves", Map.of(), "Ion은?", body -> new ChatAnswer("생성 실패", "external_error", null, List.of(), null, false, null));
 
         verify(chatRepository).appendMessage(eq(42L), eq("Ion은?"), eq("생성 실패"), eq("external_error"), eq(null), eq(null));
     }
@@ -113,7 +119,7 @@ class ChatServiceTest {
         when(chatRepository.turnCount(42L)).thenReturn(ChatService.MAX_TURNS_PER_THREAD);
         ChatService service = new ChatService(chatRepository);
 
-        assertThatThrownBy(() -> service.ask(USER_ID, 42L, "curves", Map.of(), "질문", (h, c) -> answer("답", "external_llm")))
+        assertThatThrownBy(() -> service.ask(USER_ID, 42L, "curves", Map.of(), "질문", body -> answer("답", "external_llm")))
                 .isInstanceOf(ResponseStatusException.class)
                 // 400이 아니라 409 — 요청은 멀쩡하고 대화 상태가 문제다.
                 // 프론트가 이 코드로 "새 대화 시작"을 띄운다.
@@ -129,9 +135,10 @@ class ChatServiceTest {
         when(chatRepository.turnCount(42L)).thenReturn(ChatService.MAX_TURNS_PER_THREAD - 1);
         when(chatRepository.recentTurns(anyLong(), anyInt())).thenReturn(List.of());
         when(chatRepository.lastIntentCheckpoint(anyLong())).thenReturn(Map.of());
+        when(chatRepository.deviceConfig(anyLong())).thenReturn(Map.of("curves", List.of("frozen")));
 
         ChatReply reply = new ChatService(chatRepository)
-                .ask(USER_ID, 42L, "curves", Map.of(), "마지막 질문", (h, c) -> answer("답", "external_llm"));
+                .ask(USER_ID, 42L, "curves", Map.of(), "마지막 질문", body -> answer("답", "external_llm"));
 
         assertThat(reply.turnLimit()).isEqualTo(ChatService.MAX_TURNS_PER_THREAD);
     }
@@ -143,12 +150,56 @@ class ChatServiceTest {
         when(chatRepository.createThread(anyLong(), any(), any())).thenReturn(99L);
         when(chatRepository.recentTurns(anyLong(), anyInt())).thenReturn(List.of());
         when(chatRepository.lastIntentCheckpoint(anyLong())).thenReturn(Map.of());
+        when(chatRepository.deviceConfig(anyLong())).thenReturn(Map.of("curves", List.of("frozen")));
 
         ChatReply reply = new ChatService(chatRepository)
-                .ask(USER_ID, null, "curves", Map.of(), "첫 질문", (h, c) -> answer("답", "external_llm"));
+                .ask(USER_ID, null, "curves", Map.of(), "첫 질문", body -> answer("답", "external_llm"));
 
         assertThat(reply.threadId()).isEqualTo(99L);
         verify(chatRepository, never()).threadBelongsTo(anyLong(), anyLong());
+    }
+
+    // 첫 질문이 소자 설정을 얼린다 — 데스크톱 앱과 같은 규칙
+    // (frontend/visualization/explanation_panel.py의 iv_chat_snapshot).
+    //
+    // 요청에 실려온 설정을 쓰면, 사용자가 파라미터를 바꾼 순간 말풍선 위쪽은
+    // 옛 소자 얘기인데 새 답변은 다른 소자 얘기가 된다. 오류도 안 나서
+    // 알아챌 수가 없다.
+    @Test
+    void 후속_턴은_요청이_아니라_얼린_설정을_Python에_보낸다() {
+        when(chatRepository.threadBelongsTo(42L, USER_ID)).thenReturn(true);
+        when(chatRepository.recentTurns(anyLong(), anyInt())).thenReturn(List.of());
+        when(chatRepository.lastIntentCheckpoint(anyLong())).thenReturn(Map.of());
+        when(chatRepository.deviceConfig(42L)).thenReturn(Map.of("curves", List.of("L=500")));
+
+        AtomicReference<Map<String, Object>> sentBody = new AtomicReference<>();
+
+        // 화면에서는 이미 L=250으로 바꾼 뒤 이어서 묻는 상황
+        new ChatService(chatRepository)
+                .ask(USER_ID, 42L, "curves", Map.of("curves", List.of("L=250")), "그럼 이건?", body -> {
+                    sentBody.set(body);
+                    return answer("답", "external_llm");
+                });
+
+        assertThat(sentBody.get()).containsEntry("curves", List.of("L=500"));
+    }
+
+    // 첫 턴은 방금 저장한 설정이 그대로 얼린 설정이 된다.
+    @Test
+    void 첫_턴은_요청의_설정이_그대로_얼린다() {
+        when(chatRepository.createThread(anyLong(), any(), any())).thenReturn(42L);
+        when(chatRepository.recentTurns(anyLong(), anyInt())).thenReturn(List.of());
+        when(chatRepository.lastIntentCheckpoint(anyLong())).thenReturn(Map.of());
+        when(chatRepository.deviceConfig(42L)).thenReturn(Map.of("curves", List.of("L=500")));
+
+        AtomicReference<Map<String, Object>> sentBody = new AtomicReference<>();
+        new ChatService(chatRepository)
+                .ask(USER_ID, null, "curves", Map.of("curves", List.of("L=500")), "Ion은?", body -> {
+                    sentBody.set(body);
+                    return answer("답", "external_llm");
+                });
+
+        assertThat(sentBody.get()).containsEntry("curves", List.of("L=500"));
     }
 
     // 남의 대화에 질문을 이어붙이지 못해야 한다. 403이 아니라 404인 이유는
@@ -158,7 +209,7 @@ class ChatServiceTest {
         when(chatRepository.threadBelongsTo(42L, USER_ID)).thenReturn(false);
         ChatService service = new ChatService(chatRepository);
 
-        assertThatThrownBy(() -> service.ask(USER_ID, 42L, "curves", Map.of(), "질문", (h, c) -> answer("답", "external_llm")))
+        assertThatThrownBy(() -> service.ask(USER_ID, 42L, "curves", Map.of(), "질문", body -> answer("답", "external_llm")))
                 .isInstanceOf(ResponseStatusException.class)
                 .extracting(e -> ((ResponseStatusException) e).getStatusCode())
                 .isEqualTo(HttpStatus.NOT_FOUND);

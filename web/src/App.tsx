@@ -9,6 +9,7 @@ import FieldMapPage from "./features/fields/FieldMapPage";
 import { DeviceStoreProvider } from "./features/shared/deviceStore";
 import { ViewStoreProvider } from "./features/shared/viewStore";
 import { PredictionCacheProvider } from "./features/shared/predictionCache";
+import { AuthProvider } from "./features/auth/AuthProvider";
 
 const PAGE_META: Record<string, { title: string; breadcrumb: string[] }> = {
   "/": { title: "Home", breadcrumb: ["SemiScope AI", "Home"] },
@@ -24,22 +25,24 @@ function App() {
   const location = useLocation();
   const meta = PAGE_META[location.pathname] ?? DEFAULT_META;
   return (
-    <DeviceStoreProvider>
-      <ViewStoreProvider>
-        <PredictionCacheProvider>
-          <AppLayout title={meta.title} breadcrumb={meta.breadcrumb}>
-            <Routes>
-              <Route path="/" element={<HomePage />} />
-              <Route path="/guide" element={<GuidePage />} />
-              <Route path="/case-study" element={<CaseStudyPage />} />
-              <Route path="/theory" element={<TheoryPage />} />
-              <Route path="/curves" element={<CurvesPage />} />
-              <Route path="/fields" element={<FieldMapPage />} />
-            </Routes>
-          </AppLayout>
-        </PredictionCacheProvider>
-      </ViewStoreProvider>
-    </DeviceStoreProvider>
+    <AuthProvider>
+      <DeviceStoreProvider>
+        <ViewStoreProvider>
+          <PredictionCacheProvider>
+            <AppLayout title={meta.title} breadcrumb={meta.breadcrumb}>
+              <Routes>
+                <Route path="/" element={<HomePage />} />
+                <Route path="/guide" element={<GuidePage />} />
+                <Route path="/case-study" element={<CaseStudyPage />} />
+                <Route path="/theory" element={<TheoryPage />} />
+                <Route path="/curves" element={<CurvesPage />} />
+                <Route path="/fields" element={<FieldMapPage />} />
+              </Routes>
+            </AppLayout>
+          </PredictionCacheProvider>
+        </ViewStoreProvider>
+      </DeviceStoreProvider>
+    </AuthProvider>
   );
 }
 

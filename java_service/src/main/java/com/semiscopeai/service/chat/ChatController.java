@@ -7,7 +7,6 @@ import com.semiscopeai.service.chat.dto.ChatThreadView;
 import com.semiscopeai.service.chat.dto.CurveChatRequest;
 import com.semiscopeai.service.chat.dto.FieldChatRequest;
 import jakarta.validation.Valid;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
@@ -21,9 +20,10 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.server.ResponseStatusException;
 
-// 다른 컨트롤러들과 달리 순수 프록시가 아니다. 대화 이력이 요청에 실려오지
-// 않고 서버가 DB에서 채워 넣기 때문에, 그 조립을 ChatService에 맡기고 여기서는
-// Python 호출과 HTTP 변환만 한다.
+// 다른 컨트롤러들과 달리 순수 프록시가 아니다. 대화 이력도, 소자 설정도
+// 요청이 아니라 DB에서 나온다 — ChatService가 본문을 통째로 만들어 주고
+// 여기서는 어느 Python 경로로 보낼지만 정한다. 요청의 소자 설정을 그대로
+// 넘길 방법이 아예 없어야 스냅샷 고정이 실수로 깨지지 않는다.
 @RestController
 public class ChatController {
 
@@ -53,14 +53,7 @@ public class ChatController {
                 "curves",
                 Map.of("curves", request.curves()),
                 request.question(),
-                (history, checkpoint) -> {
-                    Map<String, Object> body = new LinkedHashMap<>();
-                    body.put("curves", request.curves());
-                    body.put("question", request.question());
-                    body.put("history", history);
-                    body.put("intent_checkpoint", checkpoint);
-                    return post("/explain/curves/chat", body);
-                });
+                body -> post("/explain/curves/chat", body));
     }
 
     @PostMapping("/chat/fields")
@@ -77,17 +70,7 @@ public class ChatController {
                         "scale_mode", request.scaleMode(),
                         "range_mode", request.rangeMode()),
                 request.question(),
-                (history, checkpoint) -> {
-                    Map<String, Object> body = new LinkedHashMap<>();
-                    body.put("fields", request.fields());
-                    body.put("display", request.display());
-                    body.put("scale_mode", request.scaleMode());
-                    body.put("range_mode", request.rangeMode());
-                    body.put("question", request.question());
-                    body.put("history", history);
-                    body.put("intent_checkpoint", checkpoint);
-                    return post("/explain/fields/chat", body);
-                });
+                body -> post("/explain/fields/chat", body));
     }
 
     // 새로고침하거나 다른 기기에서 열었을 때 대화를 복원한다. 저장만 하고

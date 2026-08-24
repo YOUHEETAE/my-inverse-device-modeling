@@ -1,10 +1,23 @@
-import { useCallback, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { setUnauthorizedHandler } from "@/lib/apiClient";
 import { fetchMe, logout as logoutRequest, startGoogleLogin, takeReturnPath, type Me } from "./api";
 
+// 로그인 상태를 App 수준에 한 번만 둔다. 훅이 각자 상태를 들고 있으면
+// 화면마다 /auth/me를 따로 부르고, 아바타 메뉴에서 로그아웃해도 다른
+// 화면(자유질문 입력창 등)은 로그인 상태로 남는다.
 const ANONYMOUS: Me = { authenticated: false, user_id: null, name: null, email: null };
 
-export function useAuth() {
+interface AuthValue {
+  me: Me;
+  loading: boolean;
+  login: () => void;
+  logout: () => Promise<void>;
+}
+
+const AuthContext = createContext<AuthValue | null>(null);
+
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [me, setMe] = useState<Me>(ANONYMOUS);
   const [loading, setLoading] = useState(true);
   const location = useLocation();
@@ -43,6 +56,13 @@ export function useAuth() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // 어떤 요청이든 401을 받으면(= 세션 만료) 화면 전체를 비로그인으로
+  // 되돌린다. 아바타는 로그인 상태인데 입력창만 막히는 어긋남을 막는다.
+  useEffect(() => {
+    setUnauthorizedHandler(() => setMe(ANONYMOUS));
+    return () => setUnauthorizedHandler(null);
+  }, []);
+
   const login = useCallback(() => {
     startGoogleLogin(location.pathname + location.search);
   }, [location]);
@@ -52,5 +72,11 @@ export function useAuth() {
     setMe(ANONYMOUS);
   }, []);
 
-  return { me, loading, login, logout };
+  return <AuthContext.Provider value={{ me, loading, login, logout }}>{children}</AuthContext.Provider>;
+}
+
+export function useAuth() {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth must be used within an AuthProvider");
+  return ctx;
 }

@@ -52,6 +52,18 @@ public class ChatRepository {
                 .single() > 0;
     }
 
+    // 첫 질문에서 얼려둔 소자 설정. 후속 턴은 화면의 현재 값이 아니라 이걸
+    // 다시 써야 대화가 처음 주제를 유지한다 (ChatService.ask 참고).
+    public Map<String, Object> deviceConfig(long threadId) {
+        return jdbcClient
+                .sql("SELECT device_config::text FROM chat_thread WHERE id = :id")
+                .param("id", threadId)
+                .query(String.class)
+                .optional()
+                .map(this::readJson)
+                .orElseGet(Map::of);
+    }
+
     // 대화 길이 상한을 재는 기준. 실패한 턴은 사용자 잘못이 아니므로 세지
     // 않는다 — 서버 오류로 할당량이 깎이면 안 된다.
     public int turnCount(long threadId) {

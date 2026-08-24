@@ -1,6 +1,6 @@
 import { LogOut, User } from "lucide-react";
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
-import { useAuth } from "./useAuth";
+import { useAuth } from "./AuthProvider";
 
 // 이름 첫 글자로 원형 배지를 만든다. 구글이 프로필 사진(picture)도 주지만
 // 지금은 세션에 담지 않아서, 사진이 필요해지면 CustomOAuth2UserService와

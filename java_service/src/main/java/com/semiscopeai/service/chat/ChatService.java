@@ -3,9 +3,10 @@ package com.semiscopeai.service.chat;
 import com.semiscopeai.service.chat.dto.ChatAnswer;
 import com.semiscopeai.service.chat.dto.ChatReply;
 import com.semiscopeai.service.chat.dto.ChatTurn;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.BiFunction;
+import java.util.function.Function;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,20 +39,41 @@ public class ChatService {
         this.chatRepository = chatRepository;
     }
 
+    /**
+     * 첫 질문이 소자 설정을 얼리고, 이후 턴은 그 설정을 다시 쓴다.
+     *
+     * <p>데스크톱 앱과 같은 규칙이다(frontend/visualization/explanation_panel.py의
+     * {@code iv_chat_snapshot}). 매 턴 화면의 현재 설정을 보내면, 사용자가
+     * 파라미터를 바꾼 순간 말풍선 위쪽은 옛 소자 얘기인데 새 답변은 다른
+     * 소자 얘기가 된다. "그 값은 좋은 편이야?" 같은 질문이 조용히 엉뚱한
+     * 대상에 답하게 되는데, 오류도 나지 않아 알아챌 방법이 없다.
+     *
+     * <p>얼려두면 대화 중에 파라미터를 얼마든지 바꿔도 이 대화는 원래 주제를
+     * 유지한다. 바뀐 설정으로 묻고 싶으면 새 대화를 시작하면 된다.
+     */
     @Transactional
     public ChatReply ask(
             long userId,
             Long requestedThreadId,
             String kind,
-            Object deviceConfig,
+            Map<String, Object> deviceConfig,
             String question,
-            BiFunction<List<ChatTurn>, Map<String, Object>, ChatAnswer> callPython) {
+            Function<Map<String, Object>, ChatAnswer> callPython) {
 
         long threadId = resolveThread(userId, requestedThreadId, kind, deviceConfig);
         List<ChatTurn> history = chatRepository.recentTurns(threadId, HISTORY_TURNS);
         Map<String, Object> checkpoint = chatRepository.lastIntentCheckpoint(threadId);
 
-        ChatAnswer answer = callPython.apply(history, checkpoint);
+        // 첫 턴이면 방금 저장한 값을, 이어가는 턴이면 처음에 얼린 값을 읽는다.
+        // 요청에 실려온 설정을 쓰지 않는 게 핵심이다.
+        Map<String, Object> frozen = chatRepository.deviceConfig(threadId);
+
+        Map<String, Object> body = new LinkedHashMap<>(frozen);
+        body.put("question", question);
+        body.put("history", history);
+        body.put("intent_checkpoint", checkpoint);
+
+        ChatAnswer answer = callPython.apply(body);
 
         // 실패한 턴도 남긴다. 화면에 이미 보여준 내용이라 새로고침하면 사라지는
         // 게 더 이상하고, 다음 질문의 맥락으로는 조회 단계에서 걸러진다.
@@ -61,7 +83,8 @@ public class ChatService {
         return ChatReply.of(threadId, answer, chatRepository.turnCount(threadId), MAX_TURNS_PER_THREAD);
     }
 
-    private long resolveThread(long userId, Long requestedThreadId, String kind, Object deviceConfig) {
+    private long resolveThread(
+            long userId, Long requestedThreadId, String kind, Map<String, Object> deviceConfig) {
         if (requestedThreadId == null) {
             return chatRepository.createThread(userId, kind, deviceConfig);
         }

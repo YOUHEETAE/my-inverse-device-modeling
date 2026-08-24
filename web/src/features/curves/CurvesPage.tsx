@@ -1,7 +1,12 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ExplanationPanel, type ExplanationStatus } from "@/components/explanation/ExplanationPanel";
+import { ChatThread } from "../chat/ChatThread";
+import { askCurveChat } from "../chat/api";
+import { useChat } from "../chat/useChat";
+import { summarizeConfig } from "../chat/summary";
+import { useAuth } from "../auth/AuthProvider";
 import { useDeviceStore, MAX_SHARED_DEVICES } from "../shared/deviceStore";
 import { useViewStore } from "../shared/viewStore";
 import { usePredictionCache } from "../shared/predictionCache";
@@ -77,6 +82,20 @@ export default function CurvesPage() {
   const [provider, setProvider] = useState<"mock" | "external_llm" | null>(null);
 
   const visibleCurves = curves.filter((c) => c.visible);
+
+  const { me, login } = useAuth();
+  // 질문 시점의 곡선 구성을 함께 보낸다 — 서버는 이걸 대화에 저장해두고,
+  // 나중에 "그때 무슨 설정이었지"를 복원하는 데 쓴다.
+  const askChat = useCallback(
+    (question: string, threadId: number | null) =>
+      askCurveChat(toCurveConfigs(visibleCurves), question, threadId),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [JSON.stringify(toCurveConfigs(visibleCurves))],
+  );
+  // 서버가 저장하는 device_config와 같은 모양이어야 "화면 변경됨" 비교가
+  // 복원된 대화에서도 성립한다.
+  const chatConfig = { curves: toCurveConfigs(visibleCurves) };
+  const chat = useChat(askChat, chatConfig);
   const rangeWarnings = curves
     .filter((c) => c.result?.range_warning)
     .map((c) => `${c.label}: ${c.result!.range_warning}`);
@@ -142,6 +161,24 @@ export default function CurvesPage() {
               visibleCurves.length > 0
                 ? previewCurvePrompt(toCurveConfigs(visibleCurves)).then((r) => r.prompt)
                 : Promise.resolve("")
+            }
+            chat={
+              <ChatThread
+                turns={chat.turns}
+                sending={chat.sending}
+                error={chat.error}
+                threadFull={chat.threadFull}
+                turnsUsed={chat.turnsUsed}
+                turnLimit={chat.turnLimit}
+                authenticated={me.authenticated}
+                onLogin={login}
+                frozenSummary={summarizeConfig(chat.frozenConfig)}
+                screenChanged={chat.screenChanged}
+                disabled={visibleCurves.length === 0}
+                disabledReason="Check at least one curve to ask about."
+                onSend={chat.send}
+                onStartNew={chat.startNew}
+              />
             }
           />
         </div>

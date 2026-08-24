@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Copy, Eye, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -40,6 +40,13 @@ interface ExplanationPanelProps {
   disabled?: boolean;
   disabledReason?: string;
   fetchPromptText: () => Promise<string>
+  /**
+   * 자유질문 영역. 분석과 한 카드에 두는 이유는 사용자 눈에 AI 기능이
+   * 하나로 보이게 하기 위해서다. 두 경로를 합치지 않은 건 보장이 서로
+   * 다르기 때문 — 분석은 비로그인도 되고 캐시와 fallback이 있지만,
+   * 자유질문은 로그인이 필요하고 fallback이 금지되어 있다.
+   */
+  chat?: ReactNode;
 }
 
 export function ExplanationPanel({
@@ -50,6 +57,7 @@ export function ExplanationPanel({
   disabled,
   disabledReason,
   fetchPromptText,
+  chat,
 }: ExplanationPanelProps) {
   const [promptOpen, setPromptOpen] = useState(false);
   const [promptText, setPromptText] = useState("");
@@ -132,6 +140,8 @@ export function ExplanationPanel({
           Preview Prompt
         </Button>
       </div>
+
+      {chat}
 
       <Dialog open={promptOpen} onOpenChange={setPromptOpen}>
         <DialogContent className="sm:max-w-3xl max-h-[85vh] overflow-y-auto">

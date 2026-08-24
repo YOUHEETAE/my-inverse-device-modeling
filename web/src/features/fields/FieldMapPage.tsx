@@ -1,7 +1,12 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ExplanationPanel, type ExplanationStatus } from "@/components/explanation/ExplanationPanel";
+import { ChatThread } from "../chat/ChatThread";
+import { askFieldChat } from "../chat/api";
+import { useChat } from "../chat/useChat";
+import { summarizeConfig } from "../chat/summary";
+import { useAuth } from "../auth/AuthProvider";
 import { useDeviceStore, MAX_SHARED_DEVICES } from "../shared/deviceStore";
 import { useViewStore } from "../shared/viewStore";
 import { usePredictionCache } from "../shared/predictionCache";
@@ -184,6 +189,30 @@ export default function FieldMapPage() {
           ? "Selected devices have identical parameters — nothing to compare."
           : `${display} is not supported by LLM explanation.`;
 
+  // 자유질문은 분석보다 조건이 좁다. 근거(evidence)가 두 소자의 비교에서
+  // 만들어지는 설계라 소자 하나로는 인용할 근거가 없고, 서버도 400으로
+  // 거절한다 — 여기서 먼저 막아 LLM 호출을 낭비하지 않는다.
+  const chatDisabled = explanationDisabled || visibleDevices.length < 2;
+  const chatDisabledReason =
+    visibleDevices.length < 2 && !explanationDisabled
+      ? "Check two devices to ask about the comparison."
+      : explanationDisabledReason;
+
+  const { me, login } = useAuth();
+  const askChat = useCallback(
+    (question: string, threadId: number | null) =>
+      askFieldChat(toFieldConfigs(visibleDevices), display, scaleMode, rangeMode, question, threadId),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [JSON.stringify(toFieldConfigs(visibleDevices)), display, scaleMode, rangeMode],
+  );
+  const chatConfig = {
+    fields: toFieldConfigs(visibleDevices),
+    display,
+    scale_mode: scaleMode,
+    range_mode: rangeMode,
+  };
+  const chat = useChat(askChat, chatConfig);
+
   async function analyze() {
     if (explanationDisabled) return;
     setExplanationStatus("analyzing");
@@ -271,6 +300,24 @@ export default function FieldMapPage() {
               !explanationDisabled
                 ? previewFieldsPrompt(toFieldConfigs(visibleDevices), display, scaleMode, rangeMode).then((r) => r.prompt)
                 : Promise.resolve("")
+            }
+            chat={
+              <ChatThread
+                turns={chat.turns}
+                sending={chat.sending}
+                error={chat.error}
+                threadFull={chat.threadFull}
+                turnsUsed={chat.turnsUsed}
+                turnLimit={chat.turnLimit}
+                authenticated={me.authenticated}
+                onLogin={login}
+                frozenSummary={summarizeConfig(chat.frozenConfig)}
+                screenChanged={chat.screenChanged}
+                disabled={chatDisabled}
+                disabledReason={chatDisabledReason}
+                onSend={chat.send}
+                onStartNew={chat.startNew}
+              />
             }
           />
         </div>
