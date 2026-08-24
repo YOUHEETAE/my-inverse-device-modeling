@@ -121,3 +121,6 @@ ai/model_artifacts/field_map_model/final/*
 
 # Reproducible preview images are not runtime inputs.
 ai/model_artifacts/field_map_model/final/coordinate_mlp_physics/examples/
+
+# 로컬 전용 compose 오버라이드 (개발자마다 다름)
+docker-compose.override.yml

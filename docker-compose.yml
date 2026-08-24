@@ -57,9 +57,11 @@ services:
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:?GOOGLE_CLIENT_SECRET must be set in .env}
       # Where to send the browser after a successful login. Caddy serves the
       # frontend and the API from the same origin here, so a bare path is
-      # enough — unlike local development, where the frontend is a separate
-      # Vite server on another port.
-      - FRONTEND_URL=/
+      # enough. Override it in .env when running this service against a
+      # separate Vite dev server — a bare "/" would then land on java_service
+      # itself, which has no root mapping (Whitelabel 404 right after a
+      # successful login).
+      - FRONTEND_URL=${FRONTEND_URL:-/}
     # Same loopback-only rationale as backend above: Caddy reaches this over
     # the internal network, the published port is for host-side debugging.
     ports:
