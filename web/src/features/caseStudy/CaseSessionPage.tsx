@@ -2,6 +2,7 @@ import { ArrowLeft, Loader2, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { QuestionCard, missingAnswer, EMPTY_ANSWER, type Answer } from "./components/QuestionCard";
+import { ResultsView } from "./components/ResultsView";
 import { UnderstandingPage } from "./components/UnderstandingPage";
 import { isUnlocked, stepOf, useCaseSession } from "./useCaseSession";
 import { LEARNING_PAGES, type LearningPage } from "./types";
@@ -74,7 +75,14 @@ export default function CaseSessionPage({ sessionId, caseNumber, onBack }: CaseS
         </p>
       )}
 
-      <div className="flex-1 overflow-y-auto p-4">
+      <div
+        className={cn(
+          "min-h-0 flex-1 p-4",
+          // 관찰 화면은 안에서 각자 스크롤한다. 바깥이 스크롤하면 그래프가
+          // 세로로 눌려서 읽을 수 없게 된다.
+          page === "observation" && step !== "ERROR" ? "overflow-hidden" : "overflow-y-auto",
+        )}
+      >
         {step === "ERROR" ? (
           <RecoveryNotice onRetry={state.recover} busy={busy} />
         ) : (
@@ -172,21 +180,43 @@ function PageBody({
   }
 
   if (page === "observation") {
-    if (step === "OBSERVATION_QUESTION") {
-      return (
-        <AnswerForm
-          heading="그래프와 Field Map을 관찰한 뒤 답하세요."
-          questions={topic.observation_questions}
-          submitLabel="관찰 답변 제출"
-          busy={state.busy}
-          onSubmit={state.submitObservation}
-        />
-      );
-    }
-    if (step === "OBSERVATION_SUBMITTED") {
-      return <Pending label="답변을 채점하고 피드백을 만드는 중입니다." busy={state.busy} onRetry={state.retryEvaluation} />;
-    }
-    return <SubmittedAnswers session={session} field="observation_answers" questions={topic.observation_questions} />;
+    // 결과를 보면서 답해야 하는 단계라 그래프와 질문이 나란히 놓인다.
+    // 답을 낸 뒤에도 그래프는 남는다 — 피드백을 읽으며 다시 보게 된다.
+    return (
+      <div className="flex h-full min-h-0 gap-3">
+        <div className="min-w-0 flex-1">
+          <ResultsView
+            session={session}
+            result={state.result}
+            busy={state.busy}
+            onRegenerate={state.regenerate}
+          />
+        </div>
+        <div className="w-96 shrink-0 overflow-y-auto">
+          {step === "OBSERVATION_QUESTION" ? (
+            <AnswerForm
+              heading="그래프와 Field Map을 관찰한 뒤 답하세요."
+              questions={topic.observation_questions}
+              submitLabel="관찰 답변 제출"
+              busy={state.busy}
+              onSubmit={state.submitObservation}
+            />
+          ) : step === "OBSERVATION_SUBMITTED" ? (
+            <Pending
+              label="답변을 채점하고 피드백을 만드는 중입니다."
+              busy={state.busy}
+              onRetry={state.retryEvaluation}
+            />
+          ) : (
+            <SubmittedAnswers
+              session={session}
+              field="observation_answers"
+              questions={topic.observation_questions}
+            />
+          )}
+        </div>
+      </div>
+    );
   }
 
   return <FeedbackPlaceholder />;
@@ -215,7 +245,7 @@ function AnswerForm({
   }
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-3">
+    <div className="flex flex-col gap-3">
       <h2 className="text-sm font-bold">{heading}</h2>
       {questions.map((question) => (
         <QuestionCard
