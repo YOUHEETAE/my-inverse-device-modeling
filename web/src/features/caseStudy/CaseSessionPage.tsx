@@ -192,7 +192,9 @@ function PageBody({
             onRegenerate={state.regenerate}
           />
         </div>
-        <div className="w-96 shrink-0 overflow-y-auto">
+        {/* w-80: 질문은 세로로 길어서 폭보다 높이가 중요하다. 남는 폭은
+            그래프로 넘긴다. */}
+        <div className="w-80 shrink-0 overflow-y-auto pr-1">
           {step === "OBSERVATION_QUESTION" ? (
             <AnswerForm
               heading="그래프와 Field Map을 관찰한 뒤 답하세요."

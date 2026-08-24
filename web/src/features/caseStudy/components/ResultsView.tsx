@@ -1,12 +1,22 @@
 import { useEffect, useState } from "react";
-import { Loader2, RotateCcw } from "lucide-react";
+import {
+  Loader2,
+  PanelRightClose,
+  PanelRightOpen,
+  RotateCcw,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { CurveChart } from "@/features/curves/components/CurveChart";
 import { FieldCompareChart } from "@/features/fields/components/FieldCompareChart";
 import { DisplayControls } from "@/features/fields/components/DisplayControls";
 import { fetchFieldDisplayCompare, predictField } from "@/features/fields/api";
-import { FIELD_DISPLAYS, type FieldCompareResponse, type FieldDisplay, type FieldResponse } from "@/features/fields/types";
+import {
+  FIELD_DISPLAYS,
+  type FieldCompareResponse,
+  type FieldDisplay,
+  type FieldResponse,
+} from "@/features/fields/types";
 import type { CurveEntry, DeviceParameters } from "@/features/curves/types";
 import { MetricTable } from "./MetricTable";
 import { CaseFollowupChat } from "./CaseFollowupChat";
@@ -34,60 +44,102 @@ interface ResultsViewProps {
  * 때문에, 저장된 세션을 다시 열면 다시 만들어야 한다. 데스크톱도 같은
  * 자리에 "그래프 다시 생성" 버튼을 둔다.
  */
-export function ResultsView({ session, result, busy, onRegenerate }: ResultsViewProps) {
+export function ResultsView({
+  session,
+  result,
+  busy,
+  onRegenerate,
+}: ResultsViewProps) {
   const [tab, setTab] = useState<TabId>("curve");
+  // 지표 표는 그래프를 밀어내지 않고 그 위에 뜬다. 나란히 두면 셋이 폭을
+  // 나눠 갖느라 그래프가 눌리고, 표를 접었다 펼 때마다 그래프 크기가 바뀌어
+  // 방금 보던 모양과 달라진다. 덮어두면 그래프는 늘 같은 크기다.
+  const [showMetrics, setShowMetrics] = useState(true);
 
   return (
-    <div className="flex h-full min-h-0 gap-3">
-      <div className="flex min-w-0 flex-1 flex-col">
-        <div role="tablist" className="flex shrink-0 gap-1 border-b border-outline-variant">
-          {TABS.map(({ id, label }) => (
-            <button
-              key={id}
-              role="tab"
-              type="button"
-              aria-selected={tab === id}
-              onClick={() => setTab(id)}
-              className={cn(
-                "-mb-px border-b-2 px-3 py-1.5 text-xs font-bold transition-colors motion-reduce:transition-none",
-                tab === id
-                  ? "border-primary text-primary"
-                  : "border-transparent text-on-surface-variant hover:text-on-surface",
-              )}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-
-        <div className="min-h-0 flex-1 pt-3">
-          {tab === "chat" ? (
-            <CaseFollowupChat session={session} />
-          ) : !result ? (
-            <MissingPlots busy={busy} onRegenerate={onRegenerate} />
-          ) : tab === "curve" ? (
-            <CurveChart curves={toCurveEntries(result.runs)} combined />
+    <div className="flex h-full min-h-0 flex-col">
+      <div
+        role="tablist"
+        className="flex shrink-0 gap-1 border-b border-outline-variant"
+      >
+        {TABS.map(({ id, label }) => (
+          <button
+            key={id}
+            role="tab"
+            type="button"
+            aria-selected={tab === id}
+            onClick={() => setTab(id)}
+            className={cn(
+              "-mb-px border-b-2 px-3 py-1.5 text-xs font-bold transition-colors motion-reduce:transition-none",
+              tab === id
+                ? "border-primary text-primary"
+                : "border-transparent text-on-surface-variant hover:text-on-surface",
+            )}
+          >
+            {label}
+          </button>
+        ))}
+        <Button
+          variant="ghost"
+          size="sm"
+          className="ml-auto h-7 gap-1 px-2 text-[10px] text-on-surface-variant"
+          onClick={() => setShowMetrics((value) => !value)}
+          aria-pressed={showMetrics}
+        >
+          {showMetrics ? (
+            <PanelRightClose className="h-3.5 w-3.5" />
           ) : (
-            <FieldPanel runs={result.runs} />
+            <PanelRightOpen className="h-3.5 w-3.5" />
           )}
-        </div>
+          파라미터
+        </Button>
       </div>
 
-      <aside className="w-72 shrink-0 overflow-y-auto rounded-md border border-outline-variant bg-surface-container-low p-3">
-        <h3 className="mb-2 text-xs font-bold uppercase tracking-wide">전기적 파라미터</h3>
-        <MetricTable session={session} />
-      </aside>
+      {/* relative: 지표 표가 이 영역 안에서만 뜬다 — 옆 질문 칸까지 덮으면
+          답을 적으면서 값을 보려던 게 반대로 막힌다. */}
+      <div className="relative min-h-0 flex-1 pt-3">
+        {tab === "chat" ? (
+          <CaseFollowupChat session={session} />
+        ) : !result ? (
+          <MissingPlots busy={busy} onRegenerate={onRegenerate} />
+        ) : tab === "curve" ? (
+          <CurveChart curves={toCurveEntries(result.runs)} combined />
+        ) : (
+          <FieldPanel runs={result.runs} />
+        )}
+
+        {showMetrics && (
+          <aside className="absolute bottom-0 right-0 top-3 z-10 w-60 overflow-y-auto rounded-md border border-outline-variant bg-surface-container-low p-2.5 shadow-lg duration-200 animate-in slide-in-from-right-4 fade-in motion-reduce:animate-none">
+            <h3 className="mb-2 text-[11px] font-bold uppercase tracking-wide">
+              전기적 파라미터
+            </h3>
+            <MetricTable session={session} />
+          </aside>
+        )}
+      </div>
     </div>
   );
 }
 
-function MissingPlots({ busy, onRegenerate }: { busy: boolean; onRegenerate: () => void }) {
+function MissingPlots({
+  busy,
+  onRegenerate,
+}: {
+  busy: boolean;
+  onRegenerate: () => void;
+}) {
   return (
     <div className="flex h-full flex-col items-center justify-center gap-3">
       <p className="text-xs text-on-surface-variant">
         저장된 분석 결과가 있습니다. 그래프를 다시 생성하면 볼 수 있습니다.
       </p>
-      <Button variant="outline" size="sm" className="gap-1.5 text-xs" disabled={busy} onClick={onRegenerate}>
+      <Button
+        variant="outline"
+        size="sm"
+        className="gap-1.5 text-xs"
+        disabled={busy}
+        onClick={onRegenerate}
+      >
         {busy ? (
           <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" />
         ) : (
@@ -107,10 +159,15 @@ function MissingPlots({ busy, onRegenerate }: { busy: boolean; onRegenerate: () 
 function FieldPanel({ runs }: { runs: ConditionRun[] }) {
   const [display, setDisplay] = useState<FieldDisplay>(FIELD_DISPLAYS[0]);
   const [meshes, setMeshes] = useState<Record<string, FieldResponse>>({});
-  const [compareData, setCompareData] = useState<FieldCompareResponse | null>(null);
+  const [compareData, setCompareData] = useState<FieldCompareResponse | null>(
+    null,
+  );
   const [error, setError] = useState<string | null>(null);
 
-  const devices = runs.map((run) => ({ label: run.label, parameters: toParameters(run.conditions) }));
+  const devices = runs.map((run) => ({
+    label: run.label,
+    parameters: toParameters(run.conditions),
+  }));
   const signature = JSON.stringify(devices);
 
   useEffect(() => {
@@ -119,7 +176,11 @@ function FieldPanel({ runs }: { runs: ConditionRun[] }) {
     Promise.all(devices.map((device) => predictField(device.parameters)))
       .then((results) => {
         if (cancelled) return;
-        setMeshes(Object.fromEntries(results.map((value, index) => [devices[index].label, value])));
+        setMeshes(
+          Object.fromEntries(
+            results.map((value, index) => [devices[index].label, value]),
+          ),
+        );
       })
       .catch(() => !cancelled && setError("Field Map을 불러오지 못했습니다."));
     return () => {
