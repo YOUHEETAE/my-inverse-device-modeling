@@ -1,5 +1,6 @@
 package com.semiscopeai.service.internal;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -59,14 +60,14 @@ class RateLimitInterceptorTest {
 
     @Test
     void 허용되면_컨트롤러까지_정상적으로_도달한다() throws Exception {
-        when(rateLimiterService.isAllowed(anyString())).thenReturn(true);
+        when(rateLimiterService.isAllowed(anyString(), any())).thenReturn(true);
 
         mockMvc.perform(get("/health")).andExpect(status().isOk());
     }
 
     @Test
     void 제한에_걸리면_컨트롤러_대신_429와_detail_메시지가_반환된다() throws Exception {
-        when(rateLimiterService.isAllowed(anyString())).thenReturn(false);
+        when(rateLimiterService.isAllowed(anyString(), any())).thenReturn(false);
 
         mockMvc.perform(get("/health"))
                 .andExpect(status().isTooManyRequests())
@@ -82,6 +83,6 @@ class RateLimitInterceptorTest {
                         .header("Access-Control-Request-Method", "GET"))
                 .andExpect(status().isOk());
 
-        verify(rateLimiterService, never()).isAllowed(anyString());
+        verify(rateLimiterService, never()).isAllowed(anyString(), any());
     }
 }

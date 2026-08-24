@@ -1,10 +1,8 @@
 package com.semiscopeai.service.internal;
 
-import java.util.concurrent.ConcurrentHashMap;
-import java.time.Duration;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
-import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
 
 import org.springframework.scheduling.annotation.Scheduled;
@@ -15,20 +13,19 @@ public class RateLimiterService {
 
     // 요청마다 스레드가 달라서 동시 접근함 — HashMap이면 같은 IP가 동시에
     // 처음 들어올 때 버킷이 두 개 만들어질 수 있음.
-    private final Map<String, Bucket> buckets = new ConcurrentHashMap<>();
-    private static final long BURST_CAPACITY = 10;
+    //
+    // 키가 IP 하나가 아니라 (IP, 그룹)인 이유: 무거운 호출을 다 써버렸다고
+    // 화면 이동까지 막히면 안 되고, 반대로 화면을 여러 번 옮겼다고 분석
+    // 호출이 막혀서도 안 됨. 두 몫을 따로 센다.
+    private final Map<Key, Bucket> buckets = new ConcurrentHashMap<>();
 
-    // refillIntervally는 1초 경계마다 몰아서 리필해서 그 순간의 버스트를
-    // 못 막음 — greedy여야 실제로 초당 2개로 눌림.
-    private final Bandwidth perSecondLimit = Bandwidth.builder()
-            .capacity(BURST_CAPACITY)
-            .refillGreedy(2, Duration.ofSeconds(1))
-            .build();
+    private record Key(String ip, RateLimitGroup group) {
+    }
 
-    public boolean isAllowed(String ip) {
-        Bucket bucket = buckets.computeIfAbsent(ip, k -> Bucket.builder()
-                .addLimit(perSecondLimit)
-                .build());
+    public boolean isAllowed(String ip, RateLimitGroup group) {
+        Bucket bucket = buckets.computeIfAbsent(
+                new Key(ip, group),
+                key -> Bucket.builder().addLimit(key.group().bandwidth()).build());
         return bucket.tryConsume(1);
     }
 
@@ -37,7 +34,8 @@ public class RateLimiterService {
     // 없음. (package-private인 이유는 테스트에서 직접 호출하기 위해)
     @Scheduled(fixedDelay = 60000)
     void cleanupExpiredBucket() {
-        buckets.entrySet().removeIf(entry -> entry.getValue().getAvailableTokens() >= BURST_CAPACITY);
+        buckets.entrySet().removeIf(
+                entry -> entry.getValue().getAvailableTokens() >= entry.getKey().group().burstCapacity());
     }
 
     // 테스트에서 정리 결과를 확인하기 위한 접근자.

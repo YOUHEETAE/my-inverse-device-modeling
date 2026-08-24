@@ -80,7 +80,7 @@ class ChatControllerTest {
 
     @BeforeEach
     void allowRateLimit() {
-        Mockito.when(rateLimiterService.isAllowed(Mockito.anyString())).thenReturn(true);
+        Mockito.when(rateLimiterService.isAllowed(Mockito.anyString(), Mockito.any())).thenReturn(true);
     }
 
     // 비로그인은 구글 로그인 페이지로 리다이렉트되면 안 된다. 프론트가 fetch로

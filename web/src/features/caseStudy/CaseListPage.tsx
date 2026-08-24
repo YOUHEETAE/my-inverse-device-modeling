@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { LogIn } from "lucide-react";
+import { LogIn, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { CaseCard } from "./components/CaseCard";
@@ -24,6 +24,10 @@ export default function CaseListPage({ onOpenSession }: CaseListPageProps) {
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
+  // 로그인했는데 진행 상황만 못 불러온 경우와, 애초에 로그인을 안 한 경우는
+  // 다른 화면이어야 한다. 하나로 묶으면 요청이 한 번 실패했을 뿐인데
+  // 로그인하라는 안내가 떠서, 이미 로그인한 사람이 영문을 모른다.
+  const [progressFailed, setProgressFailed] = useState(false);
 
   useEffect(() => {
     fetchTopics().then(setTopics).catch((err) => setError(getErrorMessage(err)));
@@ -36,12 +40,16 @@ export default function CaseListPage({ onOpenSession }: CaseListPageProps) {
       setSessions([]);
       return;
     }
+    setProgressFailed(false);
     Promise.all([fetchPortfolio(), fetchSessions()])
       .then(([loadedPortfolio, loadedSessions]) => {
         setPortfolio(loadedPortfolio);
         setSessions(loadedSessions);
       })
-      .catch((err) => setError(getErrorMessage(err)));
+      .catch((err) => {
+        setError(getErrorMessage(err));
+        setProgressFailed(true);
+      });
   }, [me.authenticated]);
 
   useEffect(loadProgress, [loadProgress]);
@@ -76,17 +84,21 @@ export default function CaseListPage({ onOpenSession }: CaseListPageProps) {
           </p>
         </header>
 
-        {error && <p className="text-[11px] text-destructive">{error}</p>}
+        {error && !progressFailed && <p className="text-[11px] text-destructive">{error}</p>}
 
-        {me.authenticated && portfolio ? (
+        {!me.authenticated ? (
+          <SignInNotice />
+        ) : portfolio ? (
           <LearningOverview
             portfolio={portfolio}
             sessions={sessions}
             topics={topics}
             onOpen={onOpenSession}
           />
+        ) : progressFailed ? (
+          <ProgressUnavailable message={error} onRetry={loadProgress} />
         ) : (
-          <SignInNotice />
+          <section className="h-24 animate-pulse rounded-md border border-outline-variant bg-surface-container-low motion-reduce:animate-none" />
         )}
 
         <div className="grid gap-4 md:grid-cols-2">
@@ -104,6 +116,23 @@ export default function CaseListPage({ onOpenSession }: CaseListPageProps) {
         </div>
       </div>
     </div>
+  );
+}
+
+// 로그인은 되어 있는데 진행 상황만 못 받은 상태. 흔한 원인이 짧은 시간에
+// 화면을 여러 번 옮겨 호출 제한에 걸린 것이라, 실패로 못박기보다 다시
+// 시도할 수단을 준다.
+function ProgressUnavailable({ message, onRetry }: { message: string | null; onRetry: () => void }) {
+  return (
+    <section className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-outline-variant bg-surface-container-low p-4">
+      <p className="text-xs text-on-surface-variant">
+        진행 상황을 불러오지 못했습니다.{message ? ` (${message})` : ""}
+      </p>
+      <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={onRetry}>
+        <RotateCcw className="h-3.5 w-3.5" />
+        다시 시도
+      </Button>
+    </section>
   );
 }
 

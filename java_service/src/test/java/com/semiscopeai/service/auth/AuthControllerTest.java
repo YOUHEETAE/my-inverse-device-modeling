@@ -55,7 +55,7 @@ class AuthControllerTest {
     // 진입마다 호출하는데 비로그인은 오류가 아니기 때문.
     @Test
     void 비로그인이면_200과_authenticated_false를_반환한다() throws Exception {
-        Mockito.when(rateLimiterService.isAllowed(Mockito.anyString())).thenReturn(true);
+        Mockito.when(rateLimiterService.isAllowed(Mockito.anyString(), Mockito.any())).thenReturn(true);
 
         mockMvc.perform(get("/auth/me"))
                 .andExpect(status().isOk())
@@ -65,7 +65,7 @@ class AuthControllerTest {
 
     @Test
     void 로그인_상태면_세션에_담긴_사용자_정보를_반환한다() throws Exception {
-        Mockito.when(rateLimiterService.isAllowed(Mockito.anyString())).thenReturn(true);
+        Mockito.when(rateLimiterService.isAllowed(Mockito.anyString(), Mockito.any())).thenReturn(true);
 
         mockMvc.perform(get("/auth/me")
                         .with(oauth2Login().attributes(attrs -> {
@@ -85,7 +85,7 @@ class AuthControllerTest {
     // 나머지 API도 전부 그렇게 나간다(application.properties의 SNAKE_CASE).
     @Test
     void 응답_필드는_snake_case로_나간다() throws Exception {
-        Mockito.when(rateLimiterService.isAllowed(Mockito.anyString())).thenReturn(true);
+        Mockito.when(rateLimiterService.isAllowed(Mockito.anyString(), Mockito.any())).thenReturn(true);
 
         mockMvc.perform(get("/auth/me")
                         .with(oauth2Login().attributes(attrs -> {
