@@ -1,8 +1,14 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, CornerDownLeft, LogIn, MessageSquarePlus } from "lucide-react";
+import {
+  CornerDownLeft,
+  LogIn,
+  MessageSquarePlus,
+  RotateCcw,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { ChatError } from "./api";
+import { parseFailure } from "./failure";
 import type { ChatTurn } from "./types";
 
 interface ChatThreadProps {
@@ -27,9 +33,74 @@ interface ChatThreadProps {
   onStartNew: () => void;
 }
 
+// 실패한 턴. 서버가 만든 5줄짜리 상태 보고를 그대로 붉게 띄우면 뭔가
+// 크게 망가진 것처럼 읽히는데, 대개는 다시 눌러보면 되는 상황이다.
+// 사람이 읽을 문장을 앞세우고 조치는 버튼으로 준다 — "다시 시도해 주세요"만
+// 적어두고 버튼이 없으면 사용자는 질문을 다시 타이핑해야 한다.
+function FailureOrAnswer({
+  turn,
+  onRetry,
+}: {
+  turn: ChatTurn;
+  onRetry: (question: string) => Promise<boolean>;
+}) {
+  if (!turn.failed) {
+    return (
+      <p className="max-w-[85%] whitespace-pre-wrap break-words rounded-md rounded-bl-sm bg-surface-container-highest px-2.5 py-1.5 text-xs leading-relaxed text-on-surface-variant">
+        {turn.answer}
+      </p>
+    );
+  }
+
+  const failure = parseFailure(turn.answer ?? "");
+  // 한도 초과는 최소 대기가 있다. 그동안 버튼을 눌러봐야 같은 실패라서
+  // 남은 시간을 버튼에 그대로 보여주고 잠가둔다.
+  const [wait, setWait] = useState(failure.waitSeconds ?? 0);
+  useEffect(() => {
+    if (wait <= 0) return;
+    const id = setTimeout(() => setWait((s) => s - 1), 1000);
+    return () => clearTimeout(id);
+  }, [wait]);
+  return (
+    <div className="max-w-[85%] space-y-1.5 rounded-md rounded-bl-sm border border-outline-variant bg-surface-container px-2.5 py-2">
+      <p className="text-xs font-bold">답변을 만들지 못했어요</p>
+      <p className="text-xs leading-relaxed text-on-surface-variant">
+        {failure.reason}
+      </p>
+      {failure.retryable ? (
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={wait > 0}
+          className="h-6 gap-1 px-2 text-[10px]"
+          onClick={() => onRetry(turn.question)}
+        >
+          <RotateCcw className="h-3 w-3" />
+          {wait > 0 ? `${wait}초 후 다시 시도` : "다시 시도"}
+        </Button>
+      ) : (
+        failure.action && (
+          <p className="text-[11px] text-on-surface-variant">
+            {failure.action}
+          </p>
+        )
+      )}
+      {failure.preserved && (
+        <p className="text-[10px] text-on-surface-variant/70">
+          {failure.preserved}
+        </p>
+      )}
+    </div>
+  );
+}
+
 // 상한이 다가올 때 미리 알린다. 서버는 임계값을 정하지 않고 사용량만
 // 내려주므로(turns_used/turn_limit) 언제 알릴지는 화면이 정한다.
 const WARN_AT = 0.8;
+
+// 말풍선 영역 높이. 넘치면 이 안에서만 스크롤되므로, 대화가 길어져도
+// 카드와 그래프 위치는 그대로다.
+const MESSAGES_HEIGHT = "max-h-80";
 
 export function ChatThread({
   turns,
@@ -48,10 +119,9 @@ export function ChatThread({
   onStartNew,
 }: ChatThreadProps) {
   const [draft, setDraft] = useState("");
-  const [collapsed, setCollapsed] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const open = turns.length > 0 && !collapsed;
+  const open = turns.length > 0;
 
   // 새 말풍선이 붙으면 아래로 따라간다 — 카드가 위로 자라는 느낌을 준다.
   useEffect(() => {
@@ -68,17 +138,18 @@ export function ChatThread({
 
   async function submit() {
     if (blocked) return;
-    // 접어둔 채로 질문하면 답이 보이지 않는다. 새 질문은 언제나 펼친다.
-    setCollapsed(false);
-    // 실패했는데 입력까지 비우면 사용자가 질문을 다시 타이핑해야 한다.
-    if (await onSend(draft)) setDraft("");
+    // 말풍선이 이미 질문을 보여주므로 입력창은 바로 비운다. 응답을 기다리는
+    // 동안 같은 문장이 두 군데 남아 있으면 보낸 건지 아닌지 헷갈린다.
+    const sent = draft;
+    setDraft("");
+    // 다만 보내지 못했으면 되돌린다 — 다시 타이핑하게 만들지 않는다.
+    if (!(await onSend(sent))) setDraft(sent);
   }
 
   return (
-    <div className="flex flex-col gap-2 border-t border-outline-variant pt-3">
+    <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <h4 className="text-xs font-bold uppercase tracking-wide">Ask a question</h4>
           {turnLimit > 0 && turns.length > 0 && (
             <span
               className={cn(
@@ -90,8 +161,8 @@ export function ChatThread({
             </span>
           )}
         </div>
-        {turns.length > 0 && (
-          <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1">
+          {turns.length > 0 && (
             <Button
               variant="ghost"
               size="sm"
@@ -101,23 +172,8 @@ export function ChatThread({
               <MessageSquarePlus className="h-3 w-3" />
               New
             </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-6 w-6 p-0 text-on-surface-variant"
-              onClick={() => setCollapsed((c) => !c)}
-              aria-expanded={open}
-              aria-label={open ? "Collapse conversation" : "Expand conversation"}
-            >
-              <ChevronDown
-                className={cn(
-                  "h-3.5 w-3.5 transition-transform duration-300 motion-reduce:transition-none",
-                  open ? "rotate-0" : "-rotate-90",
-                )}
-              />
-            </Button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {frozenSummary && (
@@ -127,7 +183,10 @@ export function ChatThread({
         <p className="font-mono text-[10px] leading-relaxed text-on-surface-variant">
           {frozenSummary} 스냅샷 기준
           {screenChanged && (
-            <span className="text-accent-orange"> · 화면 변경됨 (새 대화로 반영)</span>
+            <span className="text-accent-orange">
+              {" "}
+              · 화면 변경됨 (새 대화로 반영)
+            </span>
           )}
         </p>
       )}
@@ -143,7 +202,10 @@ export function ChatThread({
         <div className="overflow-hidden">
           <div
             ref={scrollRef}
-            className="max-h-80 space-y-2 overflow-y-auto rounded-md border border-outline-variant bg-surface-container-lowest p-2"
+            className={cn(
+              "space-y-2 overflow-y-auto rounded-md border border-outline-variant bg-surface-container-lowest p-2",
+              MESSAGES_HEIGHT,
+            )}
           >
             {turns.map((turn) => (
               <div key={turn.key} className="space-y-1.5">
@@ -164,16 +226,7 @@ export function ChatThread({
                       ))}
                     </span>
                   ) : (
-                    <p
-                      className={cn(
-                        "max-w-[85%] whitespace-pre-wrap break-words rounded-md rounded-bl-sm px-2.5 py-1.5 text-xs leading-relaxed",
-                        turn.failed
-                          ? "bg-destructive/10 text-destructive"
-                          : "bg-surface-container-highest text-on-surface-variant",
-                      )}
-                    >
-                      {turn.answer}
-                    </p>
+                    <FailureOrAnswer turn={turn} onRetry={onSend} />
                   )}
                 </div>
               </div>
@@ -185,8 +238,14 @@ export function ChatThread({
       {threadFull && (
         // 오류가 아니라 안내다 — 빨간 토스트로 띄우면 뭔가 고장난 것처럼 읽힌다.
         <div className="flex items-center justify-between gap-2 rounded-md border border-accent-orange/40 bg-accent-orange/10 px-2.5 py-2">
-          <p className="text-[11px] leading-relaxed text-on-surface-variant">{error?.message}</p>
-          <Button size="sm" className="h-6 shrink-0 gap-1 px-2 text-[10px] uppercase" onClick={onStartNew}>
+          <p className="text-[11px] leading-relaxed text-on-surface-variant">
+            {error?.message}
+          </p>
+          <Button
+            size="sm"
+            className="h-6 shrink-0 gap-1 px-2 text-[10px] uppercase"
+            onClick={onStartNew}
+          >
             <MessageSquarePlus className="h-3 w-3" />
             New chat
           </Button>
@@ -196,7 +255,8 @@ export function ChatThread({
         // 세션이 끊긴 것뿐이라 실패가 아니다. 아래 로그인 버튼이 이미
         // 떠 있으므로 여기서는 이유만 알려준다.
         <p className="text-[11px] text-on-surface-variant">
-          로그인 세션이 만료되었습니다. 다시 로그인하면 이어서 질문할 수 있습니다.
+          로그인 세션이 만료되었습니다. 다시 로그인하면 이어서 질문할 수
+          있습니다.
         </p>
       )}
       {error && !threadFull && !sessionExpired && (

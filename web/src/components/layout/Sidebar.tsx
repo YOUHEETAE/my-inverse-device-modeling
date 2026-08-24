@@ -5,7 +5,6 @@ import {
   BarChart3,
   BookOpen,
   FlaskConical,
-  Info,
   Layers,
   Sigma,
 } from "lucide-react";
@@ -17,7 +16,6 @@ interface NavItem {
   label: string;
   path: string;
   icon: ComponentType<{ className?: string }>;
-  enabled: boolean;
   // Rendered as a nested, indented list right under this item, but only
   // while its own route is active — lets Theory/Case Study's chapter list
   // live in the one main sidebar instead of a second TOC column that pushed
@@ -26,13 +24,12 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { label: "Home", path: "/", icon: Activity, enabled: true },
-  { label: "Guide", path: "/guide", icon: BookOpen, enabled: true },
-  { label: "Theory", path: "/theory", icon: Sigma, enabled: true, subItems: THEORY_CHAPTERS },
-  { label: "Case Study", path: "/case-study", icon: FlaskConical, enabled: true, subItems: CASE_STUDY_SECTIONS },
-  { label: "I-V Curve", path: "/curves", icon: BarChart3, enabled: true },
-  { label: "Field Map", path: "/fields", icon: Layers, enabled: true },
-  { label: "About", path: "/about", icon: Info, enabled: false },
+  { label: "Home", path: "/", icon: Activity },
+  { label: "Guide", path: "/guide", icon: BookOpen },
+  { label: "Theory", path: "/theory", icon: Sigma, subItems: THEORY_CHAPTERS },
+  { label: "Case Study", path: "/case-study", icon: FlaskConical, subItems: CASE_STUDY_SECTIONS },
+  { label: "I-V Curve", path: "/curves", icon: BarChart3 },
+  { label: "Field Map", path: "/fields", icon: Layers },
 ];
 
 export function Sidebar() {
@@ -58,21 +55,6 @@ export function Sidebar() {
       <nav className="flex-1 space-y-0.5 px-2">
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon;
-          if (!item.enabled) {
-            return (
-              <span
-                key={item.path}
-                className="flex cursor-not-allowed items-center gap-2 rounded-sm px-2.5 py-1.5 text-on-surface-variant/40"
-                title="Not built yet"
-              >
-                <Icon className="h-3.5 w-3.5" />
-                <span className="text-xs">{item.label}</span>
-                <span className="ml-auto rounded-sm bg-surface-container-highest px-1 py-0.5 font-mono text-[9px] text-on-surface-variant">
-                  soon
-                </span>
-              </span>
-            );
-          }
           const isOnThisPage = location.pathname === item.path;
           return (
             <div key={item.path}>
