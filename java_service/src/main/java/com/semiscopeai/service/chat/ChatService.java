@@ -2,21 +2,21 @@ package com.semiscopeai.service.chat;
 
 import com.semiscopeai.service.chat.dto.ChatAnswer;
 import com.semiscopeai.service.chat.dto.ChatReply;
-import com.semiscopeai.service.chat.dto.ChatTurn;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 // 컨트롤러가 얇게 유지되도록 "이력을 꺼내 Python에 넘기고 결과를 저장하는"
 // 흐름을 여기 모은다. curves/fields 두 경로가 이 흐름을 공유한다.
 //
 // 로그인은 SecurityConfig에서 이미 강제되므로 여기서 익명 사용자를 다루지
 // 않는다.
+//
+// 이 클래스에는 @Transactional이 없다. 가운데 LLM 호출이 수십 초까지 걸리는데
+// 트랜잭션으로 감싸면 그동안 DB 커넥션을 붙잡고 있게 되고, 동시 질문이 풀
+// 크기(HikariCP 기본 10)를 넘는 순간 로그인 확인 같은 무관한 요청까지 함께
+// 멈춘다. DB 단계는 ChatProcessor가 짧은 트랜잭션으로 처리한다.
 @Service
 public class ChatService {
 
@@ -33,10 +33,10 @@ public class ChatService {
     // 어지럽히는 것도 여기서 끊긴다.
     public static final int MAX_TURNS_PER_THREAD = 20;
 
-    private final ChatRepository chatRepository;
+    private final ChatProcessor chatProcessor;
 
-    public ChatService(ChatRepository chatRepository) {
-        this.chatRepository = chatRepository;
+    public ChatService(ChatProcessor chatProcessor) {
+        this.chatProcessor = chatProcessor;
     }
 
     /**
@@ -51,7 +51,6 @@ public class ChatService {
      * <p>얼려두면 대화 중에 파라미터를 얼마든지 바꿔도 이 대화는 원래 주제를
      * 유지한다. 바뀐 설정으로 묻고 싶으면 새 대화를 시작하면 된다.
      */
-    @Transactional
     public ChatReply ask(
             long userId,
             Long requestedThreadId,
@@ -60,45 +59,29 @@ public class ChatService {
             String question,
             Function<Map<String, Object>, ChatAnswer> callPython) {
 
-        long threadId = resolveThread(userId, requestedThreadId, kind, deviceConfig);
-        List<ChatTurn> history = chatRepository.recentTurns(threadId, HISTORY_TURNS);
-        Map<String, Object> checkpoint = chatRepository.lastIntentCheckpoint(threadId);
+        // 첫 질문이면 요청에 실려온 설정이 곧 얼린 설정이 된다. 이어가는
+        // 질문이면 처음에 얼린 값을 읽어 쓴다 — 요청의 설정은 쓰지 않는다.
+        ChatProcessor.Context context = requestedThreadId == null
+                ? ChatProcessor.Context.firstTurn(deviceConfig)
+                : chatProcessor.loadContext(requestedThreadId, userId, HISTORY_TURNS, MAX_TURNS_PER_THREAD);
 
-        // 첫 턴이면 방금 저장한 값을, 이어가는 턴이면 처음에 얼린 값을 읽는다.
-        // 요청에 실려온 설정을 쓰지 않는 게 핵심이다.
-        Map<String, Object> frozen = chatRepository.deviceConfig(threadId);
-
-        Map<String, Object> body = new LinkedHashMap<>(frozen);
+        Map<String, Object> body = new LinkedHashMap<>(context.deviceConfig());
         body.put("question", question);
-        body.put("history", history);
-        body.put("intent_checkpoint", checkpoint);
+        body.put("history", context.history());
+        body.put("intent_checkpoint", context.checkpoint());
 
         ChatAnswer answer = callPython.apply(body);
 
+        // 대화는 답이 온 뒤에 만든다. 미리 만들면 Python 호출이 통째로
+        // 실패했을 때 질문 한 줄 없는 빈 대화가 남는다.
+        long threadId = requestedThreadId != null
+                ? requestedThreadId
+                : chatProcessor.openThread(userId, kind, deviceConfig);
+
         // 실패한 턴도 남긴다. 화면에 이미 보여준 내용이라 새로고침하면 사라지는
         // 게 더 이상하고, 다음 질문의 맥락으로는 조회 단계에서 걸러진다.
-        chatRepository.appendMessage(
-                threadId, question, answer.answer(), answer.source(), answer.intent(), answer.intentCheckpoint());
+        int turnsUsed = chatProcessor.recordTurn(threadId, question, answer);
 
-        return ChatReply.of(threadId, answer, chatRepository.turnCount(threadId), MAX_TURNS_PER_THREAD);
-    }
-
-    private long resolveThread(
-            long userId, Long requestedThreadId, String kind, Map<String, Object> deviceConfig) {
-        if (requestedThreadId == null) {
-            return chatRepository.createThread(userId, kind, deviceConfig);
-        }
-        // 남의 threadId를 넘겨 대화를 훔쳐보거나 이어붙이지 못하게 막는다.
-        if (!chatRepository.threadBelongsTo(requestedThreadId, userId)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "대화를 찾을 수 없습니다.");
-        }
-        // 400이 아니라 409인 이유: 요청 자체는 멀쩡하고 대화의 상태가 문제다.
-        // 프론트는 이 코드를 보고 오류 대신 "새 대화 시작"을 띄운다.
-        if (chatRepository.turnCount(requestedThreadId) >= MAX_TURNS_PER_THREAD) {
-            throw new ResponseStatusException(
-                    HttpStatus.CONFLICT,
-                    "이 대화는 질문 " + MAX_TURNS_PER_THREAD + "개를 채웠습니다. 새 대화를 시작해 주세요.");
-        }
-        return requestedThreadId;
+        return ChatReply.of(threadId, answer, turnsUsed, MAX_TURNS_PER_THREAD);
     }
 }

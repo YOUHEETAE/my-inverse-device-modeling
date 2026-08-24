@@ -48,6 +48,9 @@ public class SecurityConfig {
                 // 나머지 예측·조회 API는 그대로 공개다.
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/chat/**").authenticated()
+                        // 케이스 목록과 내용은 누구나 볼 수 있다. 기록이 남는
+                        // 학습 세션만 로그인을 요구한다.
+                        .requestMatchers("/case-study/sessions/**", "/case-study/portfolio").authenticated()
                         .anyRequest().permitAll())
                 // 인증이 필요한 요청이 막혔을 때 구글 로그인 페이지로
                 // 리다이렉트하는 것이 oauth2Login의 기본 동작인데, 프론트가

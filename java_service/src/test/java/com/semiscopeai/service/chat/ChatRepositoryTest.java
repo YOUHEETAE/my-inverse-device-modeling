@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.semiscopeai.service.chat.dto.ChatThreadSummary;
 import com.semiscopeai.service.chat.dto.ChatTurn;
-import com.semiscopeai.service.support.ChatPersistenceTestApp;
+import com.semiscopeai.service.support.PersistenceTestApp;
 import com.semiscopeai.service.user.User;
 import com.semiscopeai.service.user.UserRepository;
 import java.util.List;
@@ -25,7 +25,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 // PostgreSQL을 띄우고, 스키마도 Flyway 마이그레이션이 그대로 만들게 한다 —
 // 덕분에 마이그레이션 SQL 자체도 여기서 함께 검증된다.
 // 컨테이너는 클래스 전체가 공유하므로 테스트마다 롤백해 서로 격리한다.
-@SpringBootTest(classes = ChatPersistenceTestApp.class)
+@SpringBootTest(classes = PersistenceTestApp.class)
 @Testcontainers
 @Transactional
 @ActiveProfiles("test-postgres")
