@@ -42,8 +42,11 @@ export interface ChatThreadSummary {
   thread_id: number;
   kind: string;
   updated_at: string;
-  last_question: string | null;
-  message_count: number;
+  /** 마지막이 아니라 첫 질문 — 대화의 주제를 정한 쪽이라 식별에 쓸 수 있다. */
+  first_question: string | null;
+  /** 얼린 소자 조건. 질문 문장만으로는 대화가 구분되지 않아 필요하다. */
+  device_config: Record<string, unknown>;
+  turns_used: number;
 }
 
 /** 화면에 그리는 한 턴. 아직 답이 오지 않은 질문은 pending으로 둔다. */

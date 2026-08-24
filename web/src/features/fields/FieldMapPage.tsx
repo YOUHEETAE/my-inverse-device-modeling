@@ -48,6 +48,7 @@ export default function FieldMapPage() {
     updateSelected,
     removeSelected,
     toggleVisible,
+    replaceDevices,
   } = useDeviceStore();
 
   const { fieldMeshes: meshCache, setFieldMeshes: setMeshCache } = usePredictionCache();
@@ -213,6 +214,17 @@ export default function FieldMapPage() {
   };
   const chat = useChat(askChat, chatConfig);
 
+  // 과거 대화의 얼린 소자 조건을 작업대에 되살린다. 현재 구성을 덮어쓰므로
+  // 먼저 확인을 받는다 — 사용자가 방금 만들어둔 소자들이 사라질 수 있다.
+  function loadFrozenConfig() {
+    const frozen = chat.frozenConfig as { fields?: FieldConfig[] } | null;
+    const restored = frozen?.fields;
+    if (!restored?.length) return;
+    if (!window.confirm("현재 소자 구성을 이 대화의 설정으로 바꿉니다. 계속할까요?")) return;
+    replaceDevices(restored.map(({ label: _label, ...parameters }) => parameters));
+  }
+
+
   async function analyze() {
     if (explanationDisabled) return;
     setExplanationStatus("analyzing");
@@ -313,6 +325,9 @@ export default function FieldMapPage() {
                 onLogin={login}
                 frozenSummary={summarizeConfig(chat.frozenConfig)}
                 screenChanged={chat.screenChanged}
+                kind="fields"
+                onRestore={chat.restore}
+                onLoadFrozenConfig={loadFrozenConfig}
                 disabled={chatDisabled}
                 disabledReason={chatDisabledReason}
                 onSend={chat.send}

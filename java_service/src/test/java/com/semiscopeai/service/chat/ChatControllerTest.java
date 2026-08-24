@@ -192,12 +192,20 @@ class ChatControllerTest {
 
     @Test
     void 목록_응답도_snake_case로_나간다() throws Exception {
-        Mockito.when(chatRepository.listThreads(Mockito.anyLong(), Mockito.anyInt()))
-                .thenReturn(List.of(new ChatThreadSummary(42L, "curves", Instant.parse("2026-08-17T00:00:00Z"), "Ion은?", 3)));
+        Mockito.when(chatRepository.listThreads(Mockito.anyLong(), Mockito.any(), Mockito.anyInt()))
+                .thenReturn(List.of(new ChatThreadSummary(
+                        42L,
+                        "curves",
+                        Instant.parse("2026-08-17T00:00:00Z"),
+                        "Ion은?",
+                        Map.of("curves", List.of(Map.of("L", "500"))),
+                        3)));
 
         mockMvc.perform(get("/chat/threads").with(loggedIn()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].last_question").value("Ion은?"))
-                .andExpect(jsonPath("$[0].message_count").value(3));
+                .andExpect(jsonPath("$[0].first_question").value("Ion은?"))
+                .andExpect(jsonPath("$[0].turns_used").value(3))
+                // 질문 문장만으로는 대화를 구분할 수 없어서 소자 조건이 필요하다.
+                .andExpect(jsonPath("$[0].device_config.curves[0].L").value("500"));
     }
 }

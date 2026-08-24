@@ -30,6 +30,7 @@ export default function CurvesPage() {
     updateSelected,
     removeSelected,
     toggleVisible,
+    replaceDevices,
   } = useDeviceStore();
 
   const { curveResults: resultsCache, setCurveResults: setResultsCache } = usePredictionCache();
@@ -96,6 +97,17 @@ export default function CurvesPage() {
   // 복원된 대화에서도 성립한다.
   const chatConfig = { curves: toCurveConfigs(visibleCurves) };
   const chat = useChat(askChat, chatConfig);
+
+  // 과거 대화의 얼린 소자 조건을 작업대에 되살린다. 현재 구성을 덮어쓰므로
+  // 먼저 확인을 받는다 — 사용자가 방금 만들어둔 소자들이 사라질 수 있다.
+  function loadFrozenConfig() {
+    const frozen = chat.frozenConfig as { curves?: CurveConfig[] } | null;
+    const restored = frozen?.curves;
+    if (!restored?.length) return;
+    if (!window.confirm("현재 소자 구성을 이 대화의 설정으로 바꿉니다. 계속할까요?")) return;
+    replaceDevices(restored.map(({ label: _label, ...parameters }) => parameters));
+  }
+
   const rangeWarnings = curves
     .filter((c) => c.result?.range_warning)
     .map((c) => `${c.label}: ${c.result!.range_warning}`);
@@ -174,6 +186,9 @@ export default function CurvesPage() {
                 onLogin={login}
                 frozenSummary={summarizeConfig(chat.frozenConfig)}
                 screenChanged={chat.screenChanged}
+                kind="curves"
+                onRestore={chat.restore}
+                onLoadFrozenConfig={loadFrozenConfig}
                 disabled={visibleCurves.length === 0}
                 disabledReason="Check at least one curve to ask about."
                 onSend={chat.send}

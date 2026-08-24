@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.server.ResponseStatusException;
@@ -86,8 +87,10 @@ public class ChatController {
     }
 
     @GetMapping("/chat/threads")
-    public List<ChatThreadSummary> threads(@AuthenticationPrincipal OAuth2User principal) {
-        return chatRepository.listThreads(userId(principal), THREAD_LIMIT);
+    public List<ChatThreadSummary> threads(
+            @AuthenticationPrincipal OAuth2User principal,
+            @RequestParam(required = false) String kind) {
+        return chatRepository.listThreads(userId(principal), kind, THREAD_LIMIT);
     }
 
     private ChatAnswer post(String path, Map<String, Object> body) {

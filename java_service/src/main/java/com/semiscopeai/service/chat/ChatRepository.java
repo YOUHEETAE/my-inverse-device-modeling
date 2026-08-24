@@ -188,29 +188,39 @@ public class ChatRepository {
                 .list();
     }
 
-    public List<ChatThreadSummary> listThreads(long userId, int limit) {
+    // kind가 null이면 전부, 아니면 그 종류만. I-V 화면에서 Field 대화가
+    // 섞이면 고를 수 없고, 한쪽 종류가 상한(limit)을 다 먹어버리기도 한다.
+    public List<ChatThreadSummary> listThreads(long userId, String kind, int limit) {
         return jdbcClient
                 .sql("""
                         SELECT t.id,
                                t.kind,
                                t.updated_at,
+                               t.device_config::text AS device_config,
                                (SELECT m.question FROM chat_message m
                                  WHERE m.thread_id = t.id
-                                 ORDER BY m.created_at DESC, m.id DESC LIMIT 1) AS last_question,
-                               (SELECT count(*) FROM chat_message m WHERE m.thread_id = t.id) AS message_count
+                                 ORDER BY m.created_at, m.id LIMIT 1) AS first_question,
+                               (SELECT count(*) FROM chat_message m
+                                 WHERE m.thread_id = t.id
+                                   AND m.source <> 'external_error') AS turns_used
                         FROM chat_thread t
                         WHERE t.user_id = :userId
+                          AND (CAST(:kind AS text) IS NULL OR t.kind = CAST(:kind AS text))
+                          -- 질문 한 번 못 붙인 대화는 고를 이유가 없다.
+                          AND EXISTS (SELECT 1 FROM chat_message m WHERE m.thread_id = t.id)
                         ORDER BY t.updated_at DESC, t.id DESC
                         LIMIT :limit
                         """)
                 .param("userId", userId)
+                .param("kind", kind)
                 .param("limit", limit)
                 .query((rs, rowNum) -> new ChatThreadSummary(
                         rs.getLong("id"),
                         rs.getString("kind"),
                         rs.getObject("updated_at", OffsetDateTime.class).toInstant(),
-                        rs.getString("last_question"),
-                        rs.getInt("message_count")))
+                        rs.getString("first_question"),
+                        readJson(rs.getString("device_config")),
+                        rs.getInt("turns_used")))
                 .list();
     }
 

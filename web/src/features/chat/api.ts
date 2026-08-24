@@ -56,7 +56,9 @@ export async function fetchThread(threadId: number) {
   return response.data;
 }
 
-export async function fetchThreads() {
-  const response = await apiClient.get<ChatThreadSummary[]>("/chat/threads");
+export async function fetchThreads(kind?: string) {
+  const response = await apiClient.get<ChatThreadSummary[]>("/chat/threads", {
+    params: kind ? { kind } : undefined,
+  });
   return response.data;
 }

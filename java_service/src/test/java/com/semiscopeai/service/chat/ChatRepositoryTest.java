@@ -2,6 +2,7 @@ package com.semiscopeai.service.chat;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.semiscopeai.service.chat.dto.ChatThreadSummary;
 import com.semiscopeai.service.chat.dto.ChatTurn;
 import com.semiscopeai.service.support.ChatPersistenceTestApp;
 import com.semiscopeai.service.user.User;
@@ -174,14 +175,75 @@ class ChatRepositoryTest {
     }
 
     @Test
-    void 목록은_최근_대화부터_마지막_질문과_함께_준다() {
+    void 목록은_최근_대화부터_준다() {
         long first = chatRepository.createThread(userId, "curves", Map.of());
         chatRepository.appendMessage(first, "오래된 질문", "a", "external_llm", null, null);
         long second = chatRepository.createThread(userId, "fields", Map.of());
         chatRepository.appendMessage(second, "최근 질문", "b", "external_llm", null, null);
 
-        assertThat(chatRepository.listThreads(userId, 10))
-                .extracting(summary -> summary.lastQuestion())
+        assertThat(chatRepository.listThreads(userId, null, 10))
+                .extracting(ChatThreadSummary::firstQuestion)
                 .containsExactly("최근 질문", "오래된 질문");
+    }
+
+    // 마지막 질문은 곁가지일 수 있다("감기에 걸렸어" 같은 범위 밖 질문).
+    // 주제를 정한 건 첫 질문이라 그쪽이 대화를 대표한다.
+    @Test
+    void 미리보기는_마지막이_아니라_첫_질문이다() {
+        long threadId = chatRepository.createThread(userId, "curves", Map.of());
+        chatRepository.appendMessage(threadId, "SS가 왜 나빠졌어?", "답변", "external_llm", null, null);
+        chatRepository.appendMessage(threadId, "감기에 걸렸어", "범위 밖", "external_llm", null, null);
+
+        assertThat(chatRepository.listThreads(userId, null, 10))
+                .singleElement()
+                .extracting(ChatThreadSummary::firstQuestion)
+                .isEqualTo("SS가 왜 나빠졌어?");
+    }
+
+    // 질문 문장만으로는 대화를 구분할 수 없다 — 같은 화면에서 비슷하게
+    // 물으면 미리보기가 전부 같아지고, 정작 다른 건 소자 조건이다.
+    @Test
+    void 목록은_소자_조건도_함께_준다() {
+        long threadId = chatRepository.createThread(userId, "curves", Map.of("L", "500"));
+        chatRepository.appendMessage(threadId, "질문", "답변", "external_llm", null, null);
+
+        assertThat(chatRepository.listThreads(userId, null, 10))
+                .singleElement()
+                .extracting(ChatThreadSummary::deviceConfig)
+                .isEqualTo(Map.of("L", "500"));
+    }
+
+    @Test
+    void 종류로_거를_수_있다() {
+        long curves = chatRepository.createThread(userId, "curves", Map.of());
+        chatRepository.appendMessage(curves, "커브 질문", "a", "external_llm", null, null);
+        long fields = chatRepository.createThread(userId, "fields", Map.of());
+        chatRepository.appendMessage(fields, "필드 질문", "b", "external_llm", null, null);
+
+        assertThat(chatRepository.listThreads(userId, "curves", 10))
+                .singleElement()
+                .extracting(ChatThreadSummary::firstQuestion)
+                .isEqualTo("커브 질문");
+    }
+
+    // 실패한 턴만 남은 대화도 목록에는 나와야 한다 — 사용자가 다시 시도할
+    // 수 있어야 하니까. 대신 소모 턴은 0이다.
+    @Test
+    void 실패만_있는_대화도_목록에_나오되_턴은_0이다() {
+        long threadId = chatRepository.createThread(userId, "curves", Map.of());
+        chatRepository.appendMessage(threadId, "질문", "생성 실패", "external_error", null, null);
+
+        assertThat(chatRepository.listThreads(userId, null, 10))
+                .singleElement()
+                .extracting(ChatThreadSummary::turnsUsed)
+                .isEqualTo(0);
+    }
+
+    // 질문이 하나도 안 붙은 대화는 고를 이유가 없다.
+    @Test
+    void 빈_대화는_목록에서_빠진다() {
+        chatRepository.createThread(userId, "curves", Map.of());
+
+        assertThat(chatRepository.listThreads(userId, null, 10)).isEmpty();
     }
 }

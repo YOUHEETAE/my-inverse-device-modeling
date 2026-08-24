@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   CornerDownLeft,
+  Download,
   LogIn,
   MessageSquarePlus,
   RotateCcw,
@@ -9,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { ChatError } from "./api";
 import { parseFailure } from "./failure";
+import { ThreadPicker } from "./ThreadPicker";
 import type { ChatTurn } from "./types";
 
 interface ChatThreadProps {
@@ -25,6 +27,14 @@ interface ChatThreadProps {
   frozenSummary: string | null;
   /** 그 뒤로 화면 설정이 바뀌었는지. 막지는 않고 알리기만 한다. */
   screenChanged: boolean;
+  /** "curves" | "fields" — 이전 대화 목록을 이 종류로만 거른다. */
+  kind: string;
+  onRestore: (threadId: number) => void;
+  /**
+   * 화면과 다른 소자 조건의 대화를 열었을 때 그 조건을 작업대에 되살린다.
+   * 현재 구성을 덮어쓰므로 사용자가 누를 때만 실행한다.
+   */
+  onLoadFrozenConfig: () => void;
   /** 소자 조건이 안 맞을 때 (Field는 2개 이상 필요) */
   disabled?: boolean;
   disabledReason?: string;
@@ -113,6 +123,9 @@ export function ChatThread({
   onLogin,
   frozenSummary,
   screenChanged,
+  kind,
+  onRestore,
+  onLoadFrozenConfig,
   disabled,
   disabledReason,
   onSend,
@@ -162,6 +175,7 @@ export function ChatThread({
           )}
         </div>
         <div className="flex items-center gap-1">
+          {authenticated && <ThreadPicker kind={kind} onSelect={onRestore} />}
           {turns.length > 0 && (
             <Button
               variant="ghost"
@@ -180,15 +194,27 @@ export function ChatThread({
         // 첫 질문이 소자 설정을 얼린다. 화면을 바꿔도 이 대화는 원래 소자를
         // 계속 얘기하므로, 무엇을 기준으로 답하는지 밝혀야 한다.
         // (데스크톱 앱의 "… 스냅샷 기준 · 화면 변경됨 (새 대화로 반영)")
-        <p className="font-mono text-[10px] leading-relaxed text-on-surface-variant">
-          {frozenSummary} 스냅샷 기준
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <p className="font-mono text-[10px] leading-relaxed text-on-surface-variant">
+            {frozenSummary} 스냅샷 기준
+            {screenChanged && (
+              <span className="text-accent-orange"> · 화면 변경됨</span>
+            )}
+          </p>
           {screenChanged && (
-            <span className="text-accent-orange">
-              {" "}
-              · 화면 변경됨 (새 대화로 반영)
-            </span>
+            // 말풍선 속 숫자와 화면 그래프가 어긋난 채로 이어서 묻게 두면
+            // 어느 쪽을 보고 있는지 알 수 없다. 되살릴 수단을 준다.
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-5 gap-1 px-1.5 text-[10px]"
+              onClick={onLoadFrozenConfig}
+            >
+              <Download className="h-2.5 w-2.5" />
+              이 설정 불러오기
+            </Button>
           )}
-        </p>
+        </div>
       )}
 
       {/* grid 0fr -> 1fr 는 내용 높이를 모르고도 부드럽게 열고 닫는다.
