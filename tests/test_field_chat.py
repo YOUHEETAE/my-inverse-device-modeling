@@ -6,6 +6,8 @@ from dataclasses import replace
 from backend.explanation.cross_domain_audit import build_field_iv_audit
 from backend.explanation.field_analyzer import build_field_payload
 from backend.explanation.field_chat import (
+    FIELD_CHAT_INTENTS,
+    _intent_prompt,
     FieldAnalysisSnapshot,
     FieldChatService,
     FieldQuestionIntent,
@@ -406,3 +408,27 @@ def test_field_chat_definition_answer_has_no_model_caution() -> None:
     body["used_evidence_ids"] = []
     result = FieldChatService(QueueProvider(define, body)).answer(snapshot(), "Potential이 뭐야?")
     assert "TCAD 검증을 대체하지 않습니다" not in result.answer
+
+
+def test_field_greeting_answers_locally_without_an_answer_call() -> None:
+    provider = QueueProvider(intent(
+        intent="greeting", needs_current_result=False, requested_concepts=[],
+        requested_regions=[], requested_iv_metrics=[], answer_structure="concise",
+    ))
+    result = FieldChatService(provider).answer(snapshot(), "안녕")
+
+    assert result.source == "local_router"
+    assert len(provider.calls) == 1
+    # snapshot.display는 field_analyzer가 만든 내부 슬러그라 화면에 내보내지
+    # 않는다 ("Electron density" -> "electron_density").
+    assert "_" not in result.answer
+
+
+def test_field_intent_prompt_lists_its_allowed_values() -> None:
+    """목록을 안 적어주면 모델이 이름을 지어내거나, 새로 추가한 분류에
+    영영 도달하지 못한다.
+    """
+    system, _ = _intent_prompt({})
+
+    for value in FIELD_CHAT_INTENTS:
+        assert value in system

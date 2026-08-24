@@ -167,7 +167,10 @@ def _field_greeting_answer(snapshot: "FieldAnalysisSnapshot") -> str:
         hint = "두 소자의 분포가 어디서 어떻게 다른지 물어보실 수 있습니다."
     else:
         hint = "소자를 하나 더 선택하면 두 분포를 비교해 설명해 드릴 수 있습니다."
-    return f"안녕하세요! 지금 {labels}의 {snapshot.display}를 보고 계시네요. {hint}"
+    # 표시 종류는 넣지 않는다. snapshot.display는 field_analyzer가 만든 내부
+    # 슬러그(Electron density -> electron_density)라 화면에 그대로 쓰면
+    # 어색하고, 사용자는 이미 화면에서 무엇을 보고 있는지 안다.
+    return f"안녕하세요! 지금 {labels}의 분포를 보고 계시네요. {hint}"
 
 
 def validate_field_intent(
