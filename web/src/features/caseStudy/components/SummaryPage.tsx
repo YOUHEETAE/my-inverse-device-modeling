@@ -172,9 +172,18 @@ function ReviewCard({
 function ModelAnswer({ text, titles }: { text: string; titles: Record<string, string> }) {
   const sections: { title: string | null; body: string[] }[] = [{ title: null, body: [] }];
   for (const line of text.split("\n")) {
-    const heading = Object.keys(titles).find((key) => line.trim().startsWith(key));
-    if (heading) sections.push({ title: titles[heading], body: [] });
-    else if (line.trim()) sections[sections.length - 1].body.push(line.trim());
+    // 제목은 [대괄호]만 있는 줄로 온다 (panel.py의
+    // split_model_answer_sections). 줄 머리 일치로 찾으면 대괄호 때문에
+    // 하나도 걸리지 않아 글이 통째로 붙고 원문 제목이 그대로 노출된다.
+    const heading = /^\[([^\]]+)\]\s*$/.exec(line.trim());
+    if (heading) {
+      const raw = heading[1].trim();
+      // 화면용 이름으로 바꿔 단다 — "현재 Case의 I–V 근거" -> "I–V Curve에서
+      // 확인된 근거". 목록에 없으면 원문을 그대로 쓴다.
+      sections.push({ title: titles[raw] ?? raw, body: [] });
+    } else if (line.trim()) {
+      sections[sections.length - 1].body.push(line.trim());
+    }
   }
 
   return (
