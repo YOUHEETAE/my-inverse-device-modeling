@@ -8,7 +8,8 @@ import { createSession, fetchPortfolio, fetchSessions, fetchTopics, getErrorMess
 import type { CaseProgress, LearningPortfolio, SessionSummary, TopicSummary } from "./types";
 
 interface CaseListPageProps {
-  onOpenSession: (sessionId: string) => void;
+  /** caseNumber는 목록에서의 순서 — 진행 화면 상단의 "Case 03" 표기에 쓴다. */
+  onOpenSession: (sessionId: string, caseNumber: number) => void;
 }
 
 /**
@@ -54,12 +55,12 @@ export default function CaseListPage({ onOpenSession }: CaseListPageProps) {
 
   useEffect(loadProgress, [loadProgress]);
 
-  async function start(topicId: string) {
+  async function start(topicId: string, caseNumber: number) {
     if (starting) return;
     setStarting(true);
     try {
       const session = await createSession(topicId);
-      onOpenSession(session.session_id);
+      onOpenSession(session.session_id, caseNumber);
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
@@ -93,7 +94,9 @@ export default function CaseListPage({ onOpenSession }: CaseListPageProps) {
             portfolio={portfolio}
             sessions={sessions}
             topics={topics}
-            onOpen={onOpenSession}
+            onOpen={(sessionId, topicId) =>
+              onOpenSession(sessionId, topics.findIndex((item) => item.topic_id === topicId) + 1)
+            }
           />
         ) : progressFailed ? (
           <ProgressUnavailable message={error} onRetry={loadProgress} />
@@ -109,8 +112,8 @@ export default function CaseListPage({ onOpenSession }: CaseListPageProps) {
               topic={topic}
               progress={progressByTopic.get(topic.topic_id) ?? placeholder(topic, index)}
               latest={latestByTopic.get(topic.topic_id)}
-              onOpen={onOpenSession}
-              onStart={start}
+              onOpen={(sessionId) => onOpenSession(sessionId, index + 1)}
+              onStart={(topicId) => start(topicId, index + 1)}
             />
           ))}
         </div>

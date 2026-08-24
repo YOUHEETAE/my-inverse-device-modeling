@@ -25,7 +25,7 @@ interface LearningOverviewProps {
   portfolio: LearningPortfolio;
   sessions: SessionSummary[];
   topics: TopicSummary[];
-  onOpen: (sessionId: string) => void;
+  onOpen: (sessionId: string, topicId: string) => void;
 }
 
 export function LearningOverview({ portfolio, sessions, topics, onOpen }: LearningOverviewProps) {
@@ -62,7 +62,7 @@ export function LearningOverview({ portfolio, sessions, topics, onOpen }: Learni
               size="sm"
               variant="outline"
               className="h-6 gap-1 px-2 text-[10px]"
-              onClick={() => onOpen(resume(sessions, recent.topic_id)!.session_id)}
+              onClick={() => onOpen(resume(sessions, recent.topic_id)!.session_id, recent.topic_id)}
             >
               <Play className="h-3 w-3" />
               이어서 하기
@@ -117,7 +117,7 @@ export function LearningOverview({ portfolio, sessions, topics, onOpen }: Learni
                       size="sm"
                       variant="ghost"
                       className="h-6 shrink-0 px-2 text-[10px]"
-                      onClick={() => onOpen(session.session_id)}
+                      onClick={() => onOpen(session.session_id, session.topic_id)}
                     >
                       {session.completed ? "결과 보기" : "이어서 하기"}
                     </Button>
