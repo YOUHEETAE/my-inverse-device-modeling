@@ -37,11 +37,27 @@ public class LearningService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "학습 기록을 찾을 수 없습니다."));
     }
 
-    /** 세션을 Python에 보내 한 걸음 진행시키고, 돌아온 세션을 저장한다. */
+    /**
+      * 세션을 Python에 보내 한 걸음 진행시키고, 돌아온 세션을 저장한다.
+      *
+      * <p>{@code callPython}은 Python의 응답을 그대로 돌려주면 된다. 세션을
+      * 꺼내는 일은 여기서 한다 — 호출부마다 기억해야 하면 언젠가 빠뜨리고,
+      * 그러면 감싼 응답이 통째로 저장되려다 session_id가 없다며 터진다.
+      */
     public Map<String, Object> advance(
             UUID sessionId, long userId, UnaryOperator<Map<String, Object>> callPython) {
-        Map<String, Object> updated = callPython.apply(require(sessionId, userId));
-        return persist(userId, updated);
+        Map<String, Object> response = callPython.apply(require(sessionId, userId));
+        return persist(userId, sessionOf(response));
+    }
+
+    /** Python 응답에서 갱신된 세션을 꺼낸다. */
+    @SuppressWarnings("unchecked")
+    public static Map<String, Object> sessionOf(Map<String, Object> response) {
+        Object value = response == null ? null : response.get("session");
+        if (!(value instanceof Map)) {
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "학습 세션을 받지 못했습니다.");
+        }
+        return (Map<String, Object>) value;
     }
 
     public Map<String, Object> persist(long userId, Map<String, Object> session) {

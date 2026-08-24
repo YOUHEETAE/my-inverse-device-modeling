@@ -117,7 +117,7 @@ public class CaseStudyController {
     @PostMapping("/case-study/sessions")
     public Map<String, Object> create(
             @AuthenticationPrincipal OAuth2User principal, @Valid @RequestBody NewSessionRequest request) {
-        Map<String, Object> created = session(post("/case-study/sessions", request));
+        Map<String, Object> created = LearningService.sessionOf(post("/case-study/sessions", request));
         return learningService.persist(userId(principal), created);
     }
 
@@ -185,7 +185,7 @@ public class CaseStudyController {
         Map<String, Object> reply = post(
                 "/case-study/sessions/followup",
                 LearningService.body(learningService.require(sessionId, userId), "question", request.question()));
-        learningService.persist(userId, session(reply));
+        learningService.persist(userId, LearningService.sessionOf(reply));
         return new FollowupReply(
                 String.valueOf(reply.get("answer")), String.valueOf(reply.get("source")));
     }
@@ -197,15 +197,6 @@ public class CaseStudyController {
 
     private Map<String, Object> post(String path, Object body) {
         return pythonServiceClient.post().uri(path).body(body).retrieve().body(map());
-    }
-
-    @SuppressWarnings("unchecked")
-    private static Map<String, Object> session(Map<String, Object> response) {
-        Object value = response.get("session");
-        if (!(value instanceof Map)) {
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "학습 세션을 받지 못했습니다.");
-        }
-        return (Map<String, Object>) value;
     }
 
     private static ParameterizedTypeReference<Map<String, Object>> map() {
