@@ -17,6 +17,15 @@ from backend.public_presentation import (
     public_failure_label,
     public_source_label,
 )
+# 학습 콘텐츠와 조건 표기는 backend/learning/case_presentation.py로 옮겼다.
+# 웹도 같은 문구를 써야 해서 두 앱이 공유하는 자리로 내렸다. 여기서 다시
+# 내보내므로 이 모듈을 통해 쓰던 코드와 테스트는 그대로 동작한다.
+from backend.learning.case_presentation import (  # noqa: F401
+    CASE_UNDERSTANDING_GUIDES,
+    CONDITION_LABELS,
+    CONDITION_UNITS,
+    format_case_comparison,
+)
 from backend.learning import (
     LearningAnalysisContext,
     LearningLLMService,
@@ -75,146 +84,6 @@ LEARNING_PAGE_LABELS = {
     "prediction": "2. 초기 예측",
     "observation": "3. 결과 관찰",
     "explanation": "4. 최종 설명",
-}
-CASE_UNDERSTANDING_GUIDES = {
-    "sce_channel_length": {
-        "context": (
-            "MOSFET의 채널이 짧아지면 전류가 흐르는 경로뿐 아니라 Drain 전계가 "
-            "Source 쪽 장벽에 미치는 영향도 달라집니다. 이 Case는 구동 성능과 "
-            "꺼짐 상태 제어가 함께 어떻게 변하는지 비교합니다."
-        ),
-        "question": (
-            "채널 길이를 줄였을 때 얻는 전류 이점과 누설·전계 제어의 손실은 "
-            "어떻게 함께 나타날까?"
-        ),
-        "evidence": (
-            "I–V Curve · Ion, Ioff와 subthreshold 구간의 변화",
-            "Potential Map · Drain 영향이 Source 장벽 쪽으로 퍼지는 범위",
-            "Electric Field · 채널 내부 전계의 크기와 공간 분포",
-        ),
-        "caution": "채널이 짧다는 이유만으로 모든 특성이 좋아진다고 단정하지 않습니다.",
-    },
-    "oxide_gate_control": {
-        "context": (
-            "Gate oxide 두께는 Gate와 channel 사이의 정전기적 결합을 좌우합니다. "
-            "이 Case는 Gate 제어력의 변화가 전류 응답에 주는 이점과 누설·Oxide "
-            "전계 측면에서 확인해야 할 trade-off를 함께 비교합니다."
-        ),
-        "question": (
-            "산화막을 얇게 했을 때 Gate 제어와 I–V 응답은 어떻게 달라지며, "
-            "어떤 전계·누설 변화까지 함께 확인해야 할까?"
-        ),
-        "evidence": (
-            "I–V Curve · gm, SS와 Ioff의 변화",
-            "Potential Map · Gate-to-channel 결합에 따른 전위 분포",
-            "Electric Field · Oxide와 인접 영역의 전계 분포",
-        ),
-        "caution": "강한 Gate 제어만 보고 신뢰성이나 누설 trade-off가 없다고 단정하지 않습니다.",
-    },
-    "body_doping_design_window": {
-        "context": (
-            "Body doping은 채널 아래의 공핍 전하와 정전기적 조건을 바꾸어 Vth와 "
-            "고정 bias에서의 전류를 함께 이동시킵니다. 이 Case는 누설 억제와 "
-            "구동 성능 사이에서 목표에 맞는 조건을 판단하는 방법을 비교합니다."
-        ),
-        "question": (
-            "Body doping을 높였을 때 Vth 이동은 Ion과 Ioff를 어떻게 동시에 "
-            "바꾸며, 어떤 설계 목표에서 그 조건이 적절할까?"
-        ),
-        "evidence": (
-            "I–V Curve · Vth의 가로 이동과 고정 bias의 Ion·Ioff",
-            "Potential Map · Channel 표면 부근 전위 분포의 변화",
-            "Electric Field · Body 전하 변화에 따른 Channel 인접 전계 재분포",
-        ),
-        "caution": "Vth가 높거나 Ioff가 낮다는 한 가지 사실만으로 최적 설계라고 단정하지 않습니다.",
-    },
-    "source_drain_on_state_conduction": {
-        "context": (
-            "Source와 Drain은 외부 단자와 Channel 사이에서 carrier가 출입하는 "
-            "영역입니다. 이 Case는 Source/Drain doping 변화가 on-state 전류 경로와 "
-            "유효 저항에 주는 이득, 그리고 Drain-side 전기적 제어에 미치는 영향을 "
-            "함께 비교합니다."
-        ),
-        "question": (
-            "Source/Drain doping을 높였을 때 on-state conduction은 어떻게 달라지며, "
-            "그 이득과 함께 확인해야 할 Drain-side 전기적 비용은 무엇일까?"
-        ),
-        "evidence": (
-            "I–V Curve · Ion, 유효 Ron과 포화영역 gds의 변화",
-            "두 Drain bias의 Id–Vg · DIBL과 Drain 제어 변화",
-            "Field Map · Drain-side LDD 인접 Potential과 Electric Field 재분포",
-        ),
-        "caution": "Ron 감소를 순수한 contact resistance 감소로 단정하거나 Ion 증가를 모든 특성의 개선으로 확장하지 않습니다.",
-    },
-    "ldd_field_resistance_tradeoff": {
-        "context": (
-            "LDD는 고농도 Drain과 Channel 사이의 전위 변화를 분산시키기 위한 "
-            "영역이지만, 그 doping은 Drain-side 전계뿐 아니라 전류가 통과하는 "
-            "access 경로의 저항도 바꿉니다. 이 Case는 전계 완화와 구동 손실을 "
-            "같은 비교에서 판단합니다."
-        ),
-        "question": (
-            "LDD doping을 낮춰 Drain-side 전계를 완화할 때 access resistance와 "
-            "on-state 구동 성능에는 어떤 비용이 생길까?"
-        ),
-        "evidence": (
-            "I–V Curve · Ion, gm과 유효 Ron의 변화",
-            "Id–Vd 포화영역 · gds와 출력 저항 방향",
-            "Field Map · Drain 인접 Potential과 Electric Field의 크기·위치 변화",
-        ),
-        "caution": "낮은 Field만으로 신뢰성 개선을 확정하거나 Ron 변화를 LDD 저항 하나로만 설명하지 않습니다.",
-    },
-    "channel_oxide_electrostatic_compensation": {
-        "context": (
-            "Channel Length와 Gate oxide 두께는 모두 channel의 정전기적 제어에 "
-            "영향을 주지만 그 효과를 단순히 더해서 해석할 수는 없습니다. 이 Case는 "
-            "Long·Short Channel과 Thick·Thin Oxide의 네 조건을 함께 비교합니다."
-        ),
-        "question": (
-            "짧은 Channel에서 얇은 Oxide가 SS와 DIBL을 얼마나 보상하며, 그 개선은 "
-            "Long-Channel 수준의 회복과 어떻게 구분해야 할까?"
-        ),
-        "evidence": (
-            "네 I–V Curve · Long과 Short에서 Oxide 20→10 nm 효과의 차이",
-            "SS·DIBL·Ioff · 제어 개선, 남은 Short-Channel Effect와 누설의 구분",
-            "네 Field Map · 대응 조건끼리 비교한 Potential·Electric Field 재분포",
-        ),
-        "caution": "대각선 두 조건의 차이나 Field 최대값 하나로 두 파라미터의 상호작용을 확정하지 않습니다.",
-    },
-    "source_drain_ldd_junction_engineering": {
-        "context": (
-            "Source/Drain과 LDD는 단자에서 Channel로 이어지는 전류 경로와 Drain-side "
-            "전위 강하를 함께 결정합니다. 이 Case는 Low·High SD와 Low·High LDD의 "
-            "네 접합 조건을 대응 비교합니다."
-        ),
-        "question": (
-            "SD와 LDD를 함께 높여 얻는 최대 구동 이득은 누설·Drain 제어·Field "
-            "측면에서 어떤 비용을 만들며, 목표에 맞는 접합 조건은 어떻게 고를까?"
-        ),
-        "evidence": (
-            "네 I–V Curve · 각 SD 수준에서 LDD 변화의 Ion·Ron 차이",
-            "Ioff·DIBL·gds · 최대 구동 조건에 동반되는 Drain 제어 비용",
-            "네 Field Map · 대응 LDD pair의 Drain 인접 Potential·Electric Field 변화",
-        ),
-        "caution": "대각선 두 접합 조건이나 최대 Ion 하나로 SD와 LDD의 효과 및 최적 조건을 확정하지 않습니다.",
-    },
-    "integrated_device_design": {
-        "context": (
-            "실제 설계에서는 한 지표의 최대값보다 여러 사양을 동시에 만족하는지가 "
-            "중요합니다. 이 Case는 Drive·Leakage·Control·Balanced 네 후보를 앞선 "
-            "Case에서 학습한 Curve와 Field 근거로 선별합니다."
-        ),
-        "question": (
-            "Ion·Ioff·DIBL·SS의 네 목표를 모두 만족하는 후보는 무엇이며, 전기적 "
-            "사양 통과 후 Field Map에서는 어떤 설계 여유를 추가로 확인해야 할까?"
-        ),
-        "evidence": (
-            "후보별 파라미터 표 · 네 설계 조건과 목표 사양의 대응",
-            "I–V Curve · Ion·Ioff·DIBL·SS의 절대값과 통과 여부",
-            "Field Map · Balanced와 Control의 Drain 인접 분포 및 남은 공간적 비용",
-        ),
-        "caution": "후보 이름이나 한 지표의 우수성으로 선택하지 않고 모든 제약을 적용한 뒤 Field 근거를 별도로 검토합니다.",
-    },
 }
 CASE_CORE_SUMMARIES = {
     "sce_channel_length": (
@@ -1044,20 +913,6 @@ ERROR_GUIDANCE = {
         "저장된 예측 답변을 유지한 채 현재 Case 실험을 다시 실행합니다."
     ),
 }
-CONDITION_LABELS = {
-    "L": "Channel length",
-    "T": "Oxide thickness",
-    "B": "Body doping",
-    "SD": "Source/Drain doping",
-    "LDD": "LDD doping",
-}
-CONDITION_UNITS = {
-    "L": "nm",
-    "T": "nm",
-    "B": "cm⁻³",
-    "SD": "cm⁻³",
-    "LDD": "cm⁻³",
-}
 METRIC_LABELS = {
     "vth": "Vth",
     "vth_low": "Vth (low Vd)",
@@ -1107,32 +962,6 @@ def format_error_guidance(error_code: str | None, recovery_step: LearningStep | 
         )
     recovery = STEP_LABELS.get(recovery_step, recovery_step.value) if recovery_step else "확인 불가"
     return f"{detail}\n재시도 단계: {recovery}\n기존 세션 기록은 삭제되지 않습니다."
-
-
-def format_case_comparison(topic: Any) -> tuple[str, str, str]:
-    if getattr(topic, "reference_conditions", ()):
-        return (
-            topic.comparison_caption or "전기적 파라미터 (대표 비교)",
-            topic.baseline_label,
-            topic.comparison_label,
-        )
-    changed = [
-        name
-        for name in topic.baseline_conditions
-        if topic.baseline_conditions[name] != topic.comparison_conditions[name]
-    ]
-    if len(changed) != 1:
-        return "전기적 파라미터 (Baseline → Comparison)", "Baseline", "Comparison"
-    name = changed[0]
-    unit = CONDITION_UNITS.get(name, "")
-    baseline = f"{topic.baseline_conditions[name]:g}" + (f" {unit}" if unit else "")
-    comparison = f"{topic.comparison_conditions[name]:g}" + (f" {unit}" if unit else "")
-    label = CONDITION_LABELS.get(name, name)
-    return (
-        f"전기적 파라미터 ({label}: {baseline} → {comparison})",
-        baseline,
-        comparison,
-    )
 
 
 def topic_condition_rows(

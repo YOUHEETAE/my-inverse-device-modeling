@@ -29,6 +29,11 @@ from pydantic import BaseModel, Field
 
 from app.services import learning_runner, learning_state_machine, learning_tutor
 from backend.learning.llm_service import LearningLLMService
+from backend.learning.case_presentation import (
+    CASE_UNDERSTANDING_GUIDES,
+    CONDITION_LABELS,
+    format_case_comparison,
+)
 from backend.learning.progress import build_learning_portfolio
 from backend.learning.schemas import LearningSession, LearningStep
 from backend.learning.state_machine import InvalidLearningTransition
@@ -44,8 +49,14 @@ class TopicSummary(BaseModel):
     description: str
     catalog_order: int
     prerequisite_topic_ids: list[str]
-    # 카드에 "변경 조건: Channel length: 700 nm -> 300 nm"으로 보여주는 값
+    # 카드의 "변경 조건" 한 줄. 케이스마다 규칙이 다르다 — 단일 파라미터
+    # 비교는 값과 단위를 조합하고(Channel length: 700 nm → 300 nm), 2x2나
+    # 후보군 비교는 케이스가 지정한 문구를 쓴다. 데스크톱 앱과 같은 함수로
+    # 만들어야 두 화면의 문구가 갈라지지 않는다.
+    comparison_caption: str
     changed_parameters: list[str]
+    # 화면에 쓰는 이름 ("L" -> "Channel length")
+    parameter_labels: dict[str, str]
     baseline_label: str
     comparison_label: str
 
@@ -58,12 +69,35 @@ class SafeQuestion(BaseModel):
     reason_required: bool
 
 
+class ReferenceCondition(BaseModel):
+    condition_id: str
+    label: str
+    conditions: dict[str, float]
+
+
+class CaseGuide(BaseModel):
+    """"1. Case 이해" 화면의 내용."""
+
+    context: str
+    question: str
+    evidence: list[str]
+    caution: str
+
+
 class TopicDetail(TopicSummary):
     learning_objectives: list[str]
     baseline_conditions: dict[str, float]
     comparison_conditions: dict[str, float]
     condition_descriptions: dict[str, str]
     theory_concepts: list[str]
+    theory_reference: str
+    # 'controlled_pair' | 'two_by_two' | 'candidate_set'
+    comparison_design: str
+    # 2x2나 후보군 비교에서 baseline/comparison 말고 함께 보여줄 조건들
+    reference_conditions: list[ReferenceCondition]
+    # 조건 표에 실제로 띄울 파라미터. 비어 있으면 전부 보여준다.
+    display_parameters: list[str]
+    guide: CaseGuide
     prediction_questions: list[SafeQuestion]
     observation_questions: list[SafeQuestion]
 
@@ -148,9 +182,16 @@ def _summary(topic) -> dict[str, Any]:
         "description": topic.description,
         "catalog_order": topic.catalog_order,
         "prerequisite_topic_ids": list(topic.prerequisite_topic_ids),
+        # 데스크톱 카드는 "전기적 파라미터 (...)" 껍데기를 벗겨서 쓴다.
+        "comparison_caption": (
+            format_case_comparison(topic)[0]
+            .removeprefix("전기적 파라미터 (")
+            .removesuffix(")")
+        ),
         "changed_parameters": list(
             compare_conditions(topic.baseline_conditions, topic.comparison_conditions)
         ),
+        "parameter_labels": dict(CONDITION_LABELS),
         "baseline_label": topic.baseline_label,
         "comparison_label": topic.comparison_label,
     }
@@ -158,6 +199,25 @@ def _summary(topic) -> dict[str, Any]:
 
 def compare_conditions(baseline: dict[str, float], comparison: dict[str, float]) -> tuple[str, ...]:
     return tuple(key for key in baseline if baseline.get(key) != comparison.get(key))
+
+
+def _guide(topic) -> CaseGuide:
+    # 데스크톱 앱과 같은 폴백 (panel.py의 _build_introduction).
+    value = CASE_UNDERSTANDING_GUIDES.get(
+        topic.topic_id,
+        {
+            "context": topic.description,
+            "question": topic.prediction_questions[0].prompt,
+            "evidence": tuple(topic.required_outputs),
+            "caution": "한 가지 결과만으로 원인을 단정하지 않습니다.",
+        },
+    )
+    return CaseGuide(
+        context=value["context"],
+        question=value["question"],
+        evidence=list(value["evidence"]),
+        caution=value["caution"],
+    )
 
 
 @router.get("/case-study/topics")
@@ -175,6 +235,15 @@ def get_case_study_topic(topic_id: str) -> TopicDetail:
         comparison_conditions=dict(topic.comparison_conditions),
         condition_descriptions=dict(topic.condition_descriptions),
         theory_concepts=list(topic.theory_concepts),
+        theory_reference=topic.theory_reference,
+        comparison_design=topic.comparison_design,
+        reference_conditions=[
+            ReferenceCondition(
+                condition_id=item.condition_id, label=item.label, conditions=dict(item.conditions))
+            for item in topic.reference_conditions
+        ],
+        display_parameters=list(topic.display_parameters),
+        guide=_guide(topic),
         prediction_questions=[_safe_question(item) for item in topic.prediction_questions],
         observation_questions=[_safe_question(item) for item in topic.observation_questions],
     )
