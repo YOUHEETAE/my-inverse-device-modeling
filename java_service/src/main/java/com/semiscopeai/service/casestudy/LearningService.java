@@ -46,8 +46,18 @@ public class LearningService {
       */
     public Map<String, Object> advance(
             UUID sessionId, long userId, UnaryOperator<Map<String, Object>> callPython) {
+        return sessionOf(advanceWithPayload(sessionId, userId, callPython));
+    }
+
+    /**
+     * 세션 말고도 돌려줄 게 함께 오는 걸음. 실험은 갱신된 세션과 그릴 곡선을
+     * 같이 보내는데, 곡선은 저장하지 않고 화면으로 흘려보낸다.
+     */
+    public Map<String, Object> advanceWithPayload(
+            UUID sessionId, long userId, UnaryOperator<Map<String, Object>> callPython) {
         Map<String, Object> response = callPython.apply(require(sessionId, userId));
-        return persist(userId, sessionOf(response));
+        persist(userId, sessionOf(response));
+        return response;
     }
 
     /** Python 응답에서 갱신된 세션을 꺼낸다. */

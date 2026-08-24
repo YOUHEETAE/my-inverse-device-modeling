@@ -152,10 +152,25 @@ public class CaseStudyController {
 
     // 모델 추론이 도는 단계라 느리다. 예측 제출과 나뉘어 있어서 여기서
     // 실패해도 학습자의 답변은 이미 저장되어 있고 다시 부르면 된다.
+    //
+    // 응답에 갱신된 세션과 그릴 곡선이 함께 온다. 곡선은 저장하지 않는다 —
+    // 세션에 넣으면 걸음마다 오가는 짐이 되고, 조건만 있으면 언제든 다시
+    // 만들 수 있다.
     @PostMapping("/case-study/sessions/{sessionId}/experiment")
     public Map<String, Object> experiment(
             @AuthenticationPrincipal OAuth2User principal, @PathVariable UUID sessionId) {
-        return step(sessionId, principal, "/case-study/sessions/experiment");
+        return learningService.advanceWithPayload(sessionId, userId(principal), session -> post(
+                "/case-study/sessions/experiment", LearningService.body(session)));
+    }
+
+    // 저장된 세션을 다시 열었을 때 그래프만 되살린다. 세션은 그대로 둔다 —
+    // 데스크톱의 "그래프 다시 생성"과 같다.
+    @PostMapping("/case-study/sessions/{sessionId}/regenerate")
+    public Map<String, Object> regenerate(
+            @AuthenticationPrincipal OAuth2User principal, @PathVariable UUID sessionId) {
+        return post(
+                "/case-study/sessions/regenerate",
+                LearningService.body(learningService.require(sessionId, userId(principal))));
     }
 
     @PostMapping("/case-study/sessions/{sessionId}/observations")
@@ -182,10 +197,9 @@ public class CaseStudyController {
             @PathVariable UUID sessionId,
             @Valid @RequestBody FollowupRequest request) {
         long userId = userId(principal);
-        Map<String, Object> reply = post(
+        Map<String, Object> reply = learningService.advanceWithPayload(sessionId, userId, session -> post(
                 "/case-study/sessions/followup",
-                LearningService.body(learningService.require(sessionId, userId), "question", request.question()));
-        learningService.persist(userId, LearningService.sessionOf(reply));
+                LearningService.body(session, "question", request.question())));
         return new FollowupReply(
                 String.valueOf(reply.get("answer")), String.valueOf(reply.get("source")));
     }
