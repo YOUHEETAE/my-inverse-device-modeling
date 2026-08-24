@@ -96,6 +96,7 @@ public class ChatController {
     public ChatThreadView thread(@AuthenticationPrincipal OAuth2User principal, @PathVariable long threadId) {
         return chatRepository
                 .findThread(threadId, userId(principal), MESSAGE_LIMIT)
+                .map(thread -> thread.withTurnLimit(ChatService.MAX_TURNS_PER_THREAD))
                 // 남의 대화는 존재 여부조차 알리지 않는다 — 403이면 "있긴
                 // 하다"는 정보가 새어나간다.
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "대화를 찾을 수 없습니다."));

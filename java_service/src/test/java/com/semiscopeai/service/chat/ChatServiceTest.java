@@ -105,6 +105,52 @@ class ChatServiceTest {
         verify(chatRepository).appendMessage(eq(42L), eq("Ion은?"), eq("생성 실패"), eq("external_error"), eq(null), eq(null));
     }
 
+    // 상한에 닿으면 새 대화를 열게 한다. LLM은 어차피 최근 2턴만 보는데
+    // 말풍선만 계속 쌓이면 사용자는 AI가 다 기억한다고 믿게 된다.
+    @Test
+    void 상한을_채운_대화에는_더_물을_수_없다() {
+        when(chatRepository.threadBelongsTo(42L, USER_ID)).thenReturn(true);
+        when(chatRepository.turnCount(42L)).thenReturn(ChatService.MAX_TURNS_PER_THREAD);
+        ChatService service = new ChatService(chatRepository);
+
+        assertThatThrownBy(() -> service.ask(USER_ID, 42L, "curves", Map.of(), "질문", (h, c) -> answer("답", "external_llm")))
+                .isInstanceOf(ResponseStatusException.class)
+                // 400이 아니라 409 — 요청은 멀쩡하고 대화 상태가 문제다.
+                // 프론트가 이 코드로 "새 대화 시작"을 띄운다.
+                .extracting(e -> ((ResponseStatusException) e).getStatusCode())
+                .isEqualTo(HttpStatus.CONFLICT);
+
+        verify(chatRepository, never()).appendMessage(anyLong(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void 상한_직전까지는_질문할_수_있다() {
+        when(chatRepository.threadBelongsTo(42L, USER_ID)).thenReturn(true);
+        when(chatRepository.turnCount(42L)).thenReturn(ChatService.MAX_TURNS_PER_THREAD - 1);
+        when(chatRepository.recentTurns(anyLong(), anyInt())).thenReturn(List.of());
+        when(chatRepository.lastIntentCheckpoint(anyLong())).thenReturn(Map.of());
+
+        ChatReply reply = new ChatService(chatRepository)
+                .ask(USER_ID, 42L, "curves", Map.of(), "마지막 질문", (h, c) -> answer("답", "external_llm"));
+
+        assertThat(reply.turnLimit()).isEqualTo(ChatService.MAX_TURNS_PER_THREAD);
+    }
+
+    // 새 대화는 상한 검사를 거치지 않아야 한다 — 방금 만든 대화가 막히면
+    // 사용자는 아무것도 못 한다.
+    @Test
+    void 새_대화는_상한과_무관하다() {
+        when(chatRepository.createThread(anyLong(), any(), any())).thenReturn(99L);
+        when(chatRepository.recentTurns(anyLong(), anyInt())).thenReturn(List.of());
+        when(chatRepository.lastIntentCheckpoint(anyLong())).thenReturn(Map.of());
+
+        ChatReply reply = new ChatService(chatRepository)
+                .ask(USER_ID, null, "curves", Map.of(), "첫 질문", (h, c) -> answer("답", "external_llm"));
+
+        assertThat(reply.threadId()).isEqualTo(99L);
+        verify(chatRepository, never()).threadBelongsTo(anyLong(), anyLong());
+    }
+
     // 남의 대화에 질문을 이어붙이지 못해야 한다. 403이 아니라 404인 이유는
     // 그 threadId가 존재한다는 사실조차 알리지 않기 위해서다.
     @Test

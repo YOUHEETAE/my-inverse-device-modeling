@@ -24,6 +24,7 @@ import org.springframework.boot.security.oauth2.client.autoconfigure.OAuth2Clien
 import org.springframework.boot.security.oauth2.client.autoconfigure.servlet.OAuth2ClientWebSecurityAutoConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.test.context.ActiveProfiles;
@@ -31,6 +32,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.server.ResponseStatusException;
 
 // 저장 로직은 ChatServiceTest/ChatRepositoryTest가 본다. 여기서는 HTTP 경계 —
 // 인증, 요청 검증, 응답 형식만 확인한다.
@@ -105,7 +107,10 @@ class ChatControllerTest {
                         Mockito.anyString(),
                         Mockito.any()))
                 .thenReturn(ChatReply.of(
-                        42L, new ChatAnswer("6.28 mA/um", "external_llm", "explain_metric", List.of(), null, false, Map.of())));
+                        42L,
+                        new ChatAnswer("6.28 mA/um", "external_llm", "explain_metric", List.of(), null, false, Map.of()),
+                        3,
+                        20));
 
         mockMvc.perform(post("/chat/curves")
                         .with(loggedIn())
@@ -113,7 +118,30 @@ class ChatControllerTest {
                         .content(CURVE_BODY))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.thread_id").value(42))
-                .andExpect(jsonPath("$.threadId").doesNotExist());
+                .andExpect(jsonPath("$.threadId").doesNotExist())
+                // 프론트는 이 둘로 상한이 가까워졌음을 미리 안내한다.
+                .andExpect(jsonPath("$.turns_used").value(3))
+                .andExpect(jsonPath("$.turn_limit").value(20));
+    }
+
+    // 프론트가 이 응답을 일반 오류와 구분해서 "새 대화 시작"을 띄워야 한다.
+    @Test
+    void 상한을_채운_대화는_409와_안내문을_준다() throws Exception {
+        Mockito.when(chatService.ask(
+                        Mockito.anyLong(),
+                        Mockito.any(),
+                        Mockito.anyString(),
+                        Mockito.any(),
+                        Mockito.anyString(),
+                        Mockito.any()))
+                .thenThrow(new ResponseStatusException(HttpStatus.CONFLICT, "이 대화는 질문 20개를 채웠습니다. 새 대화를 시작해 주세요."));
+
+        mockMvc.perform(post("/chat/curves")
+                        .with(loggedIn())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(CURVE_BODY))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.detail").value("이 대화는 질문 20개를 채웠습니다. 새 대화를 시작해 주세요."));
     }
 
     // 근거가 비교에서 만들어지는 설계라 소자 1개짜리 Field 질문은 Python이

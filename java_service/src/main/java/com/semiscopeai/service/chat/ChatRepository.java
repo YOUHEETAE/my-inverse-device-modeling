@@ -52,6 +52,19 @@ public class ChatRepository {
                 .single() > 0;
     }
 
+    // 대화 길이 상한을 재는 기준. 실패한 턴은 사용자 잘못이 아니므로 세지
+    // 않는다 — 서버 오류로 할당량이 깎이면 안 된다.
+    public int turnCount(long threadId) {
+        return jdbcClient
+                .sql("""
+                        SELECT count(*) FROM chat_message
+                        WHERE thread_id = :threadId AND source <> 'external_error'
+                        """)
+                .param("threadId", threadId)
+                .query(Integer.class)
+                .single();
+    }
+
     // Python은 최근 2턴만 LLM에 넣지만(iv_chat.py), 그 상한은 Python 쪽 구현
     // 사항이라 여기서 몇 턴을 넘길지는 별개로 정한다. 실패한 턴은 맥락으로
     // 되돌려보내지 않으므로 아예 제외한다.
@@ -122,7 +135,9 @@ public class ChatRepository {
                         readJson(rs.getString("device_config")),
                         rs.getObject("created_at", OffsetDateTime.class).toInstant(),
                         rs.getObject("updated_at", OffsetDateTime.class).toInstant(),
-                        List.of()))
+                        List.of(),
+                        0,
+                        0))
                 .list();
 
         if (threads.isEmpty()) {
@@ -135,7 +150,9 @@ public class ChatRepository {
                 thread.deviceConfig(),
                 thread.createdAt(),
                 thread.updatedAt(),
-                messages(threadId, messageLimit)));
+                messages(threadId, messageLimit),
+                turnCount(threadId),
+                0));
     }
 
     private List<ChatMessageView> messages(long threadId, int limit) {

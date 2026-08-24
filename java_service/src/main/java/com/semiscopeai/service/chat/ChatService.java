@@ -23,6 +23,15 @@ public class ChatService {
     // 여기서 조금 더 보내두면 Python이 상한을 바꿔도 자바를 고칠 필요가 없다.
     private static final int HISTORY_TURNS = 6;
 
+    // 한 대화에 담을 수 있는 턴 수. 비용 문제가 아니다 — LLM에 가는 토큰은
+    // 대화 길이와 무관하게 최근 2턴으로 고정이다.
+    //
+    // 말풍선이 수십 개 쌓이면 사용자는 AI가 그걸 다 기억한다고 믿게 되는데,
+    // 실제로 기억하는 건 2턴뿐이다. 상한에서 새 대화를 열게 해서 그 간극을
+    // 숨기지 않는다. 오래된 intent_checkpoint가 계속 따라다니며 맥락을
+    // 어지럽히는 것도 여기서 끊긴다.
+    public static final int MAX_TURNS_PER_THREAD = 20;
+
     private final ChatRepository chatRepository;
 
     public ChatService(ChatRepository chatRepository) {
@@ -49,7 +58,7 @@ public class ChatService {
         chatRepository.appendMessage(
                 threadId, question, answer.answer(), answer.source(), answer.intent(), answer.intentCheckpoint());
 
-        return ChatReply.of(threadId, answer);
+        return ChatReply.of(threadId, answer, chatRepository.turnCount(threadId), MAX_TURNS_PER_THREAD);
     }
 
     private long resolveThread(long userId, Long requestedThreadId, String kind, Object deviceConfig) {
@@ -59,6 +68,13 @@ public class ChatService {
         // 남의 threadId를 넘겨 대화를 훔쳐보거나 이어붙이지 못하게 막는다.
         if (!chatRepository.threadBelongsTo(requestedThreadId, userId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "대화를 찾을 수 없습니다.");
+        }
+        // 400이 아니라 409인 이유: 요청 자체는 멀쩡하고 대화의 상태가 문제다.
+        // 프론트는 이 코드를 보고 오류 대신 "새 대화 시작"을 띄운다.
+        if (chatRepository.turnCount(requestedThreadId) >= MAX_TURNS_PER_THREAD) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "이 대화는 질문 " + MAX_TURNS_PER_THREAD + "개를 채웠습니다. 새 대화를 시작해 주세요.");
         }
         return requestedThreadId;
     }

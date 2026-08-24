@@ -5,8 +5,8 @@ import java.util.List;
 // 프론트에 돌려주는 응답. Python 응답에 threadId를 얹은 형태다 — 프론트는
 // 이 값을 다음 질문에 실어 보내 같은 대화를 이어간다.
 //
-// 비로그인 사용자는 저장되지 않으므로 threadId가 null이고, 그때는 프론트가
-// 직접 이력을 들고 있어야 한다.
+// turnsUsed/turnLimit을 매 응답에 실어, 상한이 가까워지면 다음 질문을 던지기
+// 전에 미리 안내할 수 있게 한다. 질문 도중에 갑자기 막히면 안 된다.
 public record ChatReply(
         Long threadId,
         String answer,
@@ -14,9 +14,11 @@ public record ChatReply(
         String intent,
         List<String> usedEvidenceIds,
         String suggestedFollowup,
-        boolean needsNewExperiment) {
+        boolean needsNewExperiment,
+        int turnsUsed,
+        int turnLimit) {
 
-    public static ChatReply of(Long threadId, ChatAnswer answer) {
+    public static ChatReply of(Long threadId, ChatAnswer answer, int turnsUsed, int turnLimit) {
         return new ChatReply(
                 threadId,
                 answer.answer(),
@@ -24,6 +26,8 @@ public record ChatReply(
                 answer.intent(),
                 answer.usedEvidenceIds(),
                 answer.suggestedFollowup(),
-                answer.needsNewExperiment());
+                answer.needsNewExperiment(),
+                turnsUsed,
+                turnLimit);
     }
 }

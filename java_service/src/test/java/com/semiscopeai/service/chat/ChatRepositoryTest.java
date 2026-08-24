@@ -140,6 +140,30 @@ class ChatRepositoryTest {
         assertThat(thread.messages()).hasSize(2);
     }
 
+    // 서버 오류로 답을 못 받은 턴이 사용자의 질문 할당량을 깎으면 안 된다.
+    @Test
+    void 턴_수를_셀_때_실패한_턴은_빼고_센다() {
+        long threadId = chatRepository.createThread(userId, "curves", Map.of());
+        chatRepository.appendMessage(threadId, "질문1", "답변", "external_llm", null, null);
+        chatRepository.appendMessage(threadId, "질문2", "생성 실패", "external_error", null, null);
+        chatRepository.appendMessage(threadId, "질문3", "답변", "external_llm", null, null);
+
+        assertThat(chatRepository.turnCount(threadId)).isEqualTo(2);
+    }
+
+    @Test
+    void 조회한_대화는_사용한_턴_수를_함께_준다() {
+        long threadId = chatRepository.createThread(userId, "curves", Map.of());
+        chatRepository.appendMessage(threadId, "질문1", "답변", "external_llm", null, null);
+        chatRepository.appendMessage(threadId, "질문2", "생성 실패", "external_error", null, null);
+
+        var thread = chatRepository.findThread(threadId, userId, 100).orElseThrow();
+
+        // 말풍선은 2개지만 소모한 턴은 1개다.
+        assertThat(thread.messages()).hasSize(2);
+        assertThat(thread.turnsUsed()).isEqualTo(1);
+    }
+
     @Test
     void 마지막_checkpoint를_가져온다() {
         long threadId = chatRepository.createThread(userId, "curves", Map.of());
