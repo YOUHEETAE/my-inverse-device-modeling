@@ -127,8 +127,49 @@ class PortfolioRequest(BaseModel):
     sessions: list[dict[str, Any]] = Field(default_factory=list)
 
 
+class CurveData(BaseModel):
+    kind: str
+    grid: list[float]
+    fixed_biases: list[float]
+    currents: list[list[float]]
+
+
+class ConditionRunView(BaseModel):
+    """한 조건의 I-V 곡선.
+
+    Field Map은 담지 않는다. 조건이 곧 소자 파라미터(L/T/B/SD/LDD)라
+    화면이 기존 /fields/predict와 /fields/display를 그대로 부르면 되고,
+    같은 입력이면 같은 결과가 나온다. 여기에 실으면 응답이 3 MB를 넘는데,
+    그중 대부분은 화면이 어느 표시를 고를지도 모르는 상태의 원자료다.
+    """
+
+    label: str
+    # 그대로 /fields/predict에 넘길 수 있는 값
+    conditions: dict[str, float]
+    idvd: CurveData
+    idvg: CurveData
+
+
+class ExperimentResult(BaseModel):
+    """화면에 그릴 실행 결과.
+
+    세션에 담지 않는다. 곡선과 Field Map을 다 넣으면 세션이 수백 KB가 되는데,
+    걸음마다 자바와 Python 사이를 왕복하는 구조라 매 단계가 무거워진다.
+    데스크톱 앱도 이 결과를 메모리에만 두고, 저장된 세션을 다시 열면
+    "그래프 다시 생성"으로 다시 만든다 (panel.py의 _build_curve_view).
+    """
+
+    # 표시 순서대로. 2x2나 후보군 비교면 baseline/comparison 앞에
+    # reference 조건들이 붙는다.
+    runs: list[ConditionRunView]
+
+
 class SessionResponse(BaseModel):
     session: dict[str, Any]
+
+
+class ExperimentResponse(SessionResponse):
+    result: ExperimentResult
 
 
 class FollowupResponsePayload(SessionResponse):
@@ -318,8 +359,45 @@ def submit_predictions(request: AnswerRequest) -> SessionResponse:
 
 # 모델 추론이 도는 단계라 느리다. 예측 제출과 나눠둔 덕분에 여기서 실패해도
 # 학습자의 답변은 이미 저장되어 있고, 같은 세션으로 다시 부르면 된다.
+def _curve(value) -> CurveData:
+    return CurveData(
+        kind=value.kind,
+        grid=value.grid.tolist(),
+        fixed_biases=value.fixed_biases.tolist(),
+        currents=value.currents.tolist(),
+    )
+
+
+def _runs(result) -> ExperimentResult:
+    # 데스크톱과 같은 순서 (LearningExperimentResult.display_runs):
+    # reference들 뒤에 baseline, comparison.
+    return ExperimentResult(
+        runs=[
+            ConditionRunView(
+                label=run.label,
+                conditions=dict(run.conditions),
+                idvd=_curve(run.idvd),
+                idvg=_curve(run.idvg),
+            )
+            for run in result.display_runs
+        ]
+    )
+
+
+# 저장된 세션을 다시 열었을 때 그래프만 되살린다. 세션 상태는 건드리지
+# 않는다 — 데스크톱의 "그래프 다시 생성"과 같다
+# (panel.py의 _start_simulation(use_session_transition=False)).
+@router.post("/case-study/sessions/regenerate")
+def regenerate_experiment(request: SessionRequest) -> ExperimentResult:
+    session = _load_session(request.session)
+    try:
+        return _runs(learning_runner.execute(_session_topic(session)))
+    except Exception as error:  # noqa: BLE001
+        raise HTTPException(status_code=502, detail="learning_experiment_failed") from error
+
+
 @router.post("/case-study/sessions/experiment")
-def run_experiment(request: SessionRequest) -> SessionResponse:
+def run_experiment(request: SessionRequest) -> ExperimentResponse:
     session = _load_session(request.session)
     topic = _session_topic(session)
     try:
@@ -334,7 +412,7 @@ def run_experiment(request: SessionRequest) -> SessionResponse:
         raise HTTPException(status_code=409, detail=str(error)) from error
     except Exception as error:  # noqa: BLE001 - 실행 실패를 학습자에게 알려야 한다
         raise HTTPException(status_code=502, detail="learning_experiment_failed") from error
-    return SessionResponse(session=session.to_dict())
+    return ExperimentResponse(session=session.to_dict(), result=_runs(result))
 
 
 @router.post("/case-study/sessions/observations")
