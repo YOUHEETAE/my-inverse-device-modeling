@@ -193,6 +193,10 @@ export function useCaseSession(sessionId: string) {
         setPage("understanding");
       }),
 
+    /** 이름은 저장된 값만 바꾸는 일이라 서버를 다시 부르지 않고 반영한다. */
+    rename: (name: string) =>
+      setSession((current) => (current ? { ...current, display_name: name } : current)),
+
     recover: () =>
       run(() => recoverSession(sessionId), (next) => {
         setSession(next);

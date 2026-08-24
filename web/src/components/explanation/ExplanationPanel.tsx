@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import type { ExplanationSection } from "./explanationSections";
 
 export type ExplanationStatus =
   | "ready"
@@ -43,7 +44,11 @@ type TabId = (typeof TABS)[number]["id"];
 
 interface ExplanationPanelProps {
   status: ExplanationStatus;
-  content: string;
+  /**
+   * 제목이 붙은 섹션들. 서버가 네 갈래로 나눠 보내므로 그대로 나눠 보여준다 —
+   * 이어 붙이면 어디까지가 관찰이고 어디부터가 비교인지 알 수 없다.
+   */
+  sections: ExplanationSection[];
   provider: "mock" | "external_llm" | null;
   onAnalyze: () => void;
   disabled?: boolean;
@@ -60,7 +65,7 @@ interface ExplanationPanelProps {
 
 export function ExplanationPanel({
   status,
-  content,
+  sections,
   provider,
   onAnalyze,
   disabled,
@@ -126,9 +131,32 @@ export function ExplanationPanel({
           </div>
 
           <div className="relative min-h-32 rounded-md border border-outline-variant bg-surface-container-lowest p-3">
-            <div className="whitespace-pre-wrap text-xs leading-relaxed text-on-surface-variant">
-              {content || (disabled && disabledReason) || "Press Analyze to generate an explanation."}
-            </div>
+            {sections.length > 0 ? (
+              <div className="space-y-3">
+                {sections.map((section) => (
+                  <div key={section.title}>
+                    <h4 className="mb-1 text-[11px] font-bold">{section.title}</h4>
+                    {section.paragraph ? (
+                      <p className="whitespace-pre-wrap text-xs leading-relaxed text-on-surface-variant">
+                        {section.lines.join(" ")}
+                      </p>
+                    ) : (
+                      <ul className="space-y-1">
+                        {section.lines.map((line) => (
+                          <li key={line} className="text-xs leading-relaxed text-on-surface-variant">
+                            · {line}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-xs leading-relaxed text-on-surface-variant">
+                {(disabled && disabledReason) || "Press Analyze to generate an explanation."}
+              </div>
+            )}
             <div className="mt-2 flex items-center gap-1.5 border-t border-outline-variant pt-2">
               <span
                 className={cn(
@@ -151,8 +179,8 @@ export function ExplanationPanel({
               variant="outline"
               size="sm"
               className="gap-1.5 border-outline-variant text-xs text-on-surface-variant"
-              onClick={() => navigator.clipboard.writeText(content)}
-              disabled={!content}
+              onClick={() => navigator.clipboard.writeText(plainText(sections))}
+              disabled={sections.length === 0}
             >
               <Copy className="h-3.5 w-3.5" />
               Copy Analysis
@@ -193,4 +221,15 @@ export function ExplanationPanel({
       </Dialog>
     </div>
   );
+}
+
+// 복사할 때는 제목까지 함께 담는다 — 붙여넣은 쪽에서도 어느 갈래의
+// 설명인지 남아야 한다.
+function plainText(sections: ExplanationSection[]): string {
+  return sections
+    .map((section) => {
+      const body = section.lines.join(section.paragraph ? " " : "\n");
+      return `${section.title}\n${body}`;
+    })
+    .join("\n\n");
 }

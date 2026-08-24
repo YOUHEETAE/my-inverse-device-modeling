@@ -97,6 +97,7 @@ export default function CaseListPage({ onOpenSession }: CaseListPageProps) {
             onOpen={(sessionId, topicId) =>
               onOpenSession(sessionId, topics.findIndex((item) => item.topic_id === topicId) + 1)
             }
+            onDeleted={loadProgress}
           />
         ) : progressFailed ? (
           <ProgressUnavailable message={error} onRetry={loadProgress} />

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ExplanationPanel, type ExplanationStatus } from "@/components/explanation/ExplanationPanel";
+import { toSections, type ExplanationSection } from "@/components/explanation/explanationSections";
 import { ChatThread } from "../chat/ChatThread";
 import { askCurveChat } from "../chat/api";
 import { useChat } from "../chat/useChat";
@@ -79,7 +80,7 @@ export default function CurvesPage() {
 
   const { curveCombined: combined, setCurveCombined: setCombined } = useViewStore();
   const [explanationStatus, setExplanationStatus] = useState<ExplanationStatus>("ready");
-  const [explanationContent, setExplanationContent] = useState("");
+  const [sections, setSections] = useState<ExplanationSection[]>([]);
   const [provider, setProvider] = useState<"mock" | "external_llm" | null>(null);
 
   const visibleCurves = curves.filter((c) => c.visible);
@@ -121,9 +122,7 @@ export default function CurvesPage() {
     setExplanationStatus("analyzing");
     try {
       const result = await explainCurve(toCurveConfigs(visibleCurves));
-      setExplanationContent(
-        [...result.descriptions, ...result.comparisons, ...result.tradeoffs, ...result.cautions].join("\n"),
-      );
+      setSections(toSections(result));
       setProvider(result.provider as "mock" | "external_llm");
       setExplanationStatus("complete")
     } catch {
@@ -164,7 +163,7 @@ export default function CurvesPage() {
         <div className="rounded-md border border-outline-variant bg-surface-container-low p-3">
           <ExplanationPanel
             status={explanationStatus}
-            content={explanationContent}
+            sections={sections}
             provider={provider}
             onAnalyze={analyze}
             disabled={visibleCurves.length === 0}

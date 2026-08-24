@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { QuestionCard, missingAnswer, EMPTY_ANSWER, type Answer } from "./components/QuestionCard";
 import { ResultsView } from "./components/ResultsView";
+import { SessionName } from "./components/SessionName";
 import { SummaryPage } from "./components/SummaryPage";
 import { UnderstandingPage } from "./components/UnderstandingPage";
 import { isUnlocked, stepOf, useCaseSession } from "./useCaseSession";
@@ -51,6 +52,13 @@ export default function CaseSessionPage({ sessionId, caseNumber, onBack }: CaseS
           Case {String(caseNumber).padStart(2, "0")}
         </span>
         <h1 className="min-w-0 truncate text-xs font-bold">{topic.title}</h1>
+        <span className="text-on-surface-variant">·</span>
+        <SessionName
+          sessionId={sessionId}
+          name={String(session.display_name)}
+          disabled={busy}
+          onRenamed={state.rename}
+        />
         <div className="ml-auto flex items-center gap-2">
           {busy && (
             <Loader2 className="h-3.5 w-3.5 animate-spin text-on-surface-variant motion-reduce:animate-none" />

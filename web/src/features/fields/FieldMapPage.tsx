@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ExplanationPanel, type ExplanationStatus } from "@/components/explanation/ExplanationPanel";
+import { toSections, type ExplanationSection } from "@/components/explanation/explanationSections";
 import { ChatThread } from "../chat/ChatThread";
 import { askFieldChat } from "../chat/api";
 import { useChat } from "../chat/useChat";
@@ -107,7 +108,7 @@ export default function FieldMapPage() {
   const [compareData, setCompareData] = useState<FieldCompareResponse | null>(null);
 
   const [explanationStatus, setExplanationStatus] = useState<ExplanationStatus>("ready");
-  const [explanationContent, setExplanationContent] = useState("");
+  const [sections, setSections] = useState<ExplanationSection[]>([]);
   const [provider, setProvider] = useState<"mock" | "external_llm" | null>(null);
 
   const visibleDevices = deviceEntries.filter((d) => d.visible);
@@ -230,9 +231,7 @@ export default function FieldMapPage() {
     setExplanationStatus("analyzing");
     try {
       const result = await explainFields(toFieldConfigs(visibleDevices), display, scaleMode, rangeMode);
-      setExplanationContent(
-        [...result.descriptions, ...result.comparisons, ...result.tradeoffs, ...result.cautions].join("\n"),
-      );
+      setSections(toSections(result));
       setProvider(result.provider as "mock" | "external_llm");
       setExplanationStatus("complete");
     } catch {
@@ -303,7 +302,7 @@ export default function FieldMapPage() {
         <div className="rounded-md border border-outline-variant bg-surface-container-low p-3">
           <ExplanationPanel
             status={explanationStatus}
-            content={explanationContent}
+            sections={sections}
             provider={provider}
             onAnalyze={analyze}
             disabled={explanationDisabled}

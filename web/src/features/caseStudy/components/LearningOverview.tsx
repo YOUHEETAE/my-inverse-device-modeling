@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { ChevronDown, Play } from "lucide-react";
+import { ChevronDown, Play, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { formatTimestamp } from "./CaseCard";
+import { deleteSession } from "../api";
 import type { CaseProgress, LearningPortfolio, SessionSummary, TopicSummary } from "../types";
 
 // 데스크톱 앱의 단계 이름 (panel.py의 _cover_step_label).
@@ -26,9 +27,17 @@ interface LearningOverviewProps {
   sessions: SessionSummary[];
   topics: TopicSummary[];
   onOpen: (sessionId: string, topicId: string) => void;
+  /** 기록을 지우면 진행 상황도 다시 계산해야 한다. */
+  onDeleted: () => void;
 }
 
-export function LearningOverview({ portfolio, sessions, topics, onOpen }: LearningOverviewProps) {
+export function LearningOverview({
+  portfolio,
+  sessions,
+  topics,
+  onOpen,
+  onDeleted,
+}: LearningOverviewProps) {
   const [showRecords, setShowRecords] = useState(false);
 
   const recent = mostRecent(portfolio.cases);
@@ -121,6 +130,7 @@ export function LearningOverview({ portfolio, sessions, topics, onOpen }: Learni
                     >
                       {session.completed ? "결과 보기" : "이어서 하기"}
                     </Button>
+                    <DeleteRecord session={session} onDeleted={onDeleted} />
                   </li>
                 ))}
               </ul>
@@ -129,6 +139,47 @@ export function LearningOverview({ portfolio, sessions, topics, onOpen }: Learni
         </>
       )}
     </section>
+  );
+}
+
+// 지운 기록은 되돌릴 수 없으므로 한 번 더 묻는다. 확인은 같은 버튼에서
+// 받는다 — 목록 한 줄에 대화상자를 띄우면 어느 줄이었는지 흐려진다.
+function DeleteRecord({
+  session,
+  onDeleted,
+}: {
+  session: SessionSummary;
+  onDeleted: () => void;
+}) {
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  async function remove() {
+    setBusy(true);
+    try {
+      await deleteSession(session.session_id);
+      onDeleted();
+    } finally {
+      setBusy(false);
+      setConfirming(false);
+    }
+  }
+
+  return (
+    <Button
+      size="sm"
+      variant="ghost"
+      className={cn(
+        "h-6 shrink-0 px-2 text-[10px]",
+        confirming ? "text-destructive" : "text-on-surface-variant",
+      )}
+      disabled={busy}
+      onBlur={() => setConfirming(false)}
+      onClick={() => (confirming ? remove() : setConfirming(true))}
+    >
+      <Trash2 className="h-3 w-3" />
+      {confirming && <span className="ml-1">삭제할까요?</span>}
+    </Button>
   );
 }
 
