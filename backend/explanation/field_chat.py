@@ -25,6 +25,7 @@ from .comparison_focus import (
     validate_focused_claim_text,
 )
 from .field_renderer import render_field_explanation
+from .field_templates import FIELD_COMMON_TEMPLATES
 from .cross_domain_audit import build_field_iv_audit, validate_field_iv_audit
 from .curve_analyzer import build_curve_payload
 from .iv_chat import IVChatService
@@ -133,6 +134,17 @@ class FieldChatResponse:
     diagnostic: dict[str, Any] = field(default_factory=dict)
     pipeline_stage: str | None = None
     intent_checkpoint: dict[str, Any] = field(default_factory=dict)
+
+
+
+def _with_model_caution(answer: str, intent: FieldQuestionIntent) -> str:
+    """Same rule as iv_chat._with_model_caution — see the note there."""
+    if not intent.needs_current_result:
+        return answer
+    caution = FIELD_COMMON_TEMPLATES["caution.model"]
+    if caution.rstrip(".") in answer:
+        return answer
+    return f"{answer}\n\n{caution}"
 
 
 def validate_field_intent(
@@ -938,6 +950,7 @@ class FieldChatService(IVChatService):
         response_diagnostic["comparison_focus"] = focus.to_dict()
         return replace(
             response,
+            answer=_with_model_caution(response.answer, intent),
             diagnostic={
                 **response_diagnostic,
                 "provider_calls": tuple(provider_calls),

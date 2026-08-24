@@ -195,3 +195,37 @@ def test_iv_intent_rate_limit_waits_for_full_token_reset():
     assert result.source == "external_error"
     assert result.diagnostic["recommended_retry_after_seconds"] == 67
     assert not result.intent_checkpoint
+
+
+def test_iv_chat_answer_carries_model_limitation_caution():
+    """The analysis path appends this caution in code, not via the prompt
+    (iv_renderer.py), so it is always present. A free-form answer that leans
+    on predicted numbers is held to the same standard.
+    """
+    result = IVChatService(
+        QueueProvider(intent(), answer())
+    ).answer(snapshot(), "채널이 짧아질 때 DIBL이 왜 증가해?")
+    assert result.answer.endswith(
+        "이 결과는 학습 모델의 prediction이며 실제 측정 또는 TCAD 검증을 대체하지 않습니다."
+    )
+
+
+def test_iv_chat_definition_answer_has_no_model_caution():
+    """A definition says nothing about predicted numbers, so the caution would
+    be noise — and noise is how a caveat stops being read.
+    """
+    define = intent(
+        intent="define_extraction",
+        needs_current_result=False,
+        answer_structure="definition_and_extraction",
+        requested_metrics=["ion"],
+        requested_mechanisms=[],
+    )
+    body = answer()
+    body["answer"] = (
+        "Ion은 지정된 on-state bias 조건에서 측정한 drain 전류를 채널 폭으로 "
+        "나눈 값으로 정의하며, 구동 능력을 나타내는 지표로 씁니다."
+    )
+    body["used_evidence_ids"] = []
+    result = IVChatService(QueueProvider(define, body)).answer(snapshot(), "Ion이 뭐야?")
+    assert "TCAD 검증을 대체하지 않습니다" not in result.answer

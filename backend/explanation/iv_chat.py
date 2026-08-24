@@ -18,6 +18,7 @@ from tcad.data_extraction.parameter_extraction_core import (
 )
 
 from .curve_analyzer import build_curve_payload
+from .iv_templates import IV_TEMPLATES
 from .comparison_focus import (
     ComparisonFocus,
     compact_context_comparisons,
@@ -163,6 +164,26 @@ class IVChatResponse:
     diagnostic: dict[str, Any] = field(default_factory=dict)
     pipeline_stage: str | None = None
     intent_checkpoint: dict[str, Any] = field(default_factory=dict)
+
+
+
+def _with_model_caution(answer: str, intent: IVQuestionIntent) -> str:
+    """Append the model-limitation caution when the answer leans on predicted
+    results.
+
+    The analysis path adds this in code rather than asking the provider for it
+    (iv_renderer.py, ``policy["include_model_limitation"]``), so it is always
+    present. Free-form answers are held to the same standard: a caveat the
+    model may or may not remember to write is not a caveat. Answers that do
+    not touch the current results — a definition, an out-of-scope reply — say
+    nothing about predicted numbers and get no caution.
+    """
+    if not intent.needs_current_result:
+        return answer
+    caution = IV_TEMPLATES["caution.model"]
+    if caution.rstrip(".") in answer:
+        return answer
+    return f"{answer}\n\n{caution}"
 
 
 def _canonical_metrics(values: Any) -> tuple[str, ...]:
@@ -970,6 +991,7 @@ class IVChatService:
         response_diagnostic["comparison_focus"] = focus.to_dict()
         return replace(
             response,
+            answer=_with_model_caution(response.answer, intent),
             diagnostic={
                 **response_diagnostic,
                 "provider_calls": tuple(provider_calls),

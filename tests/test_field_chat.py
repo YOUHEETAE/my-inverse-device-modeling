@@ -376,3 +376,33 @@ def test_field_answer_rate_limit_keeps_intent_checkpoint() -> None:
     )
     assert second.source == "external_llm"
     assert len(provider.calls) == 3
+
+
+def test_field_chat_answer_carries_model_limitation_caution() -> None:
+    """Same rule as the I-V side: the caution is appended in code so it cannot
+    be dropped, and the Field wording is its own (field_templates.py).
+    """
+    result = FieldChatService(
+        QueueProvider(intent(), answer())
+    ).answer(snapshot(), "채널 표면의 전계 집중은 무슨 의미야?")
+    assert result.answer.endswith(
+        "Field 결과는 학습 모델의 prediction이며 실제 측정 또는 TCAD 검증을 대체하지 않습니다."
+    )
+
+
+def test_field_chat_definition_answer_has_no_model_caution() -> None:
+    define = intent(
+        intent="define_display",
+        needs_current_result=False,
+        answer_structure="definition",
+        requested_concepts=[],
+        requested_regions=[],
+        requested_iv_metrics=[],
+    )
+    body = answer(
+        "Potential display는 각 지점의 전위를 색으로 나타낸 것으로, 색이 가파르게 "
+        "변하는 구간일수록 그 방향의 전계가 크다는 뜻으로 읽습니다."
+    )
+    body["used_evidence_ids"] = []
+    result = FieldChatService(QueueProvider(define, body)).answer(snapshot(), "Potential이 뭐야?")
+    assert "TCAD 검증을 대체하지 않습니다" not in result.answer
