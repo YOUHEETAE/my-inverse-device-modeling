@@ -10,7 +10,6 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { THEORY_CHAPTERS } from "@/features/theory/theoryChapters";
-import { CASE_STUDY_SECTIONS } from "@/features/caseStudy/caseStudySections";
 
 interface NavItem {
   label: string;
@@ -27,7 +26,9 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Home", path: "/", icon: Activity },
   { label: "Guide", path: "/guide", icon: BookOpen },
   { label: "Theory", path: "/theory", icon: Sigma, subItems: THEORY_CHAPTERS },
-  { label: "Case Study", path: "/case-study", icon: FlaskConical, subItems: CASE_STUDY_SECTIONS },
+  // 하위 목록을 두지 않는다 — 케이스가 8개고 진행 상황과 잠금 상태까지
+  // 보여줘야 해서 목록 화면이 따로 있다. 데스크톱도 탭 하나뿐이다.
+  { label: "Case Study", path: "/case-study", icon: FlaskConical },
   { label: "I-V Curve", path: "/curves", icon: BarChart3 },
   { label: "Field Map", path: "/fields", icon: Layers },
 ];
