@@ -19,7 +19,7 @@ interface CaseListPageProps {
  * 필요하다 — 둘러보러 온 사람을 로그인 벽으로 막지 않기 위해서다.
  */
 export default function CaseListPage({ onOpenSession }: CaseListPageProps) {
-  const { me } = useAuth();
+  const { me, login } = useAuth();
   const [topics, setTopics] = useState<TopicSummary[]>([]);
   const [portfolio, setPortfolio] = useState<LearningPortfolio | null>(null);
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
@@ -57,6 +57,13 @@ export default function CaseListPage({ onOpenSession }: CaseListPageProps) {
 
   async function start(topicId: string, caseNumber: number) {
     if (starting) return;
+    // 세션을 만드는 순간부터 기록이 남으므로 로그인이 필요하다. 눌러보고
+    // 401을 받아 오류 문구를 읽게 하는 대신, 필요한 것을 바로 준다 —
+    // 위의 안내가 이미 같은 말을 하고 있으니 놀랄 일도 아니다.
+    if (!me.authenticated) {
+      login();
+      return;
+    }
     setStarting(true);
     try {
       const session = await createSession(topicId);

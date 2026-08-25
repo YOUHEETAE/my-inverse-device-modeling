@@ -10,6 +10,7 @@ import com.semiscopeai.service.auth.CustomOAuth2UserService;
 import com.semiscopeai.service.chat.dto.ChatAnswer;
 import com.semiscopeai.service.chat.dto.ChatReply;
 import com.semiscopeai.service.chat.dto.ChatThreadSummary;
+import com.semiscopeai.service.internal.DailyQuotaRepository;
 import com.semiscopeai.service.internal.RateLimiterService;
 import com.semiscopeai.service.internal.SecurityConfig;
 import java.time.Instant;
@@ -67,6 +68,13 @@ class ChatControllerTest {
     @MockitoBean
     private RateLimiterService rateLimiterService;
 
+    // /chat/** 는 하루 한도를 세는 경로라 이 슬라이스에서도 인터셉터가 실제로
+    // 돈다. 한도 자체는 DailyQuotaRepositoryTest에서 검증하므로 여기서는
+    // 항상 통과시킨다 — 스텁하지 않으면 목의 기본값 false가 돌아와 모든
+    // 테스트가 429가 된다.
+    @MockitoBean
+    private DailyQuotaRepository dailyQuotaRepository;
+
     // 로그인 시점에 CustomOAuth2UserService가 세션에 담아두는 값
     private RequestPostProcessor loggedIn() {
         return oauth2Login().attributes(attrs -> attrs.put("userId", 42L));
@@ -81,6 +89,7 @@ class ChatControllerTest {
     @BeforeEach
     void allowRateLimit() {
         Mockito.when(rateLimiterService.isAllowed(Mockito.anyString(), Mockito.any())).thenReturn(true);
+        Mockito.when(dailyQuotaRepository.reserve(Mockito.anyLong(), Mockito.anyInt())).thenReturn(true);
     }
 
     // 비로그인은 구글 로그인 페이지로 리다이렉트되면 안 된다. 프론트가 fetch로

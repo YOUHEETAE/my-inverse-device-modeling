@@ -80,6 +80,7 @@ export default function CurvesPage() {
 
   const { curveCombined: combined, setCurveCombined: setCombined } = useViewStore();
   const [explanationStatus, setExplanationStatus] = useState<ExplanationStatus>("ready");
+  const [explainError, setExplainError] = useState<string | null>(null);
   const [sections, setSections] = useState<ExplanationSection[]>([]);
   const [provider, setProvider] = useState<"mock" | "external_llm" | null>(null);
 
@@ -120,12 +121,16 @@ export default function CurvesPage() {
   async function analyze() {
     if (visibleCurves.length === 0) return;
     setExplanationStatus("analyzing");
+    setExplainError(null);
     try {
       const result = await explainCurve(toCurveConfigs(visibleCurves));
       setSections(toSections(result));
       setProvider(result.provider as "mock" | "external_llm");
       setExplanationStatus("complete")
-    } catch {
+    } catch (err) {
+      // 하루 한도(429)처럼 사용자가 대응할 수 있는 실패가 있으므로 서버가
+      // 준 문장을 버리지 않는다.
+      setExplainError(getErrorMessage(err));
       setExplanationStatus("failed");
     }
   }
@@ -167,7 +172,10 @@ export default function CurvesPage() {
             provider={provider}
             onAnalyze={analyze}
             disabled={visibleCurves.length === 0}
-            disabledReason="Check at least one curve to analyze."
+            disabledReason="분석할 곡선을 하나 이상 선택해 주세요."
+            error={explainError}
+            authenticated={me.authenticated}
+            onLogin={login}
             fetchPromptText={() =>
               visibleCurves.length > 0
                 ? previewCurvePrompt(toCurveConfigs(visibleCurves)).then((r) => r.prompt)
@@ -189,7 +197,7 @@ export default function CurvesPage() {
                 onRestore={chat.restore}
                 onLoadFrozenConfig={loadFrozenConfig}
                 disabled={visibleCurves.length === 0}
-                disabledReason="Check at least one curve to ask about."
+                disabledReason="질문할 곡선을 하나 이상 선택해 주세요."
                 onSend={chat.send}
                 onStartNew={chat.startNew}
               />

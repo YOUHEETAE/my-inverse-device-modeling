@@ -15,9 +15,17 @@ export interface ChatError {
 
 export function toChatError(err: unknown): ChatError {
   if (axios.isAxiosError(err)) {
+    const status = err.response?.status ?? null;
     return {
-      status: err.response?.status ?? null,
-      message: err.response?.data?.detail ?? err.message,
+      status,
+      // 401은 본문 없이 상태 코드만 온다(SecurityConfig의
+      // HttpStatusEntryPoint). detail이 없을 때 err.message로 떨어지면
+      // "Request failed with status code 401"이 그대로 보인다.
+      message:
+        err.response?.data?.detail ??
+        (status === 401
+          ? "로그인이 필요합니다. 로그인 후 다시 시도해 주세요."
+          : "질문을 보내지 못했습니다. 잠시 후 다시 시도해 주세요."),
     };
   }
   return { status: null, message: "질문을 보내지 못했습니다." };

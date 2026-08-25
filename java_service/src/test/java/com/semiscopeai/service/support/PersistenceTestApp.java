@@ -2,6 +2,7 @@ package com.semiscopeai.service.support;
 
 import com.semiscopeai.service.casestudy.LearningRepository;
 import com.semiscopeai.service.chat.ChatRepository;
+import com.semiscopeai.service.internal.DailyQuotaRepository;
 import com.semiscopeai.service.internal.JpaAuditingConfig;
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
@@ -18,7 +19,12 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 // 집어간다.
 @SpringBootConfiguration
 @EnableAutoConfiguration
-@Import({ChatRepository.class, LearningRepository.class, JpaAuditingConfig.class})
+@Import({
+    ChatRepository.class,
+    LearningRepository.class,
+    DailyQuotaRepository.class,
+    JpaAuditingConfig.class
+})
 @EntityScan("com.semiscopeai.service.user")
 @EnableJpaRepositories("com.semiscopeai.service.user")
 public class PersistenceTestApp {

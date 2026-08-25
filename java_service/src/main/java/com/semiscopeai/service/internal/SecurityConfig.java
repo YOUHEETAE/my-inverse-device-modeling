@@ -42,12 +42,21 @@ public class SecurityConfig {
                 // 헤더가 붙는다.
                 .cors(Customizer.withDefaults())
                 .csrf(csrf -> csrf.disable())
-                // 자유질문만 로그인을 요구한다. 질문 한 번에 LLM 비용이 나가는데
-                // 비로그인은 계정 단위로 한도를 걸 수단이 없고, 대화 이력도
-                // 사용자에 묶여 저장되므로 익명이면 매번 단발 질문이 된다.
-                // 나머지 예측·조회 API는 그대로 공개다.
+                // 경계는 하나다 — LLM 비용이 나가거나 기록이 남는 일은
+                // 로그인해야 하고, 나머지는 공개다. 비로그인은 계정 단위로
+                // 한도를 걸 수단이 없어서(DailyQuotaInterceptor) 익명에게
+                // 열어두면 총량을 막을 방법이 없다.
+                //
+                // 소자 조건을 바꾸고 I-V Curve·Field Map을 예측해 비교하는
+                // 것까지는 로그인 없이 그대로 된다. 그건 우리 서버에서 도는
+                // 서로게이트 모델이라 외부 비용이 없다.
                 .authorizeHttpRequests(auth -> auth
+                        // 자유질문. 대화 이력도 사용자에 묶여 저장되므로
+                        // 익명이면 매번 단발 질문이 된다.
                         .requestMatchers("/chat/**").authenticated()
+                        // AI 설명. /explain/**/prompt 는 프롬프트 문자열만
+                        // 만들어 돌려주므로 LLM을 태우지 않아 공개로 둔다.
+                        .requestMatchers("/explain/curves", "/explain/fields").authenticated()
                         // 케이스 목록과 내용은 누구나 볼 수 있다. 기록이 남는
                         // 학습 세션만 로그인을 요구한다.
                         .requestMatchers("/case-study/sessions/**", "/case-study/portfolio").authenticated()

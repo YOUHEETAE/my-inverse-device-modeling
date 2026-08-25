@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { Copy, Eye, Sparkles } from "lucide-react";
+import { Copy, Eye, LogIn, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -19,13 +19,17 @@ export type ExplanationStatus =
   | "failed"
   | "stale";
 
+// 서버가 내려주는 오류·실패 문장이 전부 한국어라(자바의
+// ResponseStatusException, Python의 public_presentation.py) 상태 표시만
+// 영어로 두면 같은 상자 안에서 두 언어가 부딪힌다. 버튼 이름은 짧은
+// 라벨이라 영어로 남긴다.
 const STATUS_LABEL: Record<ExplanationStatus, string> = {
-  ready: "Ready",
-  analyzing: "Analyzing...",
-  cached: "Cached",
-  complete: "Complete",
-  failed: "Failed",
-  stale: "Results changed — press Analyze",
+  ready: "대기 중",
+  analyzing: "분석 중…",
+  cached: "저장된 결과",
+  complete: "완료",
+  failed: "실패",
+  stale: "결과가 바뀌었습니다 — Analyze를 다시 누르세요",
 };
 
 const PROVIDER_LABEL: Record<"mock" | "external_llm", string> = {
@@ -53,12 +57,26 @@ interface ExplanationPanelProps {
   onAnalyze: () => void;
   disabled?: boolean;
   disabledReason?: string;
+  /**
+   * 실패한 이유. 서버가 내려준 문장을 그대로 받는다 — "Failed"만 보여주면
+   * 하루 한도를 다 썼는지, 조건이 잘못됐는지, 모델이 잠깐 죽었는지를
+   * 구분할 수 없다.
+   */
+  error?: string | null;
   fetchPromptText: () => Promise<string>
   /**
+   * 분석도 로그인을 요구한다 — 한 번 누를 때마다 외부 LLM 비용이 나가고,
+   * 비로그인은 계정 단위로 하루 한도를 걸 수단이 없다(서버의
+   * DailyQuotaInterceptor). 조건을 바꿔 예측하고 비교하는 것은 그대로
+   * 열려 있다.
+   */
+  authenticated: boolean;
+  onLogin: () => void;
+  /**
    * 자유질문 탭의 내용. 분석과 한 카드에 두되 탭으로 가르는 이유는, 두
-   * 경로의 보장이 서로 다르기 때문이다 — 분석은 비로그인도 되고 캐시와
-   * fallback이 있지만, 자유질문은 로그인이 필요하고 fallback이 금지되어
-   * 있다. 나란히 쌓으면 카드가 계속 길어지기도 한다.
+   * 경로의 보장이 서로 다르기 때문이다 — 분석에는 캐시와 fallback이 있지만
+   * 자유질문은 fallback이 금지되어 있다. 나란히 쌓으면 카드가 계속
+   * 길어지기도 한다.
    */
   chat?: ReactNode;
 }
@@ -70,7 +88,10 @@ export function ExplanationPanel({
   onAnalyze,
   disabled,
   disabledReason,
+  error,
   fetchPromptText,
+  authenticated,
+  onLogin,
   chat,
 }: ExplanationPanelProps) {
   const [promptOpen, setPromptOpen] = useState(false);
@@ -85,8 +106,9 @@ export function ExplanationPanel({
         </div>
         <div>
           <h3 className="text-xs font-bold uppercase tracking-wide">AI Explanation</h3>
+          {/* 제목은 영어, 설명은 한국어 — Case Study 화면과 같은 규칙이다. */}
           <p className="text-[11px] text-on-surface-variant">
-            Neural inference engine for physical device interpretation.
+            예측 결과에서 뽑은 수치를 근거로 변화의 원인과 trade-off를 설명합니다.
           </p>
         </div>
       </div>
@@ -119,15 +141,29 @@ export function ExplanationPanel({
                 {PROVIDER_LABEL[provider]}
               </span>
             )}
-            <Button
-              size="sm"
-              onClick={onAnalyze}
-              disabled={disabled || status === "analyzing"}
-              className="gap-1.5 bg-primary text-xs font-bold text-primary-foreground hover:bg-primary/90"
-            >
-              <Sparkles className="h-3.5 w-3.5" />
-              Analyze
-            </Button>
+            {authenticated ? (
+              <Button
+                size="sm"
+                onClick={onAnalyze}
+                disabled={disabled || status === "analyzing"}
+                className="gap-1.5 bg-primary text-xs font-bold text-primary-foreground hover:bg-primary/90"
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                Analyze
+              </Button>
+            ) : (
+              // 눌러봐야 401이 돌아오는 버튼을 그대로 두지 않는다 — 무엇이
+              // 필요한지 버튼 자체가 말하게 한다 (자유질문 탭과 같은 방식).
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 border-outline-variant text-xs text-on-surface-variant"
+                onClick={onLogin}
+              >
+                <LogIn className="h-3.5 w-3.5" />
+                Sign in to analyze
+              </Button>
+            )}
           </div>
 
           <div className="relative min-h-32 rounded-md border border-outline-variant bg-surface-container-lowest p-3">
@@ -154,7 +190,10 @@ export function ExplanationPanel({
               </div>
             ) : (
               <div className="text-xs leading-relaxed text-on-surface-variant">
-                {(disabled && disabledReason) || "Press Analyze to generate an explanation."}
+                {(disabled && disabledReason) ||
+                  (authenticated
+                    ? "Analyze를 누르면 이 결과에 대한 설명을 생성합니다."
+                    : "로그인하면 이 결과에 대한 AI 설명을 생성할 수 있습니다. 예측과 비교는 로그인 없이 그대로 사용할 수 있고, 아래 Preview Prompt로 어떤 근거가 모델에 전달되는지 먼저 확인할 수 있습니다.")}
               </div>
             )}
             <div className="mt-2 flex items-center gap-1.5 border-t border-outline-variant pt-2">
@@ -168,11 +207,19 @@ export function ExplanationPanel({
                       : "bg-accent-green",
                 )}
               />
-              <span className="font-mono text-[10px] uppercase tracking-wider text-on-surface-variant">
+              {/* 한국어에는 uppercase가 듣지 않고 자간만 벌어져 읽기 나쁘다.
+                  등폭 글꼴도 한글에서는 폴백이 걸린다. */}
+              <span className="text-[10px] text-on-surface-variant">
                 {disabled && disabledReason ? disabledReason : STATUS_LABEL[status]}
               </span>
             </div>
           </div>
+
+          {/* 지난 분석 결과가 위에 남아 있을 수 있으므로 상자 밖에 따로
+              적는다 — 실패했다는 사실이 옛 결과에 묻히면 안 된다. */}
+          {status === "failed" && error && (
+            <p className="text-[11px] leading-relaxed text-destructive">{error}</p>
+          )}
 
           <div className="flex gap-2">
             <Button
