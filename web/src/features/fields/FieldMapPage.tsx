@@ -185,12 +185,12 @@ export default function FieldMapPage() {
     FIELD_EXPLANATION_EXCLUDED.has(display);
   const explanationDisabledReason =
     visibleDevices.length === 0
-      ? "Check at least one device to analyze."
+      ? "분석할 소자를 하나 이상 선택해 주세요."
       : visibleDevices.length > 2
-        ? "LLM explanation supports at most 2 devices — uncheck some to analyze."
+        ? "AI 설명은 소자 2개까지 비교합니다. 선택을 줄여 주세요."
         : hasIdenticalDevices
-          ? "Selected devices have identical parameters — nothing to compare."
-          : `${display} is not supported by LLM explanation.`;
+          ? "선택한 소자의 조건이 같습니다. 비교할 차이가 없습니다."
+          : `${display}는 AI 설명을 지원하지 않습니다.`;
 
   // 자유질문은 분석보다 조건이 좁다. 근거(evidence)가 두 소자의 비교에서
   // 만들어지는 설계라 소자 하나로는 인용할 근거가 없고, 서버도 400으로
@@ -198,7 +198,7 @@ export default function FieldMapPage() {
   const chatDisabled = explanationDisabled || visibleDevices.length < 2;
   const chatDisabledReason =
     visibleDevices.length < 2 && !explanationDisabled
-      ? "Check two devices to ask about the comparison."
+      ? "비교에 대해 물어보려면 소자 2개를 선택해 주세요."
       : explanationDisabledReason;
 
   const { me, login } = useAuth();

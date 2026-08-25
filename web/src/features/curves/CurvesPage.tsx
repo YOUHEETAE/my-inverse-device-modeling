@@ -172,7 +172,7 @@ export default function CurvesPage() {
             provider={provider}
             onAnalyze={analyze}
             disabled={visibleCurves.length === 0}
-            disabledReason="Check at least one curve to analyze."
+            disabledReason="분석할 곡선을 하나 이상 선택해 주세요."
             error={explainError}
             authenticated={me.authenticated}
             onLogin={login}
@@ -197,7 +197,7 @@ export default function CurvesPage() {
                 onRestore={chat.restore}
                 onLoadFrozenConfig={loadFrozenConfig}
                 disabled={visibleCurves.length === 0}
-                disabledReason="Check at least one curve to ask about."
+                disabledReason="질문할 곡선을 하나 이상 선택해 주세요."
                 onSend={chat.send}
                 onStartNew={chat.startNew}
               />
