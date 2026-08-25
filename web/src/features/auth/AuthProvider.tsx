@@ -67,9 +67,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     startGoogleLogin(location.pathname + location.search);
   }, [location]);
 
+  // 서버 세션을 끊는 것만으로는 화면이 비지 않는다. 자유질문 말풍선,
+  // 진행 중이던 Case Study의 답변과 피드백은 이미 리액트 상태로 그려져
+  // 있어서 로그아웃 뒤에도 그대로 남는다 — 실습실 같은 공용 PC에서는
+  // 다음 사람이 그걸 그대로 읽는다.
+  //
+  // 훅마다 로그아웃을 구독해 각자 비우는 방법도 있지만 하나 빠뜨리기 쉽고,
+  // 상태를 가진 화면이 늘 때마다 같은 실수가 되풀이된다(이 버그가 정확히
+  // 그렇게 생겼다). 통째로 다시 불러오면 어디에 무엇이 남아 있든 사라진다.
   const logout = useCallback(async () => {
     await logoutRequest();
-    setMe(ANONYMOUS);
+    sessionStorage.clear();
+    window.location.assign("/");
   }, []);
 
   return <AuthContext.Provider value={{ me, loading, login, logout }}>{children}</AuthContext.Provider>;
