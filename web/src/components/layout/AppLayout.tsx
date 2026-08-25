@@ -29,8 +29,7 @@ export function AppLayout({ title, breadcrumb, children }: AppLayoutProps) {
             ))}
           </nav>
           {/* 계정은 "어디로 갈까"(사이드바)와 성격이 다른 관심사라 상단 오른쪽에
-              둔다. 사이드바는 Theory/Case Study에서 하위 챕터가 펼쳐져 길이가
-              변하기도 해서 위치가 흔들린다. */}
+              둔다. */}
           <div className="ml-auto flex items-center">
             <AccountMenu />
           </div>

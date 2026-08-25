@@ -1,9 +1,12 @@
 import { useLayoutEffect, useRef, type ReactNode } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
+import { ChevronLeft } from "lucide-react";
 import { ToolPanel } from "@/components/ToolPanel";
 import { Eq } from "@/components/Eq";
+import { cn } from "@/lib/utils";
 import { PNJunctionTool } from "@/features/theory/PNJunctionTool";
 import { MOSCapacitorTool } from "@/features/theory/MOSCapacitorTool";
+import { THEORY_CHAPTERS, type TheoryChapter } from "@/features/theory/theoryChapters";
 
 function P({ children }: { children: ReactNode }) {
   return <p className="leading-[1.8]">{children}</p>;
@@ -1205,19 +1208,75 @@ function OverviewContent() {
   );
 }
 
-const CHAPTER_CONTENT: Record<string, { content: ReactNode; tool?: ReactNode }> = {
-  overview: { content: <OverviewContent /> },
-  chapter1: { content: <Chapter1Content />, tool: <PNJunctionTool /> },
-  chapter2: { content: <Chapter2Content />, tool: <MOSCapacitorTool /> },
-  chapter3: { content: <Chapter3Content /> },
-  chapter4: { content: <Chapter4Content /> },
-  chapter5: { content: <Chapter5Content /> },
+const CHAPTER_CONTENT: Record<string, ReactNode> = {
+  chapter1: <Chapter1Content />,
+  chapter2: <Chapter2Content />,
+  chapter3: <Chapter3Content />,
+  chapter4: <Chapter4Content />,
+  chapter5: <Chapter5Content />,
 };
+
+const CHAPTER_TOOLS: Record<string, ReactNode> = {
+  chapter1: <PNJunctionTool />,
+  chapter2: <MOSCapacitorTool />,
+};
+
+/**
+ * 장 하나를 카드로. Case Study의 케이스 카드와 같은 자리에 같은 것들이
+ * 온다 — 이름, 소개, 그 장을 특징짓는 한 줄. 다만 여기는 진행 상황이나
+ * 잠금이 없어 카드가 한 톤 밝다.
+ */
+function ChapterCard({ chapter, className }: { chapter: TheoryChapter; className?: string }) {
+  return (
+    <Link
+      to={`/theory?section=${chapter.id}`}
+      className={cn(
+        "flex flex-col rounded-md border border-outline-variant bg-surface-container-lowest p-4 transition-colors hover:border-primary/40 hover:bg-surface-container-low",
+        className,
+      )}
+    >
+      <h3 className="text-sm font-bold leading-snug">{chapter.label}</h3>
+      <p className="mt-2 text-xs leading-relaxed text-on-surface-variant">{chapter.summary}</p>
+      {chapter.tool && <p className="mt-2 text-[11px] text-primary">실습 도구 · {chapter.tool}</p>}
+      {/* mt-auto: 소개 길이가 제각각이어도 주제 줄은 카드 아래에 붙는다. */}
+      <p className="mt-auto pt-3 text-[11px] leading-relaxed text-on-surface-variant/80">
+        {chapter.topics.join(" · ")}
+      </p>
+    </Link>
+  );
+}
+
+/**
+ * `/theory`의 첫 화면: 개요와 장 목록.
+ *
+ * 2 / 2 / 1로 놓인다. 5가 홀수라서가 아니라 1·2장은 정상 동작, 3·4장은
+ * 그것이 무너지는 지점과 대응이고, 5장만 물리가 아니라 계산 방법이라
+ * 혼자 넓게 간다.
+ */
+function TheoryLanding() {
+  return (
+    <>
+      <h1 className="mb-6 text-2xl font-bold leading-snug">Theory</h1>
+      <OverviewContent />
+      <div className="mt-8 grid gap-3 sm:grid-cols-2">
+        {THEORY_CHAPTERS.map((chapter, index) => (
+          <ChapterCard
+            key={chapter.id}
+            chapter={chapter}
+            className={cn(index === THEORY_CHAPTERS.length - 1 && "sm:col-span-2")}
+          />
+        ))}
+      </div>
+    </>
+  );
+}
 
 export default function TheoryPage() {
   const [searchParams] = useSearchParams();
-  const activeId = searchParams.get("section") ?? "overview";
-  const active = CHAPTER_CONTENT[activeId] ?? CHAPTER_CONTENT.overview;
+  const activeId = searchParams.get("section");
+  // 모르는 ?section=이면 목록으로 떨어진다 — 예전 ?section=overview 링크도
+  // 여기로 온다. 개요는 이제 목록 화면의 머리글이라 따로 갈 곳이 없다.
+  const chapter = THEORY_CHAPTERS.find((item) => item.id === activeId);
 
   // This page's scroll container never unmounts when the chapter changes
   // (only the ?section= param does, so the tool state persistence above
@@ -1233,20 +1292,33 @@ export default function TheoryPage() {
   return (
     <div ref={scrollRef} className="h-full overflow-y-auto">
       <div className="mx-auto max-w-3xl px-6 py-8">
-        <h1 className="mb-6 text-2xl font-bold leading-snug">Theory</h1>
-        {active.content}
+        {chapter ? (
+          <>
+            {/* 사이드바가 더 이상 장을 나열하지 않으니 목록으로 돌아갈 길을
+                본문이 갖고 있어야 한다. */}
+            <Link
+              to="/theory"
+              className="inline-flex items-center gap-1 text-xs text-on-surface-variant transition-colors hover:text-foreground"
+            >
+              <ChevronLeft className="h-3.5 w-3.5" />
+              Theory
+            </Link>
+            <h1 className="mb-6 mt-2 text-2xl font-bold leading-snug">{chapter.label}</h1>
+            {CHAPTER_CONTENT[chapter.id]}
+          </>
+        ) : (
+          <TheoryLanding />
+        )}
       </div>
       {/* Every chapter's panel stays mounted (not just the active chapter's)
           so a tool's selections/results survive switching chapters and
           coming back — see ToolPanel's own comment for how `active` gates
           visibility without unmounting. */}
-      {Object.entries(CHAPTER_CONTENT).map(([id, chapter]) =>
-        chapter.tool ? (
-          <ToolPanel key={id} active={id === activeId}>
-            {chapter.tool}
-          </ToolPanel>
-        ) : null,
-      )}
+      {Object.entries(CHAPTER_TOOLS).map(([id, tool]) => (
+        <ToolPanel key={id} active={id === activeId}>
+          {tool}
+        </ToolPanel>
+      ))}
     </div>
   );
 }
