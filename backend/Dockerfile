@@ -54,5 +54,19 @@ COPY backend backend
 # load_dotenv() call is a no-op if no .env file is present, which is fine
 # here since real env vars are already set before Python starts.
 
+# Don't run as root: this process parses request bodies and runs model
+# inference, so a bug here shouldn't hand over the container's root account
+# as well. Files stay root-owned and are only read — nothing in this app
+# writes under /app.
+#
+# HOME has to be set explicitly. Switching USER doesn't change it, so it
+# would stay /root, which this user can't write — and libraries that keep a
+# cache there fail on import rather than falling back. matplotlib comes in
+# transitively through ai/requirements.txt and does exactly that.
+RUN useradd --create-home --uid 10001 app
+ENV HOME=/home/app \
+    MPLCONFIGDIR=/home/app/.cache/matplotlib
+USER app
+
 EXPOSE 8000
 CMD ["uvicorn", "app.main:app", "--app-dir", "backend", "--host", "0.0.0.0", "--port", "8000"]
