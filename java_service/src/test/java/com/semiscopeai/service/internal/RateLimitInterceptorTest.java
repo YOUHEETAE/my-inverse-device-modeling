@@ -58,6 +58,12 @@ class RateLimitInterceptorTest {
     @MockitoBean
     private RateLimiterService rateLimiterService;
 
+    // 같은 설정 클래스가 등록하는 DailyQuotaInterceptor가 생성자로 요구한다
+    // (@WebMvcTest는 @Repository를 빈에서 제외한다). /health는 하루 한도를
+    // 세는 경로가 아니라 실제로 호출되지는 않는다.
+    @MockitoBean
+    private DailyQuotaRepository dailyQuotaRepository;
+
     @Test
     void 허용되면_컨트롤러까지_정상적으로_도달한다() throws Exception {
         when(rateLimiterService.isAllowed(anyString(), any())).thenReturn(true);

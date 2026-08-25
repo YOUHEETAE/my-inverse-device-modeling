@@ -5,6 +5,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.semiscopeai.service.internal.DailyQuotaRepository;
 import com.semiscopeai.service.internal.RateLimiterService;
 import com.semiscopeai.service.internal.SecurityConfig;
 import org.junit.jupiter.api.Test;
@@ -49,6 +50,11 @@ class AuthControllerTest {
 
     @MockitoBean
     private RateLimiterService rateLimiterService;
+
+    // 같은 설정 클래스가 등록하는 DailyQuotaInterceptor가 생성자로 요구한다.
+    // /auth/me는 하루 한도를 세는 경로가 아니라 실제로 호출되지는 않는다.
+    @MockitoBean
+    private DailyQuotaRepository dailyQuotaRepository;
 
     // 모든 경로가 permitAll이라 비로그인 요청도 컨트롤러까지 도달한다.
     // 이때 401이 아니라 200을 주는 것이 의도된 동작 — 프론트가 매 페이지

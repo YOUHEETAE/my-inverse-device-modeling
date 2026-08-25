@@ -108,6 +108,7 @@ export default function FieldMapPage() {
   const [compareData, setCompareData] = useState<FieldCompareResponse | null>(null);
 
   const [explanationStatus, setExplanationStatus] = useState<ExplanationStatus>("ready");
+  const [explainError, setExplainError] = useState<string | null>(null);
   const [sections, setSections] = useState<ExplanationSection[]>([]);
   const [provider, setProvider] = useState<"mock" | "external_llm" | null>(null);
 
@@ -229,12 +230,16 @@ export default function FieldMapPage() {
   async function analyze() {
     if (explanationDisabled) return;
     setExplanationStatus("analyzing");
+    setExplainError(null);
     try {
       const result = await explainFields(toFieldConfigs(visibleDevices), display, scaleMode, rangeMode);
       setSections(toSections(result));
       setProvider(result.provider as "mock" | "external_llm");
       setExplanationStatus("complete");
-    } catch {
+    } catch (err) {
+      // 하루 한도(429)처럼 사용자가 대응할 수 있는 실패가 있으므로 서버가
+      // 준 문장을 버리지 않는다.
+      setExplainError(getErrorMessage(err));
       setExplanationStatus("failed");
     }
   }
@@ -307,6 +312,9 @@ export default function FieldMapPage() {
             onAnalyze={analyze}
             disabled={explanationDisabled}
             disabledReason={explanationDisabledReason}
+            error={explainError}
+            authenticated={me.authenticated}
+            onLogin={login}
             fetchPromptText={() =>
               !explanationDisabled
                 ? previewFieldsPrompt(toFieldConfigs(visibleDevices), display, scaleMode, rangeMode).then((r) => r.prompt)

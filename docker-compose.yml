@@ -70,6 +70,10 @@ services:
       # 쓰면 미설정일 때 빈 문자열이 넘어가 스프링의 기본값을 덮어버리고,
       # redirectUri가 비었다며 기동에 실패한다.
       - OAUTH_REDIRECT_URI
+      # 계정 하나가 하루에 태울 수 있는 LLM 호출 수. 이름만 적었으므로
+      # .env에 있을 때만 전달되고, 없으면 application.properties의 기본값
+      # (40)이 쓰인다. 요금제를 바꾸면 재빌드 없이 여기서 조절한다.
+      - DAILY_LLM_LIMIT
     # Same loopback-only rationale as backend above: Caddy reaches this over
     # the internal network, the published port is for host-side debugging.
     ports:
