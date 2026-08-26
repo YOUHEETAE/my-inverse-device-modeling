@@ -13,6 +13,15 @@ services:
     # whatever the EC2 security group happens to allow.
     ports:
       - "127.0.0.1:8000:8000"
+    # 이미지에 curl이 없다 — 파이썬으로 두드린다. import 시점에 예측 모델을
+    # 올리므로 포트가 열려도 한동안은 응답하지 못한다. start_period 안의
+    # 실패는 재시도로 치지 않으므로, 느린 첫 기동을 실패로 세지 않는다.
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 60s
 
   db:
     image: postgres:17-alpine
@@ -78,9 +87,19 @@ services:
     # the internal network, the published port is for host-side debugging.
     ports:
       - "127.0.0.1:8080:8080"
+    # /auth/me는 자바 안에서 끝나는 경로다(비로그인이면 anonymous를 돌려준다).
+    # 파이썬을 거치는 경로로 잡으면 backend가 잠깐 흔들릴 때 java_service까지
+    # unhealthy가 되고, 그러면 Caddy가 정적 화면조차 못 내린다.
+    # alpine의 wget이라 --spider로 본문 없이 상태만 본다.
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8080/auth/me"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 90s
     depends_on:
       backend:
-        condition: service_started
+        condition: service_healthy
       db:
         condition: service_healthy
 
@@ -111,8 +130,14 @@ services:
       # requests for the same domain get rate-limited.
       - caddy_data:/data
       - caddy_config:/config
+    # started가 아니라 healthy를 기다린다. 스프링은 뜨는 데 30초쯤 걸리는데,
+    # 그 사이에 Caddy가 먼저 열리면 화면은 나오지만 자바를 거치는 요청만
+    # 실패한다 — 케이스 목록은 보이는데 "진행 상황을 불러오지 못했습니다"가
+    # 뜨는 모양이 이것이었다. 재배포 중 잠깐 접속이 안 되는 편이, 반쯤
+    # 망가진 화면을 보여주는 것보다 낫다.
     depends_on:
-      - java_service
+      java_service:
+        condition: service_healthy
 
 volumes:
   caddy_data:
