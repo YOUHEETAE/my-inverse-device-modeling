@@ -63,10 +63,9 @@ Python 라우터를 HTTP로 다시 부르지 않고 함수로 직접 호출합�
 ## 빌드
 
 ```powershell
-# 1. 화면을 같은 출처용으로 빌드한다 (API 주소를 비워 상대 경로를 쓰게 한다)
+# 1. 화면을 로컬 실행판용으로 빌드한다
 cd web
-$env:VITE_API_BASE_URL=""
-npm run build
+npm run build:standalone
 cd ..
 
 # 2. 실행 파일을 만든다
@@ -75,6 +74,12 @@ python -m PyInstaller --noconfirm --clean `
     --distpath dist_standalone --workpath build_standalone `
     standalone/SemiScopeAI.spec
 ```
+
+`build:standalone`은 `web/.env.standalone`을 읽어 API 주소를 비운다. 그래야
+화면이 상대 경로로 요청해서, 자기를 내려준 그 서버(실행 파일 안의 FastAPI)로
+간다. **그냥 `npm run build`를 쓰면 안 된다** — `web/.env`의
+`http://localhost:8080`이 구워지고, 받는 사람 PC에는 그 주소에 아무것도 없어서
+화면은 뜨는데 데이터만 전부 실패한다.
 
 `dist_standalone/SemiScopeAI/` 폴더가 나옵니다. 이 폴더를 통째로 압축해 제출합니다.
 
