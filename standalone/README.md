@@ -1,4 +1,4 @@
-# SemiScopeAI 로컬 실행판
+# SemiScopeAI 로컬 실행판 — 개발 노트
 
 배포된 웹 서비스(https://semiscopeai.com)를 인터넷도 설치도 없이 한 대의 PC에서
 돌리는 빌드입니다. 공모전 제출용 "SW 실행 파일"이 이것입니다.
@@ -6,20 +6,11 @@
 **화면은 배포판과 같습니다.** 같은 `web/dist`를 그대로 서빙하므로, 심사위원이
 보는 것과 사업계획서에 실린 화면이 일치합니다.
 
-## 받는 쪽에서 하는 일
-
-1. 압축을 풉니다.
-2. `SemiScopeAI.exe`를 실행합니다.
-3. 잠시 뒤 기본 브라우저가 열립니다. 안 열리면 콘솔에 찍힌 주소로 들어갑니다.
-
-설치, 계정, 인터넷 연결이 모두 필요 없습니다. 학습 기록은 실행 파일 옆의
-`SemiScopeAI-data/` 폴더에 쌓이고, 폴더를 지우면 처음 상태로 돌아갑니다.
-
-**처음 한 번은 30초쯤 걸립니다.** 글꼴 캐시를 만드느라 그렇고, 두 번째부터는
-10초 안에 열립니다.
-
-**"Windows가 PC를 보호했습니다"가 뜨면** *추가 정보* → *실행*을 누르십시오.
-코드 서명 인증서가 없는 실행 파일에 Windows가 붙이는 경고입니다.
+> **이 문서는 만드는 쪽을 위한 것입니다.** 받는 사람이 읽는 문서는 따로
+> 있습니다 — `README_dist.md`가 `README.md`라는 이름으로 배포 폴더에 들어갑니다.
+> 여기 적힌 빌드 절차와 코드 경로는 심사위원에게 아무 쓸모가 없고, 실행 방법을
+> 찾으려는 사람 앞에 PyInstaller 주의사항이 먼저 나오면 읽히지 않는다.
+> 받는 쪽 문서를 고칠 일이 있으면 이 파일이 아니라 그쪽을 고쳐야 합니다.
 
 ## 되는 것 / 안 되는 것
 
@@ -98,7 +89,20 @@ FastAPI), `VITE_STANDALONE=1`로 AI 자리를 안내 문구로 바꾼다.
 문구는 번들에서 통째로 사라진다 — 화면 코드는 한 벌이지만 두 빌드는 서로에게
 영향을 주지 않는다.
 
-`dist_standalone/SemiScopeAI/` 폴더가 나옵니다. 이 폴더를 통째로 압축해 제출합니다.
+`dist_standalone/SemiScopeAI/` 폴더가 나옵니다. 여기에 받는 쪽 문서를 넣고
+압축해 제출합니다.
+
+```powershell
+# 3. 받는 쪽 문서를 README.md라는 이름으로 넣는다 (이 파일이 아니다)
+Copy-Item standalone/README_dist.md dist_standalone/SemiScopeAI/README.md -Force
+
+# 4. 압축한다. Compress-Archive는 경로 구분자를 역슬래시로 쓰는데 ZIP 표준은
+#    슬래시라, 파이썬으로 만든다.
+python -c "import zipfile;from pathlib import Path;r=Path('dist_standalone');z=zipfile.ZipFile(r/'SemiScopeAI.zip','w',zipfile.ZIP_DEFLATED,compresslevel=6);[z.write(p,p.relative_to(r).as_posix()) for p in sorted((r/'SemiScopeAI').rglob('*')) if p.is_file()];z.close()"
+```
+
+**압축 전에 `SemiScopeAI-data/`를 지웁니다.** 실행해서 확인해 보면 반드시
+생기는 폴더이고, 그대로 두면 만든 사람의 학습 기록이 딸려 나갑니다.
 
 ### 빌드에서 주의할 점
 
