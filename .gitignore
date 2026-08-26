@@ -26,6 +26,10 @@ ENV/
 .env
 .env.*
 !.env.example
+# 로컬 실행판 빌드 모드. 비밀값이 없고(API 주소를 비우는 한 줄뿐), 저장소에
+# 있어야 `npm run build:standalone`이 클론 직후에도 옳게 동작한다. 빠지면
+# web/.env의 주소가 구워져서 실행 파일이 조용히 망가진다.
+!web/.env.standalone
 .envrc
 .streamlit/secrets.toml
 local_settings.py
