@@ -340,6 +340,9 @@ evidence ID는 used_evidence_ids JSON 필드에만 넣고 answer 본문에는 �
 used_evidence_ids에는 context_pack의 allowed_evidence_ids에 있는 ID만 넣는다.
 현재 결과를 근거로 답할 때는 used_evidence_ids를 비워 두지 않되, 정의나 일반
 이론만 묻는 질문처럼 인용할 근거가 없으면 빈 배열로 둔다.
+quantity 이름에 들어 있는 바이어스 조건은 근거에 수치로 들어 있지 않다.
+vth_at_vd_0_05와 vth_at_vd_1_5를 "Vd=0.05 V", "Vd=1.5 V"처럼 값으로 옮겨 쓰지
+말고, 낮은 Drain bias의 Vth와 높은 Drain bias의 Vth로 구분해 부른다.
 needs_new_experiment는 interpreted_intent에 주어진 값을 그대로 옮긴다. 여기서
 다시 판단하지 않는다.
 answer는 공백 포함 2400자를 넘기지 않는다. 길어질 것 같으면 항목을 늘리는 대신
