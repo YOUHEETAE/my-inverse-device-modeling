@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { CornerDownLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AnswerText } from "@/components/AnswerText";
+import { StandaloneAiNotice } from "@/components/StandaloneAiNotice";
 import { cn } from "@/lib/utils";
+import { IS_STANDALONE } from "@/lib/standalone";
 import { askCaseFollowup, getErrorMessage } from "../api";
 import type { LearningSession } from "../types";
 
@@ -21,6 +23,7 @@ interface FollowupTurn {
  * 튜터는 이 케이스의 분석 결과를 근거로만 답한다.
  */
 export function CaseFollowupChat({ session }: { session: LearningSession }) {
+  // 훅보다 먼저 빠져나가면 규칙을 어기므로, 대신 아래 렌더에서 가른다.
   const saved = (session.followup_history as FollowupTurn[] | undefined) ?? [];
   const [turns, setTurns] = useState<FollowupTurn[]>(saved);
   const [draft, setDraft] = useState("");
@@ -58,6 +61,10 @@ export function CaseFollowupChat({ session }: { session: LearningSession }) {
       setPending(null);
       setSending(false);
     }
+  }
+
+  if (IS_STANDALONE) {
+    return <StandaloneAiNotice compact />;
   }
 
   return (
