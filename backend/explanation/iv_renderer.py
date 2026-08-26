@@ -386,7 +386,7 @@ def _comparison_curve_focus(
     if dibl:
         separation = "커진" if dibl.get("observation") == "increased" else "작아진"
         switching.append(
-            "낮은 Drain bias와 높은 Drain bias에서 추출한 threshold 위치 차이가 "
+            "Vth(low)와 Vth(high)의 간격이 "
             f"{separation} 모습({_metric_change(dibl)})"
         )
     ioff = by_quantity.get("ioff")

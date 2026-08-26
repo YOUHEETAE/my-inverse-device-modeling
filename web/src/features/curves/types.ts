@@ -73,8 +73,10 @@ export const ELECTRICAL_PARAMETERS: {
   // already in its display unit, hence 1.
   scale: number;
 }[] = [
-    { key: "vth_low_v", label: "Vth (Vd=0.05 V)", unit: "V", scale: 1 },
-    { key: "vth_high_v", label: "Vth (Vd=1.5 V)", unit: "V", scale: 1 },
+    // 바이어스 값 대신 low/high로 부른다. AI 답변도 같은 이름을 쓰므로
+    // (iv_chat.py의 답변 프롬프트) 표와 설명을 오가며 옮겨 읽지 않아도 된다.
+    { key: "vth_low_v", label: "Vth (low)", unit: "V", scale: 1 },
+    { key: "vth_high_v", label: "Vth (high)", unit: "V", scale: 1 },
     { key: "ion_ma_per_um", label: "Ion", unit: "mA/µm", scale: 1 },
     { key: "ioff_ma_per_um", label: "Ioff", unit: "mA/µm", scale: 1 },
     { key: "ion_ioff_ratio", label: "Ion/Ioff", unit: "", scale: 1 },
