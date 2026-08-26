@@ -144,17 +144,19 @@ export default function GuidePage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {/* 설명 문구는 현재 화면 기준이지만 이미지와 마커 좌표(xPct/yPct)는
-                  다시 찍어 맞춰야 한다 — 아래 Field Map도 같다. */}
+              {/* 마커 좌표는 이미지 가로·세로 기준 퍼센트다. 화면을 고쳐 다시
+                  찍으면 여기도 함께 맞춰야 한다 — 아래 Field Map도 같다. */}
               <AnnotatedScreenshot
                 src="/guide/iv-curve.png"
                 alt="I-V Curve 페이지 화면"
                 callouts={[
-                  { xPct: 21.4, yPct: 15.5, label: "디바이스 파라미터(L, T, B, SD, LDD)를 입력합니다." },
-                  { xPct: 97.2, yPct: 7.9, label: "Add를 눌러 입력한 조건을 커브 목록에 추가합니다." },
-                  { xPct: 82.5, yPct: 17.2, label: "체크박스로 비교할 커브를 선택·해제합니다." },
-                  { xPct: 90, yPct: 61.1, label: "선택한 커브에서 추출된 Vth, Ion, Ioff 등 전기적 파라미터를 확인합니다." },
-                  { xPct: 75.2, yPct: 67, label: "자동 설명 탭에서 Analyze를 누르면 AI가 변화의 원인과 trade-off를 해석합니다." },
+                  { xPct: 46.7, yPct: 16.6, label: "소자 조건(L, T, B, SD, LDD)을 입력합니다." },
+                  { xPct: 97.1, yPct: 8.8, label: "Add를 눌러 입력한 조건을 커브 목록에 추가합니다." },
+                  { xPct: 81.7, yPct: 19.7, label: "체크박스로 비교할 커브를 선택·해제합니다. 선택한 커브만 그래프와 표에 반영됩니다." },
+                  { xPct: 76.1, yPct: 23.8, label: "Log를 누르면 세로축이 로그 스케일로 바뀝니다. Ioff와 Subthreshold 기울기는 이 상태에서 봐야 보입니다." },
+                  { xPct: 90.0, yPct: 63.7, label: "선택한 커브들의 Vth, Ion, Ioff, SS, DIBL 등 전기적 파라미터를 나란히 비교합니다." },
+                  { xPct: 21.3, yPct: 73.7, label: "자동 설명은 결과를 한 번에 정리해 주고, AI 질문은 그 결과에 대해 이어서 묻는 대화입니다." },
+                  { xPct: 74.2, yPct: 79.0, label: "Analyze를 누르면 변화의 원인과 trade-off 해석이 생성됩니다." },
                 ]}
               />
             </CardContent>
@@ -176,10 +178,12 @@ export default function GuidePage() {
                 src="/guide/field-map.png"
                 alt="Field Map 페이지 화면"
                 callouts={[
-                  { xPct: 21.3, yPct: 16.7, label: "동일하게 디바이스 파라미터를 입력합니다." },
-                  { xPct: 63.3, yPct: 8.5, label: "표시할 물리량과 컬러 스케일, 표시 범위를 선택합니다." },
-                  { xPct: 47.5, yPct: 47, label: "선택한 조건으로 생성된 소자 단면과 물리량 분포를 확인합니다." },
-                  { xPct: 97.2, yPct: 8.2, label: "Add로 다른 조건의 소자를 추가해 나란히 비교합니다." },
+                  { xPct: 46.7, yPct: 16.4, label: "동일하게 소자 조건을 입력합니다." },
+                  { xPct: 97.1, yPct: 8.8, label: "Add로 다른 조건의 소자를 추가해 나란히 비교합니다." },
+                  { xPct: 81.7, yPct: 19.6, label: "체크박스로 비교할 소자를 선택·해제합니다." },
+                  { xPct: 64.3, yPct: 9.1, label: "표시할 물리량(Potential, Electric Field, 캐리어 분포 등)과 컬러 스케일, 표시 범위를 선택합니다." },
+                  { xPct: 30.8, yPct: 47.2, label: "생성된 소자 단면 위에 물리량 분포가 그려집니다. 등고선을 따라가면 값이 급격히 변하는 영역을 찾을 수 있습니다." },
+                  { xPct: 90.0, yPct: 62.3, label: "컬러바에서 색과 실제 값의 대응을 확인합니다. 두 소자는 같은 범위로 그려져 그대로 비교할 수 있습니다." },
                 ]}
               />
             </CardContent>
