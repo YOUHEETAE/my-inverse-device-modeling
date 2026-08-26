@@ -124,3 +124,9 @@ ai/model_artifacts/field_map_model/final/coordinate_mlp_physics/examples/
 
 # 로컬 전용 compose 오버라이드 (개발자마다 다름)
 docker-compose.override.yml
+
+# 로컬 실행판(standalone/) 빌드 산출물과 학습 기록.
+# 산출물은 500MB대라 저장소에 두지 않는다 — 빌드는 standalone/README.md 참고.
+dist_standalone/
+build_standalone/
+standalone/SemiScopeAI-data/
