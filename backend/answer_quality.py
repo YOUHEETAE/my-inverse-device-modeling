@@ -10,6 +10,10 @@ from backend.answer_contract import find_internal_references, normalize_public_t
 
 
 _SENTENCE = re.compile(r"(?<=[.!?。！？])\s+|\n+")
+# 글자나 숫자가 하나도 없는 조각은 문장이 아니다. 표를 쓰면 행이
+# "... 나타냅니다. |" 로 끝나는데, 마침표 뒤에서 잘리면서 행마다 "|" 만 남은
+# 조각이 생긴다. 그것들이 서로 같다는 이유로 문장 반복 검사에 걸린다.
+_HAS_WORD = re.compile(r"[0-9A-Za-z가-힣]")
 _CAUSE_CUES = ("왜", "이유", "원인", "어떻게 이어", "연결", "메커니즘")
 _DETAIL_CUES = ("자세히", "최대한", "한번에", "모두", "각 파라미터", "각 지표")
 _CAUSAL_LANGUAGE = (
@@ -140,10 +144,15 @@ def build_validation_failure_record(
 
 
 def _sentences(text: str) -> tuple[str, ...]:
+    """문장 반복 검사용 조각들. 구두점만 남은 조각은 세지 않는다.
+
+    같은 문장을 두 번 쓰는 것을 잡으려는 검사인데, 표의 구분선이나 행 끝
+    기호까지 문장으로 세면 표를 쓴다는 이유만으로 걸린다.
+    """
     return tuple(
         " ".join(item.lower().split())
         for item in _SENTENCE.split(text)
-        if item.strip()
+        if item.strip() and _HAS_WORD.search(item)
     )
 
 
