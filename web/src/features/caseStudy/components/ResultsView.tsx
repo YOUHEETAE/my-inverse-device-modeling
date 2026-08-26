@@ -11,6 +11,8 @@ import { CurveChart } from "@/features/curves/components/CurveChart";
 import { FieldCompareChart } from "@/features/fields/components/FieldCompareChart";
 import { EnergyBandChart } from "@/features/fields/components/EnergyBandChart";
 import { EnergyBandLegend } from "@/features/fields/components/EnergyBandLegend";
+import { ColorbarLegend } from "@/features/fields/components/ColorbarLegend";
+import { formatFieldLabel } from "@/features/fields/components/colormap";
 import { DisplayControls } from "@/features/fields/components/DisplayControls";
 import { fetchFieldDisplayCompare, predictField } from "@/features/fields/api";
 import {
@@ -31,6 +33,11 @@ const TABS = [
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
+
+/** 오른쪽 칸에 그릴 범례. 표시 종류마다 모양이 달라 갈래를 나눈다. */
+type FieldLegend =
+  | { kind: "energy-band" }
+  | { kind: "colorbar"; data: FieldCompareResponse };
 
 interface ResultsViewProps {
   session: LearningSession;
@@ -62,6 +69,9 @@ export function ResultsView({
   // 나눠 갖느라 그래프가 눌리고, 표를 접었다 펼 때마다 그래프 크기가 바뀌어
   // 방금 보던 모양과 달라진다. 덮어두면 그래프는 늘 같은 크기다.
   const [showMetrics, setShowMetrics] = useState(true);
+  // Field Map 탭이 지금 무엇을 그리고 있는지. 범례를 오른쪽 칸에 그려야
+  // 해서 패널 안이 아니라 여기까지 올라온다.
+  const [fieldLegend, setFieldLegend] = useState<FieldLegend | null>(null);
 
   function openTab(id: TabId) {
     setTab(id);
@@ -127,7 +137,7 @@ export function ResultsView({
           {visited.has("field") && (
             <Panel active={tab === "field"}>
               {result ? (
-                <FieldPanel runs={runs} />
+                <FieldPanel runs={runs} onLegendChange={setFieldLegend} />
               ) : (
                 <MissingPlots busy={busy} onRegenerate={onRegenerate} />
               )}
@@ -146,6 +156,33 @@ export function ResultsView({
               전기적 파라미터
             </h3>
             <MetricTable session={session} labels={labelMap} />
+
+            {/* Field Map을 보는 동안에만. 지표 표와 같은 칸에 두는 이유는
+                둘 다 그래프를 읽기 위해 곁눈질하는 값이어서다. */}
+            {tab === "field" && fieldLegend && (
+              <div className="mt-3">
+                {/* 머리글과 테두리는 Field Map 화면의 Legend와 같게 둔다 —
+                    같은 그림을 보는 사람이 화면을 옮겼다고 다르게 보일
+                    이유가 없다. */}
+                <h4 className="mb-2 text-xs font-bold uppercase tracking-wide">Legend</h4>
+                {fieldLegend.kind === "energy-band" ? (
+                  <div className="rounded-md border border-outline-variant bg-surface-container">
+                    <EnergyBandLegend />
+                  </div>
+                ) : (
+                  <div className="rounded-md border border-outline-variant bg-surface-container p-2">
+                    <ColorbarLegend
+                      label={formatFieldLabel(
+                        `${fieldLegend.data.label} [${fieldLegend.data.mode_label}]`,
+                      )}
+                      cmap={fieldLegend.data.cmap}
+                      vmin={fieldLegend.data.vmin}
+                      vmax={fieldLegend.data.vmax}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
           </aside>
         )}
       </div>
@@ -203,7 +240,16 @@ function MissingPlots({
  * 기존 Field Map 화면이 쓰는 API를 그대로 부르면 같은 결과가 나오고,
  * 덕분에 응답에서 3 MB를 덜어냈다.
  */
-function FieldPanel({ runs }: { runs: ConditionRun[] }) {
+function FieldPanel({
+  runs,
+  // 범례는 이 패널이 아니라 오른쪽 파라미터 칸에 그려진다 — 좁은 그래프
+  // 자리를 더 쪼개지 않으려는 것이고, 독립 Field Map 화면도 범례를 옆
+  // 사이드바에 둔다. 무엇을 그릴지는 여기서만 알 수 있어서 올려보낸다.
+  onLegendChange,
+}: {
+  runs: ConditionRun[];
+  onLegendChange: (legend: FieldLegend | null) => void;
+}) {
   const [display, setDisplay] = useState<FieldDisplay>(FIELD_DISPLAYS[0]);
   const [meshes, setMeshes] = useState<Record<string, FieldResponse>>({});
   const [compareData, setCompareData] = useState<FieldCompareResponse | null>(
@@ -263,6 +309,17 @@ function FieldPanel({ runs }: { runs: ConditionRun[] }) {
 
   const ready = devices.every((device) => meshes[device.label]);
 
+  // Mesh는 구조만 그려 색 눈금이 없고, Energy band는 고정 색이라 컬러바가
+  // 아닌 색 목록을 쓴다. 나머지는 이번 표시의 컬러바를 넘긴다.
+  useEffect(() => {
+    if (!ready || display === "Mesh") return onLegendChange(null);
+    if (display === ENERGY_BAND) return onLegendChange({ kind: "energy-band" });
+    onLegendChange(compareData ? { kind: "colorbar", data: compareData } : null);
+  }, [ready, display, compareData, onLegendChange]);
+
+  // 탭을 떠나면 범례도 함께 사라져야 한다.
+  useEffect(() => () => onLegendChange(null), [onLegendChange]);
+
   return (
     <div className="flex h-full flex-col gap-2">
       <DisplayControls
@@ -279,24 +336,15 @@ function FieldPanel({ runs }: { runs: ConditionRun[] }) {
           display === ENERGY_BAND ? (
             // 독립 Field Map 화면과 같은 분기다. 여기에 이 갈래가 없어서
             // 비교 API를 부르다 실패했고, 그림도 나오지 않았다.
-            <div className="flex h-full flex-col gap-2">
-              <div className="min-h-0 flex-1">
-                <EnergyBandChart
-                  devices={devices.map((device) => ({
-                    label: device.label,
-                    mesh: meshes[device.label].mesh,
-                    potential: meshes[device.label].node_fields["Potential"],
-                    lengthNm: Number(device.parameters.L),
-                    toxNm: Number(device.parameters.T),
-                  }))}
-                />
-              </div>
-              {/* 차트가 자기 범례를 그리지 않아(showlegend: false) 색이 무엇을
-                  뜻하는지 밖에서 알려줘야 한다. */}
-              <div className="shrink-0 rounded-md border border-outline-variant bg-surface-container">
-                <EnergyBandLegend />
-              </div>
-            </div>
+            <EnergyBandChart
+              devices={devices.map((device) => ({
+                label: device.label,
+                mesh: meshes[device.label].mesh,
+                potential: meshes[device.label].node_fields["Potential"],
+                lengthNm: Number(device.parameters.L),
+                toxNm: Number(device.parameters.T),
+              }))}
+            />
           ) : (
             <FieldCompareChart
               devices={devices.map((device) => ({
