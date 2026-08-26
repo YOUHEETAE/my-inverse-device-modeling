@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { CornerDownLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { AnswerText } from "@/components/AnswerText";
 import { cn } from "@/lib/utils";
 import { askCaseFollowup, getErrorMessage } from "../api";
 import type { LearningSession } from "../types";
@@ -78,16 +79,22 @@ export function CaseFollowupChat({ session }: { session: LearningSession }) {
               </p>
             </div>
             <div className="flex justify-start">
-              <p
+              <div
                 className={cn(
-                  "max-w-[85%] whitespace-pre-wrap break-words rounded-md rounded-bl-sm px-2.5 py-1.5 text-xs leading-relaxed",
+                  "max-w-[85%] break-words rounded-md rounded-bl-sm px-2.5 py-1.5 text-xs",
                   turn.source === "external_error"
-                    ? "border border-outline-variant bg-surface-container"
+                    ? "whitespace-pre-wrap border border-outline-variant bg-surface-container leading-relaxed"
                     : "bg-surface-container-highest text-on-surface-variant",
                 )}
               >
-                {turn.answer}
-              </p>
+                {/* 실패 안내는 서버가 줄 단위로 짜둔 글이라 그대로 둔다.
+                    마크다운으로 다시 그리면 그 줄바꿈이 무너진다. */}
+                {turn.source === "external_error" ? (
+                  turn.answer
+                ) : (
+                  <AnswerText>{turn.answer}</AnswerText>
+                )}
+              </div>
             </div>
           </div>
         ))}
