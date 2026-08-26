@@ -364,7 +364,9 @@ def _collect_numbers(value: Any) -> set[float]:
 
 def _answer_number_tokens(value: str) -> tuple[str, ...]:
     """Return factual numbers while ignoring list markers and unit exponents."""
-    text = re.sub(r"(?m)^\s*\d+[.)]\s+", "", value)
+    # 굵게 쓴 번호 소제목("**3. ...")도 목록 표시다. 별표를 허용하지 않으면
+    # 그 3이 사실 주장으로 검증되어, 답변이 길어질수록 확실하게 걸린다.
+    text = re.sub(r"(?m)^\s*\*{0,2}\d+[.)]\s+", "", value)
     text = re.sub(
         r"\b(?:cm|mm|nm|um|µm|m)\s*(?:\^|\*\*)\s*[-+]?\d+",
         "",

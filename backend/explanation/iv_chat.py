@@ -348,6 +348,27 @@ used_evidence_ids에는 context_pack의 allowed_evidence_ids에 있는 ID만 넣
     )
 
 
+def _answer_number_tokens(value: str) -> tuple[str, ...]:
+    """Return factual numbers while ignoring list markers and unit exponents.
+
+    field_chat.py에 같은 함수가 있다. 이쪽에는 없어서 답변 본문의 숫자를
+    그대로 뽑았고, 그 결과 "3. Subthreshold 제어..." 같은 번호 소제목의 3이
+    근거 없는 수치로 걸렸다. 절이 세 개를 넘어가는 긴 답변에서는 거의 항상
+    걸리는데, 정작 인용값은 멀쩡해서 원인을 짚기 어려웠다.
+
+    문장 안의 숫자는 그대로 검증한다 — 지우는 것은 줄머리의 목록 표시와
+    단위 지수처럼 애초에 주장이 아닌 것뿐이다.
+    """
+    text = re.sub(r"(?m)^\s*\*{0,2}\d+[.)]\s+", "", value)
+    text = re.sub(
+        r"\b(?:cm|mm|nm|um|µm|m)\s*(?:\^|\*\*)\s*[-+]?\d+",
+        "",
+        text,
+        flags=re.IGNORECASE,
+    )
+    return tuple(_NUMBER.findall(text))
+
+
 def _collect_numbers(value: Any) -> set[float]:
     result: set[float] = set()
     if isinstance(value, dict):
@@ -403,7 +424,7 @@ def validate_iv_answer(
         error_code="iv_answer_exceeds_comparison_claim_level",
     )
     allowed_numbers = _collect_numbers(context_pack) | _collect_numbers(question)
-    for token in _NUMBER.findall(answer + " " + (followup or "")):
+    for token in _answer_number_tokens(answer + " " + (followup or "")):
         number = float(token)
         if not any(
             math.isclose(number, allowed, rel_tol=.015, abs_tol=.015)
