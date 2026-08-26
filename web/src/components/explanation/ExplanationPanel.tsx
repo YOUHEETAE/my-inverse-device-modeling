@@ -8,7 +8,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { StandaloneAiNotice } from "@/components/StandaloneAiNotice";
 import { cn } from "@/lib/utils";
+import { IS_STANDALONE } from "@/lib/standalone";
 import type { ExplanationSection } from "./explanationSections";
 
 export type ExplanationStatus =
@@ -107,20 +109,36 @@ export function ExplanationPanel({
   const [promptText, setPromptText] = useState("");
   const [tab, setTab] = useState<TabId>("automatic");
 
+  const header = (
+    <div className="flex items-center gap-2">
+      <div className="flex h-6 w-6 items-center justify-center rounded-sm border border-primary/30 bg-primary/10">
+        <Sparkles className="h-3.5 w-3.5 text-primary" />
+      </div>
+      <div>
+        <h3 className="text-xs font-bold uppercase tracking-wide">AI Explanation</h3>
+        {/* 제목은 영어, 설명은 한국어 — Case Study 화면과 같은 규칙이다. */}
+        <p className="text-[11px] text-on-surface-variant">
+          예측 결과에서 뽑은 수치를 근거로 변화의 원인과 trade-off를 설명합니다.
+        </p>
+      </div>
+    </div>
+  );
+
+  // 로컬 실행판에는 부를 모델이 없다. 탭도 버튼도 남기지 않는다 — 눌러봐야
+  // 실패만 하는 것을 그려두면 고장으로 읽힌다. 제목은 남겨서 배포판 화면과
+  // 같은 자리라는 것은 알아볼 수 있게 한다.
+  if (IS_STANDALONE) {
+    return (
+      <div className="flex flex-col gap-3">
+        {header}
+        <StandaloneAiNotice />
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex items-center gap-2">
-        <div className="flex h-6 w-6 items-center justify-center rounded-sm border border-primary/30 bg-primary/10">
-          <Sparkles className="h-3.5 w-3.5 text-primary" />
-        </div>
-        <div>
-          <h3 className="text-xs font-bold uppercase tracking-wide">AI Explanation</h3>
-          {/* 제목은 영어, 설명은 한국어 — Case Study 화면과 같은 규칙이다. */}
-          <p className="text-[11px] text-on-surface-variant">
-            예측 결과에서 뽑은 수치를 근거로 변화의 원인과 trade-off를 설명합니다.
-          </p>
-        </div>
-      </div>
+      {header}
 
       <div role="tablist" aria-label="AI Explanation" className="flex gap-1 border-b border-outline-variant">
         {TABS.map(({ id, label }) => (
