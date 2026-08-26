@@ -340,6 +340,8 @@ evidence ID는 used_evidence_ids JSON 필드에만 넣고 answer 본문에는 �
 used_evidence_ids에는 context_pack의 allowed_evidence_ids에 있는 ID만 넣는다.
 현재 결과를 근거로 답할 때는 used_evidence_ids를 비워 두지 않되, 정의나 일반
 이론만 묻는 질문처럼 인용할 근거가 없으면 빈 배열로 둔다.
+근거의 수치를 자릿수 그대로 옮겨 적지 않는다. 유효숫자 네 자리로 반올림해
+쓴다. 크기 비교와 증감 판단은 반올림하기 전 값을 기준으로 한다.
 quantity 이름에 들어 있는 바이어스 조건은 근거에 수치로 들어 있지 않다.
 vth_at_vd_0_05와 vth_at_vd_1_5를 "Vd=0.05 V", "Vd=1.5 V"처럼 값으로 옮겨 쓰지
 말고, 낮은 Drain bias의 Vth와 높은 Drain bias의 Vth로 구분해 부른다.
