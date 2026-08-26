@@ -347,8 +347,8 @@ vth_at_vd_0_05와 vth_at_vd_1_5를 "Vd=0.05 V", "Vd=1.5 V"처럼 값으로 옮�
 말고, 낮은 Drain bias의 Vth와 높은 Drain bias의 Vth로 구분해 부른다.
 needs_new_experiment는 interpreted_intent에 주어진 값을 그대로 옮긴다. 여기서
 다시 판단하지 않는다.
-answer는 공백 포함 2400자를 넘기지 않는다. 길어질 것 같으면 항목을 늘리는 대신
-핵심 인과만 남긴다.
+answer는 공백 포함 1800자를 넘기지 않는다. 아무리 자세히 요청받아도 이 한도가
+우선이다. 길어질 것 같으면 항목을 늘리는 대신 핵심 인과만 남긴다.
 응답은 answer, used_evidence_ids, needs_new_experiment, suggested_followup만 가진 JSON object다."""
     return system, (
         "<GROUNDED_IV_QUESTION>\n"

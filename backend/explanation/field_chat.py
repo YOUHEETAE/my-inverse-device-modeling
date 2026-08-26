@@ -341,8 +341,8 @@ evidence ID는 used_evidence_ids JSON 필드에만 넣고 answer 본문에 노�
 쓴다. 크기 비교와 증감 판단은 반올림하기 전 값을 기준으로 한다.
 needs_new_experiment는 interpreted_intent에 주어진 값을 그대로 옮긴다. 여기서
 다시 판단하지 않는다.
-answer는 공백 포함 2600자를 넘기지 않는다. 길어질 것 같으면 항목을 늘리는 대신
-핵심 인과만 남긴다.
+answer는 공백 포함 2000자를 넘기지 않는다. 아무리 자세히 요청받아도 이 한도가
+우선이다. 길어질 것 같으면 항목을 늘리는 대신 핵심 인과만 남긴다.
 응답은 answer, used_evidence_ids, needs_new_experiment, suggested_followup만 가진
 JSON object다."""
     return system, (
