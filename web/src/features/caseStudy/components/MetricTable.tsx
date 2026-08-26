@@ -8,13 +8,23 @@ import type { LearningSession } from "../types";
  * 저장된 세션을 다시 열어도 표는 그대로 보인다. 지표 목록은 I-V 화면이
  * 쓰는 것과 같은 것을 재사용한다(키·단위·배율이 동일).
  */
-export function MetricTable({ session }: { session: LearningSession }) {
+export function MetricTable({
+  session,
+  // 그래프에 쓰는 것과 같은 이름을 머리글에도 쓴다. 표만 "Baseline"으로
+  // 남으면 바로 옆 그래프의 "700 nm"와 같은 것을 가리키는지 알 수 없다.
+  // 원래 이름 -> 보여줄 이름. 없는 이름은 그대로 둔다.
+  labels = {},
+}: {
+  session: LearningSession;
+  labels?: Record<string, string>;
+}) {
   const display = displayParameters(session);
   if (!display) {
     return <p className="text-[11px] text-on-surface-variant">분석 결과를 복원할 수 없습니다.</p>;
   }
 
   const { baseline, comparison } = display;
+  const nameOf = (label: string) => labels[label] ?? label;
 
   return (
     <div className="overflow-x-auto">
@@ -22,8 +32,8 @@ export function MetricTable({ session }: { session: LearningSession }) {
         <thead>
           <tr className="border-b border-outline-variant text-on-surface-variant">
             <th className="py-1 pr-2 text-left font-medium">Metric</th>
-            <th className="py-1 px-1 text-right font-medium">{baseline.label}</th>
-            <th className="py-1 px-1 text-right font-medium">{comparison.label}</th>
+            <th className="py-1 px-1 text-right font-medium">{nameOf(baseline.label)}</th>
+            <th className="py-1 px-1 text-right font-medium">{nameOf(comparison.label)}</th>
             <th className="py-1 pl-1 text-center font-medium">변화</th>
           </tr>
         </thead>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   Loader2,
   PanelRightClose,
@@ -51,10 +51,22 @@ export function ResultsView({
   onRegenerate,
 }: ResultsViewProps) {
   const [tab, setTab] = useState<TabId>("curve");
+  // 한 번이라도 연 탭은 계속 마운트해 둔다. 탭을 옮길 때마다 언마운트되면
+  // Field Map은 소자마다 예측을 다시 부르고, 자유질문은 오가던 대화가
+  // 사라진다. 처음부터 전부 마운트하지 않는 이유는, 열어보지도 않은 탭의
+  // 예측 호출까지 미리 나가기 때문이다 (ToolPanel과 같은 규칙).
+  const [visited, setVisited] = useState<Set<TabId>>(() => new Set<TabId>(["curve"]));
   // 지표 표는 그래프를 밀어내지 않고 그 위에 뜬다. 나란히 두면 셋이 폭을
   // 나눠 갖느라 그래프가 눌리고, 표를 접었다 펼 때마다 그래프 크기가 바뀌어
   // 방금 보던 모양과 달라진다. 덮어두면 그래프는 늘 같은 크기다.
   const [showMetrics, setShowMetrics] = useState(true);
+
+  function openTab(id: TabId) {
+    setTab(id);
+    setVisited((prev) => (prev.has(id) ? prev : new Set(prev).add(id)));
+  }
+
+  const { runs, labelMap } = useMemo(() => describeRuns(result?.runs ?? []), [result]);
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -68,7 +80,7 @@ export function ResultsView({
             role="tab"
             type="button"
             aria-selected={tab === id}
-            onClick={() => setTab(id)}
+            onClick={() => openTab(id)}
             className={cn(
               "-mb-px border-b-2 px-3 py-1.5 text-xs font-bold transition-colors motion-reduce:transition-none",
               tab === id
@@ -98,25 +110,58 @@ export function ResultsView({
       {/* relative: 지표 표가 이 영역 안에서만 뜬다 — 옆 질문 칸까지 덮으면
           답을 적으면서 값을 보려던 게 반대로 막힌다. */}
       <div className="relative min-h-0 flex-1 pt-3">
-        {tab === "chat" ? (
-          <CaseFollowupChat session={session} />
-        ) : !result ? (
-          <MissingPlots busy={busy} onRegenerate={onRegenerate} />
-        ) : tab === "curve" ? (
-          <CurveChart curves={toCurveEntries(result.runs)} combined />
-        ) : (
-          <FieldPanel runs={result.runs} />
-        )}
+        {/* 감춘 탭도 부모와 같은 크기의 상자를 그대로 유지한다. display:none으로
+            숨기면 Plotly가 폭 0을 보고 다시 돌아왔을 때 찌그러진 채로 남는다. */}
+        <div className="relative h-full">
+          {visited.has("curve") && (
+            <Panel active={tab === "curve"}>
+              {result ? (
+                <CurveChart curves={toCurveEntries(runs)} combined />
+              ) : (
+                <MissingPlots busy={busy} onRegenerate={onRegenerate} />
+              )}
+            </Panel>
+          )}
+          {visited.has("field") && (
+            <Panel active={tab === "field"}>
+              {result ? (
+                <FieldPanel runs={runs} />
+              ) : (
+                <MissingPlots busy={busy} onRegenerate={onRegenerate} />
+              )}
+            </Panel>
+          )}
+          {visited.has("chat") && (
+            <Panel active={tab === "chat"}>
+              <CaseFollowupChat session={session} />
+            </Panel>
+          )}
+        </div>
 
         {showMetrics && (
           <aside className="absolute bottom-0 right-0 top-3 z-10 w-60 overflow-y-auto rounded-md border border-outline-variant bg-surface-container-low p-2.5 shadow-lg duration-200 animate-in slide-in-from-right-4 fade-in motion-reduce:animate-none">
             <h3 className="mb-2 text-[11px] font-bold uppercase tracking-wide">
               전기적 파라미터
             </h3>
-            <MetricTable session={session} />
+            <MetricTable session={session} labels={labelMap} />
           </aside>
         )}
       </div>
+    </div>
+  );
+}
+
+/**
+ * 탭 하나. 감춰도 마운트와 크기를 유지한다 — 상태를 잃지 않으면서 차트가
+ * 폭 0을 보는 일도 없게 하려는 것이다.
+ */
+function Panel({ active, children }: { active: boolean; children: ReactNode }) {
+  return (
+    <div
+      className={cn("absolute inset-0", !active && "invisible pointer-events-none")}
+      aria-hidden={!active}
+    >
+      {children}
     </div>
   );
 }
@@ -241,6 +286,71 @@ function FieldPanel({ runs }: { runs: ConditionRun[] }) {
       </div>
     </div>
   );
+}
+
+const CONDITION_UNITS: Record<string, string> = {
+  L: "nm",
+  T: "nm",
+  B: "cm⁻³",
+  SD: "cm⁻³",
+  LDD: "cm⁻³",
+};
+
+// 케이스가 두 조건에 붙여둔 기본 이름. 무엇이 다른지 알려주지 않으므로
+// 값으로 대체한다. 6~8번 Case처럼 "Short·Thick", "Control" 같은 이름을
+// 따로 지어둔 경우는 뜻이 담겨 있어서 남긴다.
+const GENERIC_LABELS = new Set(["Baseline", "Comparison"]);
+
+// 범례 한 줄에 값을 몇 개까지 넣을지. 후보군을 고르는 Case는 다섯 조건이
+// 한꺼번에 달라서 전부 적으면 범례가 읽을 수 없게 길어진다. 그런 Case는
+// 원래 이름("Drive", "Balanced")이 이미 뜻을 담고 있고 숫자는 조건표에 있다.
+const MAX_LABELLED_CONDITIONS = 2;
+
+/**
+ * 조건을 이름으로 바꾼다. "Baseline / Comparison"만 보면 무엇이 얼마나
+ * 달라졌는지 알 수 없어서, 실제로 값이 갈리는 조건을 그대로 이름에 쓴다.
+ *
+ * 무엇이 갈리는지는 케이스 설정이 아니라 화면에 함께 놓인 실행들에서 찾는다.
+ * changed_parameters는 baseline과 comparison 사이만 가리켜서, 소자를 넷
+ * 비교하는 Case에서는 나머지 축을 놓친다 — Channel Length와 Oxide Thickness를
+ * 함께 보는 Case가 전부 "10 nm"와 "20 nm" 두 이름으로 겹쳐버린다.
+ */
+function describeRuns(runs: ConditionRun[]): {
+  runs: ConditionRun[];
+  labelMap: Record<string, string>;
+} {
+  if (runs.length === 0) return { runs, labelMap: {} };
+
+  const varying = Object.keys(runs[0].conditions).filter(
+    (key) => new Set(runs.map((run) => run.conditions[key])).size > 1,
+  );
+
+  // 이름이 이미 뜻을 담고 있고 조건이 너무 많이 갈리면 값을 적지 않는다.
+  const named = !GENERIC_LABELS.has(runs[0].label);
+  const shown = named && varying.length > MAX_LABELLED_CONDITIONS ? [] : varying;
+
+  const labelMap: Record<string, string> = {};
+  const renamed = runs.map((run) => {
+    const values = shown
+      .map((key) => formatCondition(key, run.conditions[key]))
+      .join(" · ");
+    const label = !values
+      ? run.label
+      : GENERIC_LABELS.has(run.label)
+        ? values
+        : `${values} · ${run.label}`;
+    labelMap[run.label] = label;
+    return { ...run, label };
+  });
+
+  return { runs: renamed, labelMap };
+}
+
+function formatCondition(name: string, value: number): string {
+  const unit = CONDITION_UNITS[name];
+  // 도핑은 1e16처럼 지수로 읽는 값이고, 길이는 그냥 정수다.
+  const text = Math.abs(value) >= 1e4 ? value.toExponential().replace("e+", "e") : String(value);
+  return unit ? `${text} ${unit}` : text;
 }
 
 /** 기존 I-V 차트가 받는 모양으로 맞춘다 — 로그 축 전환과 색 배정이 그대로 온다. */
