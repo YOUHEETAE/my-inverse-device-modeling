@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ExplanationPanel, type ExplanationStatus } from "@/components/explanation/ExplanationPanel";
-import { toSections, type ExplanationSection } from "@/components/explanation/explanationSections";
+import { ExplanationPanel } from "@/components/explanation/ExplanationPanel";
+import { toSections } from "@/components/explanation/explanationSections";
 import { ChatThread } from "../chat/ChatThread";
 import { askCurveChat } from "../chat/api";
 import { useChat } from "../chat/useChat";
@@ -11,6 +11,7 @@ import { useAuth } from "../auth/AuthProvider";
 import { useDeviceStore, MAX_SHARED_DEVICES } from "../shared/deviceStore";
 import { useViewStore } from "../shared/viewStore";
 import { usePredictionCache } from "../shared/predictionCache";
+import { useAnalysisStore } from "../shared/analysisStore";
 import { parametersEqual } from "../shared/parameters";
 import { CurveChart } from "./components/CurveChart";
 import { CurveList } from "./components/CurveList";
@@ -79,10 +80,10 @@ export default function CurvesPage() {
   }));
 
   const { curveCombined: combined, setCurveCombined: setCombined } = useViewStore();
-  const [explanationStatus, setExplanationStatus] = useState<ExplanationStatus>("ready");
-  const [explainError, setExplainError] = useState<string | null>(null);
-  const [sections, setSections] = useState<ExplanationSection[]>([]);
-  const [provider, setProvider] = useState<"mock" | "external_llm" | null>(null);
+  // 분석 결과는 페이지가 아니라 analysisStore가 들고 있다 — Field Map에
+  // 다녀와도 남아 있어야 한다. LLM 호출 한 번은 계정의 하루 한도를 깎는다.
+  const { explanation, updateExplanation } = useAnalysisStore();
+  const { sections, provider, model, status: explanationStatus, error: explainError } = explanation.curves;
 
   const visibleCurves = curves.filter((c) => c.visible);
 
@@ -98,7 +99,7 @@ export default function CurvesPage() {
   // 서버가 저장하는 device_config와 같은 모양이어야 "화면 변경됨" 비교가
   // 복원된 대화에서도 성립한다.
   const chatConfig = { curves: toCurveConfigs(visibleCurves) };
-  const chat = useChat(askChat, chatConfig, "chat:thread:curves");
+  const chat = useChat(askChat, chatConfig, "curves");
 
   // 과거 대화의 얼린 소자 조건을 작업대에 되살린다. 현재 구성을 덮어쓰므로
   // 먼저 확인을 받는다 — 사용자가 방금 만들어둔 소자들이 사라질 수 있다.
@@ -120,18 +121,19 @@ export default function CurvesPage() {
 
   async function analyze() {
     if (visibleCurves.length === 0) return;
-    setExplanationStatus("analyzing");
-    setExplainError(null);
+    updateExplanation("curves", { status: "analyzing", error: null });
     try {
       const result = await explainCurve(toCurveConfigs(visibleCurves));
-      setSections(toSections(result));
-      setProvider(result.provider as "mock" | "external_llm");
-      setExplanationStatus("complete")
+      updateExplanation("curves", {
+        sections: toSections(result),
+        provider: result.provider as "mock" | "external_llm",
+        model: result.model,
+        status: "complete",
+      });
     } catch (err) {
       // 하루 한도(429)처럼 사용자가 대응할 수 있는 실패가 있으므로 서버가
       // 준 문장을 버리지 않는다.
-      setExplainError(getErrorMessage(err));
-      setExplanationStatus("failed");
+      updateExplanation("curves", { status: "failed", error: getErrorMessage(err) });
     }
   }
 
@@ -170,6 +172,7 @@ export default function CurvesPage() {
             status={explanationStatus}
             sections={sections}
             provider={provider}
+            model={model}
             onAnalyze={analyze}
             disabled={visibleCurves.length === 0}
             disabledReason="분석할 곡선을 하나 이상 선택해 주세요."
