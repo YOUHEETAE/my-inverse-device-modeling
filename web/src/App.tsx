@@ -9,6 +9,7 @@ import FieldMapPage from "./features/fields/FieldMapPage";
 import { DeviceStoreProvider } from "./features/shared/deviceStore";
 import { ViewStoreProvider } from "./features/shared/viewStore";
 import { PredictionCacheProvider } from "./features/shared/predictionCache";
+import { AnalysisStoreProvider } from "./features/shared/analysisStore";
 import { AuthProvider } from "./features/auth/AuthProvider";
 
 const PAGE_META: Record<string, { title: string; breadcrumb: string[] }> = {
@@ -29,16 +30,18 @@ function App() {
       <DeviceStoreProvider>
         <ViewStoreProvider>
           <PredictionCacheProvider>
-            <AppLayout title={meta.title} breadcrumb={meta.breadcrumb}>
-              <Routes>
-                <Route path="/" element={<HomePage />} />
-                <Route path="/guide" element={<GuidePage />} />
-                <Route path="/case-study" element={<CaseStudyPage />} />
-                <Route path="/theory" element={<TheoryPage />} />
-                <Route path="/curves" element={<CurvesPage />} />
-                <Route path="/fields" element={<FieldMapPage />} />
-              </Routes>
-            </AppLayout>
+            <AnalysisStoreProvider>
+              <AppLayout title={meta.title} breadcrumb={meta.breadcrumb}>
+                <Routes>
+                  <Route path="/" element={<HomePage />} />
+                  <Route path="/guide" element={<GuidePage />} />
+                  <Route path="/case-study" element={<CaseStudyPage />} />
+                  <Route path="/theory" element={<TheoryPage />} />
+                  <Route path="/curves" element={<CurvesPage />} />
+                  <Route path="/fields" element={<FieldMapPage />} />
+                </Routes>
+              </AppLayout>
+            </AnalysisStoreProvider>
           </PredictionCacheProvider>
         </ViewStoreProvider>
       </DeviceStoreProvider>
