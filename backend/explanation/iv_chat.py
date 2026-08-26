@@ -340,6 +340,10 @@ evidence ID는 used_evidence_ids JSON 필드에만 넣고 answer 본문에는 �
 used_evidence_ids에는 context_pack의 allowed_evidence_ids에 있는 ID만 넣는다.
 현재 결과를 근거로 답할 때는 used_evidence_ids를 비워 두지 않되, 정의나 일반
 이론만 묻는 질문처럼 인용할 근거가 없으면 빈 배열로 둔다.
+needs_new_experiment는 interpreted_intent에 주어진 값을 그대로 옮긴다. 여기서
+다시 판단하지 않는다.
+answer는 공백 포함 2400자를 넘기지 않는다. 길어질 것 같으면 항목을 늘리는 대신
+핵심 인과만 남긴다.
 응답은 answer, used_evidence_ids, needs_new_experiment, suggested_followup만 가진 JSON object다."""
     return system, (
         "<GROUNDED_IV_QUESTION>\n"
