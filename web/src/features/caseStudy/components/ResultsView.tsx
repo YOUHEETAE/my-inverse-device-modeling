@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { CurveChart } from "@/features/curves/components/CurveChart";
 import { FieldCompareChart } from "@/features/fields/components/FieldCompareChart";
+import { EnergyBandChart } from "@/features/fields/components/EnergyBandChart";
+import { EnergyBandLegend } from "@/features/fields/components/EnergyBandLegend";
 import { DisplayControls } from "@/features/fields/components/DisplayControls";
 import { fetchFieldDisplayCompare, predictField } from "@/features/fields/api";
 import {
@@ -235,7 +237,12 @@ function FieldPanel({ runs }: { runs: ConditionRun[] }) {
   }, [signature]);
 
   useEffect(() => {
-    if (display === "Mesh") {
+    // 표시를 바꾸면 앞선 실패는 지나간 얘기가 된다. 남겨두면 정상으로 그려진
+    // 화면 위에 "불러오지 못했습니다"가 계속 붙어 있다.
+    setError(null);
+    // Mesh는 구조만 그리고, Energy band는 비교 API가 아니라 각 소자의
+    // Potential에서 직접 계산한다 — 둘 다 여기서 부를 것이 없다.
+    if (display === "Mesh" || display === ENERGY_BAND) {
       setCompareData(null);
       return;
     }
@@ -269,15 +276,38 @@ function FieldPanel({ runs }: { runs: ConditionRun[] }) {
       {error && <p className="text-[11px] text-destructive">{error}</p>}
       <div className="min-h-0 flex-1">
         {ready ? (
-          <FieldCompareChart
-            devices={devices.map((device) => ({
-              label: device.label,
-              mesh: meshes[device.label].mesh,
-              toxNm: Number(device.parameters.T),
-            }))}
-            display={display}
-            compareData={compareData}
-          />
+          display === ENERGY_BAND ? (
+            // 독립 Field Map 화면과 같은 분기다. 여기에 이 갈래가 없어서
+            // 비교 API를 부르다 실패했고, 그림도 나오지 않았다.
+            <div className="flex h-full flex-col gap-2">
+              <div className="min-h-0 flex-1">
+                <EnergyBandChart
+                  devices={devices.map((device) => ({
+                    label: device.label,
+                    mesh: meshes[device.label].mesh,
+                    potential: meshes[device.label].node_fields["Potential"],
+                    lengthNm: Number(device.parameters.L),
+                    toxNm: Number(device.parameters.T),
+                  }))}
+                />
+              </div>
+              {/* 차트가 자기 범례를 그리지 않아(showlegend: false) 색이 무엇을
+                  뜻하는지 밖에서 알려줘야 한다. */}
+              <div className="shrink-0 rounded-md border border-outline-variant bg-surface-container">
+                <EnergyBandLegend />
+              </div>
+            </div>
+          ) : (
+            <FieldCompareChart
+              devices={devices.map((device) => ({
+                label: device.label,
+                mesh: meshes[device.label].mesh,
+                toxNm: Number(device.parameters.T),
+              }))}
+              display={display}
+              compareData={compareData}
+            />
+          )
         ) : (
           <div className="flex h-full items-center justify-center">
             <Loader2 className="h-5 w-5 animate-spin text-on-surface-variant motion-reduce:animate-none" />
@@ -287,6 +317,10 @@ function FieldPanel({ runs }: { runs: ConditionRun[] }) {
     </div>
   );
 }
+
+// 다른 표시들과 달리 서버의 비교 API를 쓰지 않고 Potential에서 계산한다.
+// FieldDisplay로 좁혀 두면 목록에 없는 이름을 적었을 때 컴파일에서 걸린다.
+const ENERGY_BAND: FieldDisplay = "Energy band (1D)";
 
 const CONDITION_UNITS: Record<string, string> = {
   L: "nm",
