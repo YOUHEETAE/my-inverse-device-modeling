@@ -344,7 +344,7 @@ used_evidence_ids에는 context_pack의 allowed_evidence_ids에 있는 ID만 넣
 쓴다. 크기 비교와 증감 판단은 반올림하기 전 값을 기준으로 한다.
 quantity 이름에 들어 있는 바이어스 조건은 근거에 수치로 들어 있지 않다.
 vth_at_vd_0_05와 vth_at_vd_1_5를 "Vd=0.05 V", "Vd=1.5 V"처럼 값으로 옮겨 쓰지
-말고, 낮은 Drain bias의 Vth와 높은 Drain bias의 Vth로 구분해 부른다.
+말고 Vth(low)와 Vth(high)로 부른다. 추출 파라미터 표기와 같은 이름이다.
 needs_new_experiment는 interpreted_intent에 주어진 값을 그대로 옮긴다. 여기서
 다시 판단하지 않는다.
 answer는 공백 포함 1800자를 넘기지 않는다. 아무리 자세히 요청받아도 이 한도가

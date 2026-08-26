@@ -7,6 +7,7 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { AnswerText } from "@/components/AnswerText";
 import { cn } from "@/lib/utils";
 import type { ChatError } from "./api";
 import { parseFailure } from "./failure";
@@ -56,9 +57,9 @@ function FailureOrAnswer({
 }) {
   if (!turn.failed) {
     return (
-      <p className="max-w-[85%] whitespace-pre-wrap break-words rounded-md rounded-bl-sm bg-surface-container-highest px-2.5 py-1.5 text-xs leading-relaxed text-on-surface-variant">
-        {turn.answer}
-      </p>
+      <div className="max-w-[85%] break-words rounded-md rounded-bl-sm bg-surface-container-highest px-2.5 py-1.5 text-xs text-on-surface-variant">
+        <AnswerText>{turn.answer ?? ""}</AnswerText>
+      </div>
     );
   }
 

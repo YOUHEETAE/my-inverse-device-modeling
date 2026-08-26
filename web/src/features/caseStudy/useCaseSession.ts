@@ -88,8 +88,10 @@ export function useCaseSession(sessionId: string) {
   const [topic, setTopic] = useState<TopicDetail | null>(null);
   const [result, setResult] = useState<ExperimentResult | null>(null);
   const [page, setPage] = useState<LearningPage | null>(null);
-  const [busy, setBusy] = useState(false);
+  // 무엇을 기다리는 중인지. null이면 진행 중인 일이 없다.
+  const [busyLabel, setBusyLabel] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const busy = busyLabel !== null;
 
   useEffect(() => {
     let cancelled = false;
@@ -109,17 +111,24 @@ export function useCaseSession(sessionId: string) {
 
   // 서버 호출은 전부 같은 모양이다: 진행 중 표시를 켜고, 돌아온 세션으로
   // 갈아 끼우고, 실패하면 이유를 남긴다.
-  const run = useCallback(async <T,>(task: () => Promise<T>, apply: (value: T) => void) => {
-    setBusy(true);
-    setError(null);
-    try {
-      apply(await task());
-    } catch (err) {
-      setError(getErrorMessage(err));
-    } finally {
-      setBusy(false);
-    }
-  }, []);
+  //
+  // label을 함께 받는 이유는 기다리는 시간이 길어서다. 모델 추론과 채점은
+  // 수십 초가 걸리는데 도는 원만 보이면 멈춘 것인지 알 수 없다. 무엇을 하는
+  // 중인지는 부르는 쪽만 알므로 여기로 넘겨받는다.
+  const run = useCallback(
+    async <T,>(label: string, task: () => Promise<T>, apply: (value: T) => void) => {
+      setBusyLabel(label);
+      setError(null);
+      try {
+        apply(await task());
+      } catch (err) {
+        setError(getErrorMessage(err));
+      } finally {
+        setBusyLabel(null);
+      }
+    },
+    [],
+  );
 
   const view = page ?? defaultPage(session);
 
@@ -128,6 +137,7 @@ export function useCaseSession(sessionId: string) {
     topic,
     result,
     busy,
+    busyLabel,
     error,
     page: view,
     /** 잠긴 페이지로는 넘어가지 않는다. */
@@ -135,7 +145,7 @@ export function useCaseSession(sessionId: string) {
     dismissError: () => setError(null),
 
     begin: () =>
-      run(() => beginPrediction(sessionId), (next) => {
+      run("사전 예측을 준비하는 중입니다.", () => beginPrediction(sessionId), (next) => {
         setSession(next);
         setPage("prediction");
       }),
@@ -146,6 +156,7 @@ export function useCaseSession(sessionId: string) {
      */
     submitPrediction: (answers: Record<string, Answer>) =>
       run(
+        "예측을 저장하고 모델을 실행하는 중입니다.",
         async () => {
           await submitPredictions(sessionId, answers);
           return runExperiment(sessionId);
@@ -159,13 +170,15 @@ export function useCaseSession(sessionId: string) {
 
     /** 실험만 다시. 제출은 이미 저장돼 있어 답변을 다시 적을 필요가 없다. */
     retryExperiment: () =>
-      run(() => runExperiment(sessionId), (reply) => {
+      run("모델을 실행하는 중입니다.", () => runExperiment(sessionId), (reply) => {
         setSession(reply.session);
         setResult(reply.result);
       }),
 
     submitObservation: (answers: Record<string, Answer>) =>
       run(
+        // 여기가 제일 오래 걸린다 — 채점과 피드백 작성이 함께 돈다.
+        "답변을 채점하고 최종 설명을 만드는 중입니다.",
         async () => {
           await submitObservations(sessionId, answers);
           return evaluateSession(sessionId);
@@ -178,16 +191,17 @@ export function useCaseSession(sessionId: string) {
 
     /** 채점만 다시 (panel.py의 _resume_evaluation). */
     retryEvaluation: () =>
-      run(() => evaluateSession(sessionId), (next) => {
+      run("답변을 채점하고 최종 설명을 만드는 중입니다.", () => evaluateSession(sessionId), (next) => {
         setSession(next);
         setPage("explanation");
       }),
 
     /** 곡선은 세션에 없어서 다시 열면 만들어야 한다. */
-    regenerate: () => run(() => regenerateExperiment(sessionId), setResult),
+    regenerate: () =>
+      run("그래프를 다시 만드는 중입니다.", () => regenerateExperiment(sessionId), setResult),
 
     reset: () =>
-      run(() => resetSession(sessionId), (next) => {
+      run("처음 상태로 되돌리는 중입니다.", () => resetSession(sessionId), (next) => {
         setSession(next);
         setResult(null);
         setPage("understanding");
@@ -198,7 +212,7 @@ export function useCaseSession(sessionId: string) {
       setSession((current) => (current ? { ...current, display_name: name } : current)),
 
     recover: () =>
-      run(() => recoverSession(sessionId), (next) => {
+      run("이전 단계로 되돌리는 중입니다.", () => recoverSession(sessionId), (next) => {
         setSession(next);
         setPage(defaultPage(next));
       }),

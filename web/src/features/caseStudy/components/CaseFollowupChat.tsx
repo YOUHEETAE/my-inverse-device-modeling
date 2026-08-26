@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { CornerDownLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { AnswerText } from "@/components/AnswerText";
 import { cn } from "@/lib/utils";
 import { askCaseFollowup, getErrorMessage } from "../api";
 import type { LearningSession } from "../types";
@@ -24,6 +25,8 @@ export function CaseFollowupChat({ session }: { session: LearningSession }) {
   const [turns, setTurns] = useState<FollowupTurn[]>(saved);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
+  // 보냈지만 아직 답이 오지 않은 질문.
+  const [pending, setPending] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -38,6 +41,10 @@ export function CaseFollowupChat({ session }: { session: LearningSession }) {
     const question = draft.trim();
     if (!question || sending) return;
     setDraft("");
+    // 답을 기다리는 동안에도 방금 보낸 질문이 보여야 대화처럼 읽힌다.
+    // 답이 온 뒤에야 말풍선을 만들면, 수십 초 동안 내가 무엇을 물었는지도
+    // 화면에 없다.
+    setPending(question);
     setSending(true);
     setError(null);
     try {
@@ -48,6 +55,7 @@ export function CaseFollowupChat({ session }: { session: LearningSession }) {
       // 보내지 못했으면 되돌린다 — 다시 타이핑하게 만들지 않는다.
       setDraft(question);
     } finally {
+      setPending(null);
       setSending(false);
     }
   }
@@ -71,21 +79,37 @@ export function CaseFollowupChat({ session }: { session: LearningSession }) {
               </p>
             </div>
             <div className="flex justify-start">
-              <p
+              <div
                 className={cn(
-                  "max-w-[85%] whitespace-pre-wrap break-words rounded-md rounded-bl-sm px-2.5 py-1.5 text-xs leading-relaxed",
+                  "max-w-[85%] break-words rounded-md rounded-bl-sm px-2.5 py-1.5 text-xs",
                   turn.source === "external_error"
-                    ? "border border-outline-variant bg-surface-container"
+                    ? "whitespace-pre-wrap border border-outline-variant bg-surface-container leading-relaxed"
                     : "bg-surface-container-highest text-on-surface-variant",
                 )}
               >
-                {turn.answer}
-              </p>
+                {/* 실패 안내는 서버가 줄 단위로 짜둔 글이라 그대로 둔다.
+                    마크다운으로 다시 그리면 그 줄바꿈이 무너진다. */}
+                {turn.source === "external_error" ? (
+                  turn.answer
+                ) : (
+                  <AnswerText>{turn.answer}</AnswerText>
+                )}
+              </div>
             </div>
           </div>
         ))}
-        {sending && (
-          <Loader2 className="h-4 w-4 animate-spin text-on-surface-variant motion-reduce:animate-none" />
+        {pending && (
+          <div className="space-y-1.5">
+            <div className="flex justify-end">
+              <p className="max-w-[85%] whitespace-pre-wrap break-words rounded-md rounded-br-sm bg-primary/10 px-2.5 py-1.5 text-xs leading-relaxed">
+                {pending}
+              </p>
+            </div>
+            <div className="flex items-center gap-1.5 text-[11px] text-on-surface-variant">
+              <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin motion-reduce:animate-none" />
+              답변을 만드는 중입니다.
+            </div>
+          </div>
         )}
       </div>
 

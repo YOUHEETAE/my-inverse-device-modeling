@@ -25,6 +25,7 @@ export default function CurvesPage() {
     devices,
     activeId,
     inputValues,
+    inputProblem,
     atCapacity,
     setInputValues,
     selectDevice,
@@ -155,8 +156,13 @@ export default function CurvesPage() {
             </div>
           </div>
           <div className="mt-2">
-            <ParameterInputs values={inputValues} onChange={setInputValues} />
+            <ParameterInputs values={inputValues} onChange={setInputValues} invalid={inputProblem?.fields} />
           </div>
+          {/* 잘못된 값은 요청을 보내기 전에 여기서 멈춘다. 서버까지
+              가면 파이썬의 float() 오류 문구가 그대로 올라온다. */}
+          {inputProblem && (
+            <p className="mt-1 text-[11px] text-destructive">{inputProblem.message}</p>
+          )}
           {predictError && (
             <p className="mt-1 text-[11px] text-destructive">{predictError}</p>
           )}
