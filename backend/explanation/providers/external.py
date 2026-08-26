@@ -141,9 +141,15 @@ class ExternalLLMProvider:
         del payload
         self._set_last_call_diagnostic({})
         started = time.monotonic()
-        request = {"model": self.model, "temperature": self.settings.temperature,
+        request = {"model": self.model,
                    "response_format": {"type": "json_object"},
                    "messages": [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}]}
+        # 일부 모델은 기본값 외의 temperature를 아예 거부한다("Only the default
+        # (1) value is supported"). 값을 낮게 두는 쪽이 설명의 일관성에는
+        # 좋지만, 받지 않는 모델에서는 파라미터를 빼야 호출 자체가 된다.
+        # LLM_TEMPERATURE를 비우면 None이 되어 여기서 빠진다.
+        if self.settings.temperature is not None:
+            request["temperature"] = self.settings.temperature
         endpoint = self.settings.base_url.rstrip("/") + "/chat/completions"
         headers = {
             "Authorization": f"Bearer {self._api_key}",
