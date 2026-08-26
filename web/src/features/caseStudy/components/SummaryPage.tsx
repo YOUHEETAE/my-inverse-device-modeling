@@ -54,7 +54,8 @@ export function SummaryPage({ session, topic }: { session: LearningSession; topi
             <ReviewCard
               key={question.question_id}
               question={question}
-              answer={answerFor(session, "prediction_answers", question.question_id)}
+              record={recordFor(session, "prediction_answers", question.question_id)}
+              phase="prediction"
               session={session}
             />
           ))}
@@ -67,7 +68,8 @@ export function SummaryPage({ session, topic }: { session: LearningSession; topi
             <ReviewCard
               key={question.question_id}
               question={question}
-              answer={answerFor(session, "observation_answers", question.question_id)}
+              record={recordFor(session, "observation_answers", question.question_id)}
+              phase="observation"
               session={session}
             />
           ))}
@@ -111,30 +113,60 @@ export function SummaryPage({ session, topic }: { session: LearningSession; topi
   );
 }
 
+/** 데스크톱 앱의 _question_verdict와 같은 문구·색을 쓴다. */
+const VERDICTS: Record<string, Record<string, { text: string; tone: string }>> = {
+  prediction: {
+    match: { text: "현재 결과와 일치", tone: "text-accent-green" },
+    partial: { text: "현재 결과와 일부 일치", tone: "text-accent-orange" },
+    different: { text: "현재 결과와 다름", tone: "text-on-surface-variant" },
+    unknown: { text: "확인 필요", tone: "text-on-surface-variant" },
+  },
+  observation: {
+    match: { text: "관찰 일치", tone: "text-accent-green" },
+    partial: { text: "일부 일치", tone: "text-accent-orange" },
+    different: { text: "관찰 보완 필요", tone: "text-destructive" },
+    unknown: { text: "확인 필요", tone: "text-on-surface-variant" },
+  },
+};
+
 /**
- * 질문 하나를 되짚는 카드: 내 답과 그 질문이 겨눈 지표의 실제 변화.
+ * 질문 하나를 되짚는 카드: 내 답, 맞았는지, 그리고 그 질문이 겨눈 지표의
+ * 실제 변화.
  *
- * 정답 자체는 내려오지 않는다. 맞았는지 틀렸는지는 LLM 채점이 피드백으로
- * 말해주고, 여기서는 무엇을 답했고 결과가 어땠는지를 나란히 보여준다.
+ * 정답 자체는 끝까지 내려오지 않는다 — 판정만 서버가 계산해 세션에 남긴다
+ * (workflow.py의 question_verdict). 채점 전에 끝난 세션이나 정답이 정해지지
+ * 않은 문항에는 아무 표시도 하지 않는다. 답을 안 준 것과 틀렸다고 말하는
+ * 것은 다르다.
  */
 function ReviewCard({
   question,
-  answer,
+  record,
+  phase,
   session,
 }: {
   question: SafeQuestion;
-  answer: Answer | undefined;
+  record: AnswerRecordView | undefined;
+  phase: "prediction" | "observation";
   session: LearningSession;
 }) {
+  const answer = record?.raw_answer;
+  const verdict = record?.evaluation?.verdict
+    ? VERDICTS[phase][record.evaluation.verdict]
+    : undefined;
   const metrics = question.review_metrics
     .map((key) => metricRow(session, key))
     .filter((row): row is MetricRow => row !== null);
 
   return (
     <div className="rounded-md border border-outline-variant bg-surface-container p-3">
-      <h4 className="text-[11px] font-bold text-on-surface-variant">
-        {question.review_title || question.prompt}
-      </h4>
+      <div className="flex items-start justify-between gap-2">
+        <h4 className="text-[11px] font-bold text-on-surface-variant">
+          {question.review_title || question.prompt}
+        </h4>
+        {verdict && (
+          <span className={`shrink-0 text-[11px] font-bold ${verdict.tone}`}>{verdict.text}</span>
+        )}
+      </div>
       <p className="mt-1 text-xs leading-relaxed">{question.prompt}</p>
 
       <p className="mt-2 text-xs">
@@ -262,10 +294,21 @@ function format(value: number): string {
   return value.toFixed(4).replace(/\.?0+$/, "");
 }
 
-function answerFor(session: LearningSession, field: string, questionId: string): Answer | undefined {
-  const records = (session[field] as { question_id: string; raw_answer: Answer }[] | undefined) ?? [];
+/** 세션에 저장된 답변 한 건. evaluation은 채점을 거친 세션에만 있다. */
+interface AnswerRecordView {
+  question_id: string;
+  raw_answer: Answer;
+  evaluation?: { verdict?: string } | null;
+}
+
+function recordFor(
+  session: LearningSession,
+  field: string,
+  questionId: string,
+): AnswerRecordView | undefined {
+  const records = (session[field] as AnswerRecordView[] | undefined) ?? [];
   // 같은 질문을 다시 답했으면 마지막 답이 유효하다.
-  return records.filter((record) => record.question_id === questionId).at(-1)?.raw_answer;
+  return records.filter((record) => record.question_id === questionId).at(-1);
 }
 
 /**

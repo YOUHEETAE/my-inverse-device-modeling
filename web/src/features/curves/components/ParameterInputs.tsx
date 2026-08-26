@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { DEFAULT_PARAMETERS, PARAMETER_OPTIONS, type DeviceParameters } from "../types";
 
 const PARAMETER_LABELS: Record<keyof DeviceParameters, string> = {
@@ -13,9 +14,14 @@ const PARAMETER_LABELS: Record<keyof DeviceParameters, string> = {
 interface ParameterInputsProps {
   values: DeviceParameters;
   onChange: (values: DeviceParameters) => void;
+  /**
+   * Add/Update가 거절한 칸. 아래 한 줄짜리 안내만으로는 다섯 칸 중 어디를
+   * 봐야 하는지 눈이 한 번 더 훑어야 한다 — 칸 자체에 표시해 둔다.
+   */
+  invalid?: (keyof DeviceParameters)[];
 }
 
-export function ParameterInputs({ values, onChange }: ParameterInputsProps) {
+export function ParameterInputs({ values, onChange, invalid }: ParameterInputsProps) {
   const [openField, setOpenField] = useState<keyof DeviceParameters | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -35,7 +41,10 @@ export function ParameterInputs({ values, onChange }: ParameterInputsProps) {
       {(Object.keys(DEFAULT_PARAMETERS) as (keyof DeviceParameters)[]).map((name) => (
         <div
           key={name}
-          className="relative flex min-w-24 flex-1 flex-col gap-0.5 rounded-sm border border-outline-variant bg-surface-container-low px-2 py-1 transition-colors focus-within:border-primary/50"
+          className={cn(
+            "relative flex min-w-24 flex-1 flex-col gap-0.5 rounded-sm border bg-surface-container-low px-2 py-1 transition-colors focus-within:border-primary/50",
+            invalid?.includes(name) ? "border-destructive" : "border-outline-variant",
+          )}
         >
           <label
             htmlFor={`param-${name}`}
@@ -46,6 +55,7 @@ export function ParameterInputs({ values, onChange }: ParameterInputsProps) {
           <input
             id={`param-${name}`}
             value={values[name]}
+            aria-invalid={invalid?.includes(name) || undefined}
             onChange={(event) => onChange({ ...values, [name]: event.target.value })}
             className="bg-transparent pr-4 font-mono text-xs text-accent-green outline-none"
           />

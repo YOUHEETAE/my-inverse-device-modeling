@@ -60,8 +60,13 @@ export default function CaseSessionPage({ sessionId, caseNumber, onBack }: CaseS
           onRenamed={state.rename}
         />
         <div className="ml-auto flex items-center gap-2">
+          {/* 도는 원만 있으면 멈춘 것인지 알 수 없다. 모델 추론과 채점은
+              수십 초가 걸려서 무엇을 기다리는지 적어준다. */}
           {busy && (
-            <Loader2 className="h-3.5 w-3.5 animate-spin text-on-surface-variant motion-reduce:animate-none" />
+            <span className="flex items-center gap-1.5 text-[11px] text-on-surface-variant">
+              <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin motion-reduce:animate-none" />
+              {state.busyLabel}
+            </span>
           )}
           <Button
             variant="ghost"

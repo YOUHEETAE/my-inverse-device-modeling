@@ -181,6 +181,9 @@ export function ExplanationPanel({
                 {sections.map((section) => (
                   <div key={section.title}>
                     <h4 className="mb-1 text-[11px] font-bold">{section.title}</h4>
+                    {/* 자동 설명은 서버가 제목과 줄 단위로 이미 쪼개 준다.
+                        마크다운이 섞여 오지 않아 그대로 그린다 — 자유질문
+                        답변만 AnswerText로 그린다. */}
                     {section.paragraph ? (
                       <p className="whitespace-pre-wrap text-xs leading-relaxed text-on-surface-variant">
                         {section.lines.join(" ")}

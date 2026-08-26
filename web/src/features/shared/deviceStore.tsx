@@ -1,5 +1,10 @@
 import { createContext, useContext, useState, type ReactNode } from "react";
-import { DEFAULT_PARAMETERS, type DeviceParameters } from "../curves/types";
+import {
+  DEFAULT_PARAMETERS,
+  findParameterProblem,
+  type DeviceParameters,
+  type ParameterProblem,
+} from "../curves/types";
 
 // The parameter list a curve/device was built from, shared between the Curves
 // and Field Map pages (mirrors the desktop app's single curve_configs list
@@ -25,6 +30,12 @@ interface DeviceStoreValue {
   devices: SharedDeviceEntry[];
   activeId: number;
   inputValues: DeviceParameters;
+  /**
+   * 입력값이 잘못돼 Add/Update를 되돌려보낸 이유. 누르기 전에는 아무 말도
+   * 하지 않는다 — 타이핑하는 중간 상태마다 빨간 글씨가 뜨면 잘못한 줄
+   * 알게 된다. 값을 고치면 사라진다.
+   */
+  inputProblem: ParameterProblem | null;
   atCapacity: boolean;
   setInputValues: (values: DeviceParameters) => void;
   selectDevice: (id: number) => void;
@@ -51,21 +62,41 @@ export function DeviceStoreProvider({ children }: { children: ReactNode }) {
   ]);
   const [activeId, setActiveId] = useState(1);
   const [inputValues, setInputValues] = useState<DeviceParameters>(DEFAULT_PARAMETERS);
+  const [inputProblem, setInputProblem] = useState<ParameterProblem | null>(null);
+
+  // 값이 바뀌면 지난 경고는 지운다. 고치는 동안에도 남아 있으면 방금 고친
+  // 것이 통했는지 알 수 없다.
+  function changeInputValues(values: DeviceParameters) {
+    setInputValues(values);
+    setInputProblem(null);
+  }
 
   function selectDevice(id: number) {
     setActiveId(id);
     const device = devices.find((d) => d.id === id);
-    if (device) setInputValues(device.parameters);
+    if (device) changeInputValues(device.parameters);
   }
 
   function addDevice() {
     if (devices.length >= MAX_SHARED_DEVICES) return;
+    const problem = findParameterProblem(inputValues);
+    if (problem) {
+      setInputProblem(problem);
+      return;
+    }
     const id = nextId++;
     setDevices([...devices, { id, visible: true, parameters: inputValues }]);
     setActiveId(id);
   }
 
   function updateSelected() {
+    // Add와 같은 문을 지킨다 — 여기로 들어오면 곧장 예측 요청이 나가므로,
+    // 잘못된 값이 통과하면 화면에 남아 있던 멀쩡한 곡선까지 오류로 바뀐다.
+    const problem = findParameterProblem(inputValues);
+    if (problem) {
+      setInputProblem(problem);
+      return;
+    }
     setDevices(devices.map((d) => (d.id === activeId ? { ...d, parameters: inputValues } : d)));
   }
 
@@ -75,7 +106,7 @@ export function DeviceStoreProvider({ children }: { children: ReactNode }) {
     if (remaining.length > 0 && !remaining.some((d) => d.id === activeId)) {
       const next = remaining[remaining.length - 1];
       setActiveId(next.id);
-      setInputValues(next.parameters);
+      changeInputValues(next.parameters);
     }
   }
 
@@ -86,7 +117,7 @@ export function DeviceStoreProvider({ children }: { children: ReactNode }) {
     if (restored.length === 0) return;
     setDevices(restored);
     setActiveId(restored[0].id);
-    setInputValues(restored[0].parameters);
+    changeInputValues(restored[0].parameters);
   }
 
   function toggleVisible(id: number) {
@@ -100,7 +131,8 @@ export function DeviceStoreProvider({ children }: { children: ReactNode }) {
         activeId,
         inputValues,
         atCapacity: devices.length >= MAX_SHARED_DEVICES,
-        setInputValues,
+        inputProblem,
+        setInputValues: changeInputValues,
         selectDevice,
         addDevice,
         updateSelected,

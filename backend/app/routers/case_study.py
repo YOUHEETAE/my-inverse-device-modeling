@@ -482,7 +482,11 @@ def evaluate_session(request: SessionRequest) -> SessionResponse:
             learning_tutor,
             prediction_answers=_latest_answers(session.prediction_answers, prediction_ids),
         )
-        apply_observation_review(session, review, learning_state_machine)
+        # topic을 넘기면 문항별 정오가 세션에 함께 남는다. 화면에는 정답을
+        # 내려보내지 않으므로, 요약에서 "어느 예측이 맞았나"를 보여주려면
+        # 여기서 남겨두는 수밖에 없다. Tk 앱은 정답을 직접 들고 있어서
+        # 이것 없이도 같은 표시를 만든다.
+        apply_observation_review(session, review, learning_state_machine, topic)
         if session.current_step is LearningStep.FEEDBACK_READY:
             learning_state_machine.transition(session, LearningStep.SESSION_COMPLETE)
     except (InvalidLearningTransition, ValueError) as error:
