@@ -32,9 +32,15 @@ const STATUS_LABEL: Record<ExplanationStatus, string> = {
   stale: "결과가 바뀌었습니다 — Analyze를 다시 누르세요",
 };
 
+// 모델명을 적어 두지 않는다. 서버가 응답에 실제로 쓴 모델을 담아 보내므로
+// 그걸 그대로 보여준다 — 여기에 박아두면 모델을 바꿀 때마다 화면이
+// 거짓말을 하게 되고, 바뀐 줄 모르고 지나가기 쉽다.
+//
+// 경계 문서(docs/user_information_boundary.md)의 5번은 설명 "본문 끝에"
+// provider/model을 덧붙이지 말라는 규칙이라 이 배지와는 다른 얘기다.
 const PROVIDER_LABEL: Record<"mock" | "external_llm", string> = {
   mock: "Mock Analysis Engine",
-  external_llm: "Groq (openai/gpt-oss-120b)",
+  external_llm: "External LLM",
 };
 
 // 데스크톱 앱의 탭 이름을 그대로 쓴다
@@ -54,6 +60,8 @@ interface ExplanationPanelProps {
    */
   sections: ExplanationSection[];
   provider: "mock" | "external_llm" | null;
+  /** 서버가 실제로 사용한 모델. 없으면 제공자 이름만 보여준다. */
+  model?: string | null;
   onAnalyze: () => void;
   disabled?: boolean;
   disabledReason?: string;
@@ -85,6 +93,7 @@ export function ExplanationPanel({
   status,
   sections,
   provider,
+  model,
   onAnalyze,
   disabled,
   disabledReason,
@@ -138,7 +147,7 @@ export function ExplanationPanel({
           <div className="flex flex-wrap items-center justify-end gap-2">
             {provider && (
               <span className="rounded-sm border border-outline-variant bg-surface-container-highest px-2 py-1 font-mono text-[10px] uppercase tracking-wide text-on-surface-variant">
-                {PROVIDER_LABEL[provider]}
+                {provider === "external_llm" && model ? model : PROVIDER_LABEL[provider]}
               </span>
             )}
             {authenticated ? (

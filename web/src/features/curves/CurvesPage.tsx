@@ -83,7 +83,7 @@ export default function CurvesPage() {
   // 분석 결과는 페이지가 아니라 analysisStore가 들고 있다 — Field Map에
   // 다녀와도 남아 있어야 한다. LLM 호출 한 번은 계정의 하루 한도를 깎는다.
   const { explanation, updateExplanation } = useAnalysisStore();
-  const { sections, provider, status: explanationStatus, error: explainError } = explanation.curves;
+  const { sections, provider, model, status: explanationStatus, error: explainError } = explanation.curves;
 
   const visibleCurves = curves.filter((c) => c.visible);
 
@@ -127,6 +127,7 @@ export default function CurvesPage() {
       updateExplanation("curves", {
         sections: toSections(result),
         provider: result.provider as "mock" | "external_llm",
+        model: result.model,
         status: "complete",
       });
     } catch (err) {
@@ -171,6 +172,7 @@ export default function CurvesPage() {
             status={explanationStatus}
             sections={sections}
             provider={provider}
+            model={model}
             onAnalyze={analyze}
             disabled={visibleCurves.length === 0}
             disabledReason="분석할 곡선을 하나 이상 선택해 주세요."

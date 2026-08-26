@@ -17,6 +17,8 @@ export type AnalysisKind = "curves" | "fields";
 export interface ExplanationState {
   sections: ExplanationSection[];
   provider: "mock" | "external_llm" | null;
+  /** 서버가 실제로 쓴 모델. 화면 배지가 이 값을 그대로 보여준다. */
+  model: string | null;
   status: ExplanationStatus;
   error: string | null;
 }
@@ -40,6 +42,7 @@ export interface ChatState {
 const EMPTY_EXPLANATION: ExplanationState = {
   sections: [],
   provider: null,
+  model: null,
   status: "ready",
   error: null,
 };
