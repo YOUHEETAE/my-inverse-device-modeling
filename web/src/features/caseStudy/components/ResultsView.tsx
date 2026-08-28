@@ -68,7 +68,12 @@ export function ResultsView({
   // 지표 표는 그래프를 밀어내지 않고 그 위에 뜬다. 나란히 두면 셋이 폭을
   // 나눠 갖느라 그래프가 눌리고, 표를 접었다 펼 때마다 그래프 크기가 바뀌어
   // 방금 보던 모양과 달라진다. 덮어두면 그래프는 늘 같은 크기다.
-  const [showMetrics, setShowMetrics] = useState(true);
+  // 넓은 화면에서는 그래프 옆에 여유가 있어 늘 펼쳐둔다. 좁은 화면에서는 이
+  // 패널이 그래프 위를 덮으므로, 열어둔 채로 들어오면 관찰하라는 화면에서
+  // 정작 그래프가 보이지 않는다. 접어두고 위의 "파라미터"로 꺼내 쓰게 한다.
+  const [showMetrics, setShowMetrics] = useState(
+    () => typeof window === "undefined" || window.innerWidth >= 1024,
+  );
   // Field Map 탭이 지금 무엇을 그리고 있는지. 범례를 오른쪽 칸에 그려야
   // 해서 패널 안이 아니라 여기까지 올라온다.
   const [fieldLegend, setFieldLegend] = useState<FieldLegend | null>(null);
@@ -151,7 +156,9 @@ export function ResultsView({
         </div>
 
         {showMetrics && (
-          <aside className="absolute bottom-0 right-0 top-3 z-10 w-60 overflow-y-auto rounded-md border border-outline-variant bg-surface-container-low p-2.5 shadow-lg duration-200 animate-in slide-in-from-right-4 fade-in motion-reduce:animate-none">
+          // 좁은 화면에서는 폭을 다 쓴다. 240px짜리가 오른쪽에 걸쳐 있으면
+          // 그래프를 어중간하게 가려, 덮은 것인지 깨진 것인지 알 수 없다.
+          <aside className="absolute inset-x-0 bottom-0 top-3 z-10 overflow-y-auto rounded-md border border-outline-variant bg-surface-container-low p-2.5 shadow-lg duration-200 animate-in slide-in-from-right-4 fade-in motion-reduce:animate-none lg:left-auto lg:right-0 lg:w-60">
             <h3 className="mb-2 text-[11px] font-bold uppercase tracking-wide">
               전기적 파라미터
             </h3>
