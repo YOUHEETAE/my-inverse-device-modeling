@@ -1,9 +1,28 @@
 <!doctype html>
-<html lang="en">
+<!-- 본문이 한국어다. lang="en"으로 두면 크롬이 한국어 화면에 대고 "영어에서
+     번역하시겠습니까"를 띄우고, 스크린리더가 한글을 영어 발음으로 읽으며,
+     구글이 어느 언어권에 보여줄지 잘못 고른다. 화면 제목과 버튼은 영어지만
+     그건 용어이고, 읽히는 글은 한국어다. -->
+<html lang="ko">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>SemiScope AI</title>
+    <title>SemiScope AI — 반도체 소자 학습 도구</title>
+    <!-- 없으면 구글이 본문에서 아무 문장이나 골라 검색결과 요약으로 쓴다.
+         SPA라 첫 HTML에 본문이 없어서 더 엉뚱한 것이 잡힌다. -->
+    <meta
+      name="description"
+      content="구조와 도핑 조건을 바꾸며 반도체 소자의 전기적 특성 변화를 예측하고 비교하는 학습 도구입니다. I-V Curve, Field Map, TCAD 기반 이론 시뮬레이터, 예측-관찰-채점으로 이어지는 Case Study를 제공합니다."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="SemiScope AI" />
+    <meta property="og:title" content="SemiScope AI — 반도체 소자 학습 도구" />
+    <meta
+      property="og:description"
+      content="구조와 도핑 조건을 바꾸며 반도체 소자의 전기적 특성 변화를 예측하고 비교하는 학습 도구입니다."
+    />
+    <meta property="og:locale" content="ko_KR" />
+    <meta name="twitter:card" content="summary" />
   </head>
   <body>
     <div id="root"></div>

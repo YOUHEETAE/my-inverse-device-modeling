@@ -199,8 +199,11 @@ function PageBody({
     // 결과를 보면서 답해야 하는 단계라 그래프와 질문이 나란히 놓인다.
     // 답을 낸 뒤에도 그래프는 남는다 — 피드백을 읽으며 다시 보게 된다.
     return (
-      <div className="flex h-full min-h-0 gap-3">
-        <div className="min-w-0 flex-1">
+      <div className="flex h-full min-h-0 flex-col gap-3 lg:flex-row">
+        {/* lg 아래에서는 세로로 쌓이므로 높이를 직접 준다. ResultsView는 탭
+            내용을 absolute inset-0으로 겹쳐 놓아서, 부모 높이가 내용에 따라
+            정해지면 0으로 접힌다. */}
+        <div className="h-[65vh] min-w-0 shrink-0 lg:h-auto lg:flex-1">
           <ResultsView
             session={session}
             result={state.result}
@@ -210,7 +213,7 @@ function PageBody({
         </div>
         {/* w-80: 질문은 세로로 길어서 폭보다 높이가 중요하다. 남는 폭은
             그래프로 넘긴다. */}
-        <div className="w-80 shrink-0 overflow-y-auto pr-1">
+        <div className="w-full shrink-0 pr-1 lg:w-80 lg:overflow-y-auto">
           {step === "OBSERVATION_QUESTION" ? (
             <AnswerForm
               heading="그래프와 Field Map을 관찰한 뒤 답하세요."
@@ -271,7 +274,15 @@ function ExplanationPage({ state }: { state: ReturnType<typeof useCaseSession> }
           </button>
         ))}
       </div>
-      <div className={cn("min-h-0 flex-1 pt-3", tab === "summary" ? "overflow-y-auto" : "overflow-hidden")}>
+      <div
+        className={cn(
+          "min-h-0 flex-1 pt-3",
+          tab === "summary"
+            ? "overflow-y-auto"
+            // 결과 탭은 겹쳐놓은 패널이라 높이가 확정돼야 한다.
+            : "h-[65vh] shrink-0 lg:h-auto lg:overflow-hidden",
+        )}
+      >
         {tab === "summary" ? (
           <SummaryPage session={session} topic={topic} />
         ) : (
