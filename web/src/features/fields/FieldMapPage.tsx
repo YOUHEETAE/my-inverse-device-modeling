@@ -248,10 +248,11 @@ export default function FieldMapPage() {
   }
 
   return (
-    <div className="flex h-full">
-      <div className="flex flex-1 flex-col gap-3 overflow-y-auto p-3">
+    // lg 아래에서는 두 칸을 세로로 쌓는다 (CurvesPage와 같은 이유).
+    <div className="flex h-full flex-col lg:flex-row">
+      <div className="flex flex-1 flex-col gap-3 p-3 lg:overflow-y-auto">
         <div>
-          <div className="flex items-start justify-between">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <h2 className="mb-0.5 text-base font-bold uppercase tracking-wide">Structure / Field Map</h2>
               <p className="text-xs text-on-surface-variant">
@@ -282,7 +283,7 @@ export default function FieldMapPage() {
             <p className="mt-1 text-[11px] text-accent-orange">{rangeWarnings.join(" | ")}</p>
           )}
         </div>
-        <div className="h-[420px] shrink-0">
+        <div className="h-[360px] shrink-0 sm:h-[420px]">
           {display === "Energy band (1D)" ? (
             <EnergyBandChart
               devices={visibleDevices
@@ -354,7 +355,7 @@ export default function FieldMapPage() {
         </div>
       </div>
 
-      <aside className="flex w-72 shrink-0 flex-col gap-4 overflow-y-auto border-l border-outline-variant bg-sidebar p-3">
+      <aside className="flex w-full shrink-0 flex-col gap-4 border-t border-outline-variant bg-sidebar p-3 lg:w-72 lg:overflow-y-auto lg:border-l lg:border-t-0">
         <div className="shrink-0">
           <div className="mb-2 flex items-center justify-between">
             <h4 className="text-xs font-bold uppercase tracking-wide">Devices</h4>

@@ -29,7 +29,11 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Field Map", path: "/fields", icon: Layers },
 ];
 
-export function Sidebar() {
+/**
+ * @param onNavigate 좁은 화면에서 서랍으로 열렸을 때, 항목을 고르면 닫는다.
+ *   화면을 덮고 있으므로 스스로 물러나지 않으면 방금 고른 곳이 보이지 않는다.
+ */
+export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <aside className="flex h-screen w-52 shrink-0 flex-col border-r border-outline-variant bg-sidebar py-3 text-sidebar-foreground">
       <div className="mb-4 flex items-center gap-2 px-3">
@@ -53,6 +57,7 @@ export function Sidebar() {
             <NavLink
               key={item.path}
               to={item.path}
+              onClick={onNavigate}
               className={({ isActive }) =>
                 cn(
                   "flex items-center gap-2 rounded-sm px-2.5 py-1.5 transition-colors",

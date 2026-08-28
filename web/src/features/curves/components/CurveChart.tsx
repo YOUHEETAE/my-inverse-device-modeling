@@ -90,8 +90,9 @@ export function CurveChart({ curves, combined }: CurveChartProps) {
   }
 
   if (combined) {
+    // 390px에서 2단이면 차트 하나가 170px이라 축 눈금까지 겹친다.
     return (
-      <div className="grid h-full grid-cols-2 gap-4">
+      <div className="grid h-full grid-cols-1 gap-4 sm:grid-cols-2">
         {(["idvd", "idvg"] as const).map((kind) => {
           const log = isLog(kind);
           return (
@@ -129,7 +130,7 @@ export function CurveChart({ curves, combined }: CurveChartProps) {
         <CardTitle>Separated Bias Plots</CardTitle>
         <CardDescription>Each fixed bias shown as its own subplot</CardDescription>
       </CardHeader>
-      <CardContent className="grid flex-1 grid-cols-4 gap-3 overflow-y-auto">
+      <CardContent className="grid flex-1 grid-cols-1 gap-3 overflow-y-auto sm:grid-cols-2 lg:grid-cols-4">
         {(["idvd", "idvg"] as const).flatMap((kind) => {
           const biases = visible[0]?.result?.[kind].fixed_biases ?? [];
           return biases.map((bias, biasIndex) => {
