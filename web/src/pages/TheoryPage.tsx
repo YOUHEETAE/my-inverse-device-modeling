@@ -1184,25 +1184,27 @@ function Chapter5Content() {
   );
 }
 
+/**
+ * 장 목록 위의 안내.
+ *
+ * 여기 온 사람은 읽을 장을 고르러 왔지, 이 페이지의 취지를 읽으러 온 것이
+ * 아니다. 예전에는 문단 네 개가 목록을 밀어내고 있었다 — 취지는 남기되 두
+ * 줄로 줄이고, 원래 두 번째 문단이 들던 예(채널을 줄이면 무엇을 얻고 무엇을
+ * 잃는가)는 3장 카드가 이미 같은 말을 하므로 뺐다.
+ */
 function OverviewContent() {
   return (
-    <div>
-      <p className="text-base leading-[1.8] text-foreground">
-        MOSFET의 전기적 특성은 단순히 게이트 전압과 드레인 전압만으로 결정되지 않습니다. 채널 길이, 산화막 두께, Source/Drain
-        도핑 농도, Body 도핑 농도와 같은 소자 내부 조건이 함께 작용하여 전류와 전위 분포를 결정합니다.
+    <div className="flex flex-col gap-2">
+      <p className="text-base leading-relaxed text-foreground">
+        MOSFET의 전기적 특성은 게이트·드레인 전압만으로 정해지지 않습니다. 채널 길이, 산화막
+        두께, 도핑 농도 같은 내부 조건이 함께 작용해 전류와 전위 분포를 결정합니다.
       </p>
-      <p className="mt-2 text-base leading-[1.8] text-foreground">
-        예를 들어 채널 길이를 줄이면 전류가 증가할 수 있지만, Drain의 영향이 Source 부근까지 전달되어 누설전류와 DIBL이 증가할
-        수 있습니다. 산화막을 얇게 만들면 Gate의 채널 제어력이 강해지지만, 실제 소자에서는 누설전류와 신뢰성 문제도 함께
-        고려해야 합니다. 또한 도핑 농도를 변경하면 캐리어 농도뿐 아니라 공핍층, 전위 장벽, 전기장 분포와 문턱전압도 달라집니다.
-      </p>
-      <p className="mt-2 text-base leading-[1.8] text-foreground">
-        이 Theory 페이지는 반도체공학의 모든 내용을 다루기 위한 것이 아닙니다. 이 웹페이지에서 MOSFET의 파라미터를 변경하고,
-        그 결과로 생성되는 <span className="font-semibold text-foreground">I–V Curve와 Field Map을 해석하는 데 필요한 이론</span>
-        을 중심으로 구성되어 있습니다.
-      </p>
-      <p className="mt-2 text-base leading-[1.8] text-foreground">
-        각 장의 이론은 독립된 내용이 아니라 다음 장으로 연결됩니다.
+      <p className="text-base leading-relaxed text-on-surface-variant">
+        반도체공학 전체를 다루지는 않습니다.{" "}
+        <span className="font-semibold text-foreground">
+          I–V Curve와 Field Map을 해석하는 데 필요한 이론
+        </span>
+        을 다섯 장으로 추렸고, 각 장은 다음 장으로 이어집니다.
       </p>
     </div>
   );

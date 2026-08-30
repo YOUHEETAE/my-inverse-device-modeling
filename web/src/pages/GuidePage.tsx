@@ -40,32 +40,66 @@ export default function GuidePage() {
   return (
     <div className="h-full overflow-y-auto">
       <div className="mx-auto flex max-w-4xl flex-col gap-8 px-6 py-8">
-        {/* Hero */}
-        <div>
-          <h1 className="text-2xl font-bold leading-snug">Guide</h1>
-          <p className="mt-3 text-base leading-[1.8] text-foreground">
-            본 Guide에서는 MOSFET AI Prediction and Learning Platform의 기본 이용 방법과 각 페이지의 주요 기능을 설명합니다.
-          </p>
-          <p className="mt-2 text-base leading-[1.8] text-foreground">
-            플랫폼은 Theory, I–V Curve, Field Map, Case Study로 구성되며, 사용자는 학습 목적에 따라 원하는 기능을 선택하여 이용할 수
-            있습니다.
-          </p>
-          <p className="mt-3 text-base leading-[1.8] text-foreground">MOSFET을 처음 학습하는 경우 다음 순서를 권장합니다.</p>
-          <FlowSteps steps={["Theory", "Case Study", "I–V Curve", "Field Map"]} className="my-2" />
-          <p className="mt-2 text-base leading-[1.8] text-foreground">
-            Theory에서는 MOSFET의 기본 구조와 동작 원리를 학습합니다. 이후 Case Study에서는 주요 구조 변수를 중심으로 결과를 예상하고
-            실제 예측값과 비교하며 학습 내용을 점검합니다. I–V Curve에서는 구조 변화에 따른 외부 전기적 특성을 확인하고, Field Map에서는
-            소자 내부의 Potential, Electric Field와 Carrier Distribution을 관찰할 수 있습니다.
-          </p>
-          <p className="mt-2 text-base leading-[1.8] text-foreground">
-            이미 MOSFET의 기본 개념을 알고 있는 경우 I–V Curve 또는 Field Map에서 원하는 조건을 직접 입력하여 자유롭게 결과를 확인할 수
-            있습니다.
-          </p>
-          <p className="mt-3 text-base leading-[1.8] text-foreground">
-            <span className="font-semibold">로그인</span>은 Case Study와 AI 기능에만 필요합니다. 소자 조건을 바꾸어 I–V Curve와 Field
-            Map을 예측하고 비교하는 것, Theory를 보는 것은 로그인 없이 그대로 이용할 수 있습니다. Case Study는 진행 상황이 계정에 저장되어야
-            이어서 학습할 수 있고, AI 설명과 AI 질문은 호출 한 번마다 비용이 발생하므로 계정 단위로 사용량을 관리합니다.
-          </p>
+        {/* 안내서에 온 사람은 막힌 데가 있어서 온 것이지, 서문을 읽으러 온 게
+            아니다. 어디부터 가면 되는지와 로그인이 언제 필요한지 — 실제로
+            묻는 두 가지를 먼저 답한다. */}
+        <div className="flex flex-col gap-4">
+          <div>
+            <h1 className="text-2xl font-bold leading-snug">Guide</h1>
+            <p className="mt-2 text-base leading-relaxed text-on-surface-variant">
+              각 화면이 무엇을 하고 어떤 순서로 쓰면 되는지 정리했습니다.
+            </p>
+          </div>
+
+          {/* 2:1로 나눈다. 균등하게 두면 왼쪽의 네 걸음이 줄바꿈되면서 화살표가
+              줄 맨 앞에 걸리고, 오른쪽은 두 줄짜리 글에 빈 칸만 남는다. */}
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+            <Card className="lg:col-span-2">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">처음이라면</CardTitle>
+              </CardHeader>
+              <CardContent className="flex flex-col gap-2">
+                <FlowSteps steps={["Theory", "Case Study", "I–V Curve", "Field Map"]} />
+                <p className="text-xs leading-relaxed text-on-surface-variant">
+                  Theory로 기본 구조와 동작 원리를 잡고, Case Study에서 결과를 예상한 뒤 실제
+                  값과 맞춰 봅니다. 그다음 I–V Curve로 밖에서 본 특성을, Field Map으로 안에서
+                  일어나는 일을 확인합니다.
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">이미 아신다면</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-xs leading-relaxed text-on-surface-variant">
+                  I–V Curve나 Field Map에서 원하는 조건을 바로 넣고 결과를 보면 됩니다. 순서를
+                  지킬 필요는 없습니다.
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* 로그인 여부는 "왜 안 되지"의 가장 흔한 원인이라 위에 둔다. */}
+          <div className="rounded-md border border-outline-variant bg-surface-container-low p-3">
+            <h2 className="mb-2 text-xs font-bold">로그인이 필요한 곳</h2>
+            <div className="grid grid-cols-1 gap-x-6 gap-y-1.5 text-xs leading-relaxed sm:grid-cols-2">
+              <p>
+                <span className="font-semibold text-accent-green">로그인 없이</span>{" "}
+                <span className="text-on-surface-variant">
+                  — Theory 열람, I–V Curve와 Field Map 예측·비교
+                </span>
+              </p>
+              <p>
+                <span className="font-semibold text-primary">로그인 필요</span>{" "}
+                <span className="text-on-surface-variant">— Case Study, AI 설명, AI 질문</span>
+              </p>
+            </div>
+            <p className="mt-2 text-[11px] leading-relaxed text-on-surface-variant">
+              Case Study는 진행 상황이 계정에 저장되어야 이어서 학습할 수 있고, AI 기능은 호출
+              한 번마다 비용이 발생해 계정 단위로 사용량을 관리합니다.
+            </p>
+          </div>
         </div>
 
         {/* Case Study */}
@@ -92,34 +126,48 @@ export default function GuidePage() {
                 목표 특성을 만족하는 조건을 고르는 형태로 넓어지므로, 순서대로 진행하는 것을 권장합니다.
               </p>
 
+              {/* 이미 번호가 매겨진 내용을 문단으로 풀어 쓰면 단계가 몇 개인지
+                  세어 가며 읽어야 한다. 번호를 왼쪽에 세우고 설명을 그 옆에
+                  붙여, 훑기만 해도 네 걸음이 보이게 한다. */}
               <p className="pt-1 font-semibold">학습은 네 단계로 진행됩니다.</p>
-              <FlowSteps
-                steps={["1. Case 이해", "2. 초기 예측", "3. 결과 관찰", "4. 최종 설명"]}
-                className="my-1"
-              />
-              <p>
-                <span className="font-semibold">1. Case 이해</span> 단계에서 이번 Case의 배경과 핵심 질문, 학습 목표, 그리고 기준 조건과
-                비교 조건이 무엇인지 확인합니다. 어떤 변수가 바뀌고 어떤 변수가 고정되는지가 여기서 정해집니다.
-              </p>
-              <p>
-                <span className="font-semibold">2. 초기 예측</span> 단계에서는 결과를 보기 전에 먼저 답합니다. 구조 조건의 변화에 따라 Ion,
-                Ioff, Vth, DIBL 또는 Field Map이 어떻게 변할지 선택형 질문으로 답하고, 그렇게 판단한 근거를 서술형으로 입력합니다. 결과를
-                보기 전에 근거를 적는 순서가 이 기능의 핵심입니다.
-              </p>
-              <p>
-                <span className="font-semibold">3. 결과 관찰</span> 단계에서 기준 조건과 비교 조건의 I–V Curve, 전기적 파라미터, Field Map이
-                제공됩니다. 전체 그래프만 보는 것이 아니라 화면이 제시하는 관찰 지점을 중심으로 비교한 뒤, 관찰한 내용을 다시 제출합니다.
-              </p>
-              <p>
-                <span className="font-semibold">4. 최종 설명</span> 단계에서는 제출한 답변과 실제 결과를 대조한 결과가 정리됩니다.
-              </p>
-              <div>
-                <ul className="list-inside list-disc space-y-0.5 pl-1">
-                  {CASE_STUDY_RESULTS.map((item) => (
-                    <li key={item}>{item}</li>
-                  ))}
-                </ul>
-              </div>
+              <ol className="flex flex-col gap-2.5">
+                {[
+                  {
+                    title: "Case 이해",
+                    body: "이번 Case의 배경과 핵심 질문, 학습 목표, 기준 조건과 비교 조건을 확인합니다. 어떤 변수가 바뀌고 어떤 변수가 고정되는지가 여기서 정해집니다.",
+                  },
+                  {
+                    title: "초기 예측",
+                    body: "결과를 보기 전에 먼저 답합니다. Ion, Ioff, Vth, DIBL 또는 Field Map이 어떻게 변할지 고르고, 그렇게 판단한 근거를 적습니다. 보기 전에 적는 순서가 이 기능의 핵심입니다.",
+                  },
+                  {
+                    title: "결과 관찰",
+                    body: "두 조건의 I–V Curve, 전기적 파라미터, Field Map이 나옵니다. 전체를 훑기보다 화면이 짚어주는 관찰 지점을 중심으로 비교한 뒤, 본 것을 제출합니다.",
+                  },
+                  {
+                    title: "최종 설명",
+                    body: "제출한 답변과 실제 결과를 대조해 정리합니다.",
+                  },
+                ].map((step, index) => (
+                  <li key={step.title} className="flex gap-3">
+                    <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-sm border border-outline-variant bg-surface-container font-mono text-[11px] font-bold">
+                      {index + 1}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="font-semibold">{step.title}</p>
+                      <p className="text-on-surface-variant">{step.body}</p>
+                      {/* 4단계 화면이 실제로 내놓는 항목들 */}
+                      {index === 3 && (
+                        <ul className="mt-1.5 flex flex-col gap-0.5 border-l-2 border-outline-variant pl-3 text-xs text-on-surface-variant">
+                          {CASE_STUDY_RESULTS.map((item) => (
+                            <li key={item}>{item}</li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ol>
               <p>
                 AI 피드백은 사용자의 답변을 평가하기 위한 절대적인 채점 결과가 아니라, 학습 과정에서 놓친 부분을 확인하기 위한 보조 자료로
                 활용합니다.
